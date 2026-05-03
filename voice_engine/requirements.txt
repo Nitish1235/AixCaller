@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+loguru
+python-dotenv
+pipecat-ai
+aiohttp
+httpx
+pgvector
+psycopg2-binary
+openai
+PyJWT

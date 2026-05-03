@@ -1,0 +1,45 @@
+steps:
+  # 1. Build Frontend Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/frontend:$COMMIT_SHA'
+      - '-f'
+      - 'frontend/Dockerfile'
+      - 'frontend/'
+    id: 'build-frontend'
+    waitFor: ['-']
+
+  # 2. Build Backend Image (Context is root to include 'shared' folder)
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/backend:$COMMIT_SHA'
+      - '-f'
+      - 'backend/Dockerfile'
+      - '.'
+    id: 'build-backend'
+    waitFor: ['-']
+
+  # 3. Build Voice Engine Image (Context is root)
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/voice-engine:$COMMIT_SHA'
+      - '-f'
+      - 'voice_engine/Dockerfile'
+      - '.'
+    id: 'build-voice-engine'
+    waitFor: ['-']
+
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/frontend:$COMMIT_SHA'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/backend:$COMMIT_SHA'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/voice-engine:$COMMIT_SHA'
+
+substitutions:
+  _REGION: 'us-central1'
+  _REPO_NAME: 'aixcaller-repo'

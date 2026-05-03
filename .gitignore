@@ -1,0 +1,241 @@
+# =============================================================================
+# AixCaller - .gitignore
+# Stack: Next.js (frontend) + FastAPI (backend) + Python (voice_engine)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Environment Variables (NEVER commit secrets)
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+*.env
+
+# -----------------------------------------------------------------------------
+# Node.js / Next.js (frontend)
+# -----------------------------------------------------------------------------
+node_modules/
+.next/
+out/
+build/
+dist/
+.cache/
+.turbo/
+.vercel/
+.netlify/
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/node_modules/
+
+# npm / yarn / pnpm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+package-lock.json.bak
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# -----------------------------------------------------------------------------
+# Python (backend + voice_engine)
+# -----------------------------------------------------------------------------
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env/
+backend/.venv/
+voice_engine/.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+*.whl
+MANIFEST
+pip-wheel-metadata/
+
+# PyInstaller
+*.spec
+
+# pytest / testing
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage/
+htmlcov/
+*.coveragerc
+nosetests.xml
+test-results/
+
+# mypy / type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# Ruff / linting
+.ruff_cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# -----------------------------------------------------------------------------
+# Databases & Storage
+# -----------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# pgvector / Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+logs/
+*.log
+*.log.*
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+lerna-debug.log*
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+
+# -----------------------------------------------------------------------------
+# Cloud / CI
+# -----------------------------------------------------------------------------
+# Google Cloud
+.gcloud/
+gcloud-service-key.json
+service-account*.json
+*-credentials.json
+
+# Cloud Build local artifacts
+_build/
+
+# -----------------------------------------------------------------------------
+# IDE & Editor Files
+# -----------------------------------------------------------------------------
+# VSCode
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# JetBrains (PyCharm, WebStorm, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+
+# Sublime Text
+*.sublime-workspace
+
+# -----------------------------------------------------------------------------
+# OS Files
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encdata
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# -----------------------------------------------------------------------------
+# Audio / Media (voice engine temp files)
+# -----------------------------------------------------------------------------
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.aac
+*.m4a
+*.opus
+temp_audio/
+audio_cache/
+
+# -----------------------------------------------------------------------------
+# Certificates & Keys
+# -----------------------------------------------------------------------------
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+ssl/
+certs/
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+.tmp/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.orig
+*.patch
+
+# Storybook
+storybook-static/
+
+# Playwright / Cypress (e2e testing)
+playwright-report/
+test-results/
+cypress/videos/
+cypress/screenshots/

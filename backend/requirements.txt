@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlmodel
+plivo
+loguru
+python-dotenv
+pgvector
+psycopg2-binary
+openai
+httpx
+PyJWT
+dodopayments
+beautifulsoup4
+requests
