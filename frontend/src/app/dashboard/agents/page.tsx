@@ -2,6 +2,8 @@ import { fetchAgents } from '@/lib/api';
 import styles from './agents.module.css';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AgentsPage() {
   const agents = await fetchAgents();
 

@@ -1,6 +1,8 @@
 import styles from './dashboard.module.css';
 import { fetchCalls } from '@/lib/api';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const calls = await fetchCalls();
 
