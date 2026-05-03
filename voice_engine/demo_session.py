@@ -39,16 +39,31 @@ async def run_demo_session(websocket: WebSocket):
 
     async def call_llm(history: list) -> str:
         from openai import AsyncOpenAI
+
+        # -- LLM: OpenAI (default) --
+        # To switch back to Grok, comment this block and uncomment the xAI block below
         client = AsyncOpenAI(
-            api_key=os.environ.get("XAI_API_KEY"),
-            base_url="https://api.x.ai/v1"
+            api_key=os.environ.get("OPENAI_API_KEY")
         )
         resp = await client.chat.completions.create(
-            model="grok-beta",
+            model="gpt-4o",
             messages=history,
             max_tokens=100,
             temperature=0.7
         )
+
+        # -- LLM: xAI Grok (reserved for later) --
+        # client = AsyncOpenAI(
+        #     api_key=os.environ.get("XAI_API_KEY"),
+        #     base_url="https://api.x.ai/v1"
+        # )
+        # resp = await client.chat.completions.create(
+        #     model="grok-beta",
+        #     messages=history,
+        #     max_tokens=100,
+        #     temperature=0.7
+        # )
+
         return resp.choices[0].message.content.strip()
 
     async def speak(text: str):

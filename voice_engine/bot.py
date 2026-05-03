@@ -105,12 +105,21 @@ class VoiceAgent:
             voice=self.agent_config.get("voice_id", "aura-asteria-en")
         )
 
+        # -- LLM: OpenAI (default) --
+        # To switch back to Grok, comment this block and uncomment the xAI block below
         llm = OpenAILLMService(
-            api_key=os.environ["XAI_API_KEY"],
-            base_url="https://api.x.ai/v1",
-            model="grok-beta",
+            api_key=os.environ["OPENAI_API_KEY"],
+            model="gpt-4o",
             params={"temperature": self.agent_config.get("llm_temperature", 0.7)}
         )
+
+        # -- LLM: xAI Grok (reserved for later) --
+        # llm = OpenAILLMService(
+        #     api_key=os.environ["XAI_API_KEY"],
+        #     base_url="https://api.x.ai/v1",
+        #     model="grok-beta",
+        #     params={"temperature": self.agent_config.get("llm_temperature", 0.7)}
+        # )
 
         # 3. Context & RAG Tools
         # Add latency masking prompt
