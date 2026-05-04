@@ -68,54 +68,62 @@ async def run_demo_session(websocket: WebSocket):
         finally:
             state["is_speaking"] = False
 
-    # --- Deepgram STT Setup ---
-    from deepgram import DeepgramClient, LiveOptions, LiveTranscriptionEvents
+    # --- Deepgram STT Setup (Raw WebSocket to bypass SDK conflicts) ---
+    import websockets
+    import json
     
-    dg_client = DeepgramClient(api_key=os.environ["DEEPGRAM_API_KEY"])
-    dg_conn = dg_client.listen.asynclive.v("1")
-
-    async def on_transcript(self, result, **kwargs):
-        try:
-            alt = result.channel.alternatives[0]
-            text = alt.transcript.strip()
-            if not text:
-                return
-
-            if not result.is_final:
-                await send({"type": "transcript", "role": "user", "text": text, "final": False})
-                return
-
-            # Final transcript — send and generate reply
-            await send({"type": "transcript", "role": "user", "text": text, "final": True})
-
-            # Don't interrupt if Aria is already speaking
-            if state["is_speaking"]:
-                return
-
-            conversation_history.append({"role": "user", "content": text})
-            response = await call_llm(conversation_history)
-            conversation_history.append({"role": "assistant", "content": response})
-
-            await send({"type": "transcript", "role": "assistant", "text": response, "final": True})
-            await speak(response)
-
-        except Exception as e:
-            logger.error(f"Demo transcript handler error: {e}")
-
-    # Register the event correctly for the SDK
-    dg_conn.on(LiveTranscriptionEvents.Transcript, on_transcript)
-
-    options = LiveOptions(
-        model="nova-3",
-        language="en-US",
-        smart_format=True,
-        endpointing=600,
-        interim_results=True,
+    stt_url = (
+        "wss://api.deepgram.com/v1/listen?"
+        "model=nova-3&language=en-US&smart_format=true&endpointing=600&interim_results=true"
     )
+    headers = {"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"}
+    
+    async def process_deepgram_stt(ws):
+        try:
+            async for msg in ws:
+                data = json.loads(msg)
+                
+                # Check if it's a transcription result
+                if data.get("type") == "Results":
+                    channel = data.get("channel", {})
+                    alts = channel.get("alternatives", [])
+                    if not alts:
+                        continue
+                        
+                    alt = alts[0]
+                    text = alt.get("transcript", "").strip()
+                    if not text:
+                        continue
+                        
+                    is_final = data.get("is_final", False)
+                    
+                    if not is_final:
+                        await send({"type": "transcript", "role": "user", "text": text, "final": False})
+                        continue
 
-    started = await dg_conn.start(options)
-    if not started:
-        logger.error("Failed to start Deepgram STT for demo — check DEEPGRAM_API_KEY")
+                    # Final transcript — send and generate reply
+                    await send({"type": "transcript", "role": "user", "text": text, "final": True})
+
+                    if state["is_speaking"]:
+                        continue
+
+                    conversation_history.append({"role": "user", "content": text})
+                    response = await call_llm(conversation_history)
+                    conversation_history.append({"role": "assistant", "content": response})
+
+                    await send({"type": "transcript", "role": "assistant", "text": response, "final": True})
+                    await speak(response)
+        except websockets.exceptions.ConnectionClosed:
+            logger.info("Deepgram connection closed")
+        except Exception as e:
+            logger.error(f"Deepgram STT processing error: {e}")
+
+    try:
+        dg_conn = await websockets.connect(stt_url, extra_headers=headers)
+        # Start a background task to process incoming STT messages
+        stt_task = asyncio.create_task(process_deepgram_stt(dg_conn))
+    except Exception as e:
+        logger.error(f"Failed to connect to Deepgram STT: {e}")
         await send({"type": "session_ended"})
         return
 
@@ -146,7 +154,8 @@ async def run_demo_session(websocket: WebSocket):
     finally:
         state["session_active"] = False
         try:
-            await dg_conn.finish()
+            await dg_conn.close()
+            stt_task.cancel()
         except Exception:
             pass
         await send({"type": "session_ended"})
