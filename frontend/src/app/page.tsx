@@ -1,7 +1,7 @@
-"use client";
 import Link from "next/link";
 import { DemoCard } from "@/components/DemoCard";
 
+export const dynamic = "force-dynamic";
 const features = [
   { icon: "⚡", title: "Instant Agent Setup", desc: "Upload your PDFs, website URLs, or plain text. Your AI agent is trained and fully live in under 5 minutes. Zero engineering required." },
   { icon: "📞", title: "Real Phone Numbers", desc: "Buy new local or toll-free numbers in 1 click, or instantly forward your existing business line to your AI agent." },
@@ -58,7 +58,7 @@ export default function Home() {
 
           {/* Live Demo Card */}
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <DemoCard />
+            <DemoCard wsUrl={process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL || process.env.VOICE_ENGINE_URL} />
           </div>
         </div>
       </section>

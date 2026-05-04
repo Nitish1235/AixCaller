@@ -2,18 +2,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 
-const WS_URL = process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL
-  ? `${process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL}/demo`
-  : "ws://localhost:8001/demo";
-
 type Line = { role: "user" | "assistant"; text: string };
 type State = "idle" | "connecting" | "active" | "ended";
 
-/* ─────────────────────────────────────────────
-   CREATIVE LIVE DEMO CARD
-   Inspired by: ElevenLabs, Vapi, Retell AI
-───────────────────────────────────────────── */
-export function DemoCard() {
+export function DemoCard({ wsUrl }: { wsUrl?: string }) {
+  const WS_URL = wsUrl ? `${wsUrl}/demo` : "ws://localhost:8001/demo";
   const [state, setState] = useState<State>("idle");
   const [duration, setDuration] = useState("00:00");
   const [lines, setLines] = useState<Line[]>([]);
