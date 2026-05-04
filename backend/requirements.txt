@@ -13,3 +13,6 @@ dodopayments
 beautifulsoup4
 requests
 google-cloud-storage
+langchain
+langchain_openai
+websockets

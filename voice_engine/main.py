@@ -4,8 +4,14 @@ import asyncio
 import jwt
 from fastapi import FastAPI, WebSocket
 from loguru import logger
-from voice_engine.bot import VoiceAgent
-from voice_engine.demo_session import run_demo_session
+import traceback
+
+try:
+    from voice_engine.bot import VoiceAgent
+    from voice_engine.demo_session import run_demo_session
+except Exception as e:
+    print(f"CRITICAL STARTUP CRASH: {traceback.format_exc()}")
+    raise
 
 app = FastAPI(title="AIxcaller Voice Engine")
 

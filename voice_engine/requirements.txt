@@ -12,3 +12,4 @@ sqlmodel
 sqlalchemy
 PyJWT
 deepgram-sdk
+websockets

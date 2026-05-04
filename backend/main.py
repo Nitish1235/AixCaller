@@ -4,12 +4,17 @@ from fastapi.responses import PlainTextResponse
 from sqlmodel import Session, select
 import jwt
 import time
-from loguru import logger
-from shared.database import engine, get_db
-from shared.models import Agent, Tenant, CallRecord
-from backend.services.kb import IngestionService
-from backend.services.outbound_dialer import process_missed_call
-from backend.api import admin, dashboard, kb, billing, live, telegram, numbers
+import traceback
+
+try:
+    from shared.database import engine, get_db
+    from shared.models import Agent, Tenant, CallRecord
+    from backend.services.kb import IngestionService
+    from backend.services.outbound_dialer import process_missed_call
+    from backend.api import admin, dashboard, kb, billing, live, telegram, numbers
+except Exception as e:
+    print(f"CRITICAL STARTUP CRASH: {traceback.format_exc()}")
+    raise
 
 app = FastAPI(title="AIxcaller SaaS Backend")
 app.include_router(admin.router)
