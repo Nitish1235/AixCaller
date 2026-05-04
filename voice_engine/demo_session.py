@@ -77,12 +77,12 @@ async def run_demo_session(websocket: WebSocket):
     dg_client = DeepgramClient(api_key=os.environ["DEEPGRAM_API_KEY"])
     
     try:
+        dg_conn = dg_client.listen.asynclive.v("1")
+    except AttributeError:
+        # Fallback for older v3 versions before the rename
         dg_conn = dg_client.listen.asyncwebsocket.v("1")
-    except Exception as e:
-        dg_conn = dg_client.listen.live.v("1") # fallback if attribute is different
 
-
-    async def on_transcript(conn, result, **kwargs):
+    async def on_transcript(self, result, **kwargs):
         try:
             alt = result.channel.alternatives[0]
             text = alt.transcript.strip()
@@ -110,16 +110,20 @@ async def run_demo_session(websocket: WebSocket):
         except Exception as e:
             logger.error(f"Demo transcript handler error: {e}")
 
-    # In v3, "Results" or "transcript" is the event name depending on exact version. We'll register both.
-    dg_conn.on("Results", on_transcript)
-    dg_conn.on("transcript", on_transcript)
+    # Register the event correctly for the SDK
+    try:
+        from deepgram import LiveTranscriptionEvents
+        dg_conn.on(LiveTranscriptionEvents.Transcript, on_transcript)
+    except ImportError:
+        # Fallback for missing top-level enum in some v3 versions
+        dg_conn.on("Results", on_transcript)
+        dg_conn.on("transcript", on_transcript)
 
     options_dict = {
         "model": "nova-3",
         "language": "en-US",
         "smart_format": True,
         "endpointing": 600,
-        "utterance_end_ms": "1000",
         "interim_results": True,
     }
     
@@ -127,7 +131,7 @@ async def run_demo_session(websocket: WebSocket):
     try:
         from deepgram import LiveOptions
         options = LiveOptions(**options_dict)
-    except:
+    except ImportError:
         options = options_dict
 
     started = await dg_conn.start(options)
