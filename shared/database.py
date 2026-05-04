@@ -1,5 +1,5 @@
 import os
-from sqlmodel import SQLModel, create_engine, text
+from sqlmodel import SQLModel, create_engine, text, Session
 from sqlalchemy import event
 from loguru import logger
 from .models import Tenant, Agent, CallRecord, VoiceOption, KnowledgeChunk
@@ -70,6 +70,14 @@ def init_db():
         logger.info("HNSW vector index created on knowledge_chunks.")
 
     logger.info("Database initialization complete.")
+
+
+def get_db():
+    """
+    FastAPI dependency that provides a database session.
+    """
+    with Session(engine) as session:
+        yield session
 
 
 if __name__ == "__main__":

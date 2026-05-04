@@ -4,14 +4,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from loguru import logger
 from sqlmodel import Session, select
-from shared.database import engine
+from shared.database import engine, get_db
 from shared.models import Tenant, Agent
 
 router = APIRouter(prefix="/api/v1/numbers", tags=["Numbers"])
-
-def get_db():
-    with Session(engine) as session:
-        yield session
 
 class SearchRequest(BaseModel):
     area_code: str

@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 import jwt
 import time
 from loguru import logger
-from shared.database import engine
+from shared.database import engine, get_db
 from shared.models import Agent, Tenant, CallRecord
 from .services.kb import IngestionService
 from .services.outbound_dialer import process_missed_call
@@ -20,10 +20,6 @@ app.include_router(live.router)
 app.include_router(telegram.router)
 app.include_router(numbers.router)
 kb_service = IngestionService()
-
-def get_db():
-    with Session(engine) as session:
-        yield session
 
 @app.post("/incoming-call")
 async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):

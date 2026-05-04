@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from loguru import logger
 from shared.database import engine
 from shared.models import Tenant
-from ..main import get_db
+from shared.database import get_db
 
 router = APIRouter(prefix="/api/v1/telegram", tags=["telegram"])
 

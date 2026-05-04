@@ -2,11 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFi
 from sqlmodel import Session
 from typing import Optional
 import uuid
-from shared.database import engine
+from shared.database import engine, get_db
 from shared.models import Agent
 from ..services.kb import IngestionService
 from ..services.scraper import ScraperService
-from ..main import get_db
 
 router = APIRouter(prefix="/api/v1/kb", tags=["knowledge-base"])
 kb_service = IngestionService()

@@ -7,7 +7,7 @@ from shared.models import Agent, VoiceOption, CallRecord
 from ..services.analytics import AnalyticsService
 from ..services.crm import ZohoCRMService
 from ..services.integrations import IntegrationService
-from ..main import get_db
+from shared.database import get_db
 from .telegram import send_telegram_message
 
 router = APIRouter(prefix="/api/v1", tags=["dashboard"])
