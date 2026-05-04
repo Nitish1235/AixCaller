@@ -69,7 +69,15 @@ async def run_demo_session(websocket: WebSocket):
             state["is_speaking"] = False
 
     # --- Deepgram STT Setup ---
-    from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
+    from deepgram import DeepgramClient
+    try:
+        from deepgram import LiveTranscriptionEvents, LiveOptions
+    except ImportError:
+        try:
+            from deepgram.clients.live.v1 import LiveTranscriptionEvents, LiveOptions
+        except ImportError:
+            from deepgram.clients.live.enums import LiveTranscriptionEvents
+            from deepgram.clients.live.v1 import LiveOptions
 
     dg_client = DeepgramClient(api_key=os.environ["DEEPGRAM_API_KEY"])
     dg_conn = dg_client.listen.asyncwebsocket.v("1")
