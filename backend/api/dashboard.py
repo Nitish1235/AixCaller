@@ -22,6 +22,29 @@ async def get_available_voices(db: Session = Depends(get_db)):
     voices = db.exec(statement).all()
     return voices
 
+from pydantic import BaseModel
+class CreateAgentRequest(BaseModel):
+    name: str
+    system_prompt: str
+    voice_id: str = "aura-asteria-en"
+    tenant_id: str
+
+@router.post("/agents", response_model=Agent)
+async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
+    """
+    Creates a new agent for the given tenant.
+    """
+    new_agent = Agent(
+        tenant_id=uuid.UUID(req.tenant_id),
+        name=req.name,
+        system_prompt=req.system_prompt,
+        voice_id=req.voice_id
+    )
+    db.add(new_agent)
+    db.commit()
+    db.refresh(new_agent)
+    return new_agent
+
 @router.get("/agents", response_model=List[Agent])
 async def get_my_agents(tenant_id: str, db: Session = Depends(get_db)):
     """

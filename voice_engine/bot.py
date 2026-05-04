@@ -11,7 +11,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
-from pipecat.serializers.plivo import PlivoFrameSerializer
+from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.processors.aggregators.llm_response import LLMResponseAggregator as SentenceAggregator
@@ -75,11 +75,8 @@ class VoiceAgent:
 
     async def start(self, websocket, stream_id, call_id):
         # 1. Transport & Serializer
-        serializer = PlivoFrameSerializer(
-            stream_id=stream_id,
-            call_id=call_id,
-            auth_id=os.getenv("PLIVO_AUTH_ID"),
-            auth_token=os.getenv("PLIVO_AUTH_TOKEN")
+        serializer = TwilioFrameSerializer(
+            stream_sid=stream_id
         )
 
         transport = FastAPIWebsocketTransport(
@@ -187,7 +184,7 @@ class VoiceAgent:
         # 6. Event Handlers (Security & Stability)
         @transport.event_handler("on_client_connected")
         async def on_connected(transport, client):
-            logger.info("Plivo audio stream connected.")
+            logger.info("Telnyx audio stream connected.")
             # Auto-greet the caller
             greet_msg = "Please greet the caller warmly."
             if self.agent_config.get("is_recovery"):

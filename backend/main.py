@@ -2,7 +2,6 @@ import os
 from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import PlainTextResponse
 from sqlmodel import Session, select
-from plivo import plivoxml
 import jwt
 import time
 from loguru import logger
@@ -10,7 +9,7 @@ from shared.database import engine
 from shared.models import Agent, Tenant, CallRecord
 from .services.kb import IngestionService
 from .services.outbound_dialer import process_missed_call
-from .api import admin, dashboard, kb, billing, live, telegram
+from .api import admin, dashboard, kb, billing, live, telegram, numbers
 
 app = FastAPI(title="AIxcaller SaaS Backend")
 app.include_router(admin.router)
@@ -19,6 +18,7 @@ app.include_router(kb.router)
 app.include_router(billing.router)
 app.include_router(live.router)
 app.include_router(telegram.router)
+app.include_router(numbers.router)
 kb_service = IngestionService()
 
 def get_db():
@@ -43,9 +43,11 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
 
     if not agent:
         logger.error(f"No agent found for number {to_number}")
-        response = plivoxml.Response()
-        response.addSpeak("We are sorry, this number is not configured.")
-        return PlainTextResponse(response.to_xml(), media_type="application/xml")
+        texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>We are sorry, this number is not configured.</Say>
+</Response>"""
+        return PlainTextResponse(texml, media_type="application/xml")
 
     # 3. Create a Secure One-Time Token (JWT)
     # This prevents anyone from spoofing your voice engine
@@ -66,18 +68,17 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     # 4. Route to Voice Engine with the Token
     voice_url = os.environ.get("VOICE_ENGINE_URL")
     
-    response = plivoxml.Response()
-    connect = response.addConnect()
-    stream = connect.addStream(
-        url=voice_url,
-        bidirectional=True,
-        contentType="audio/x-mulaw;rate=8000"
-    )
-    
-    # Pass ONLY the token. Voice engine will decode everything from it.
-    stream.addParameter(name="call_token", value=signed_token)
+    # Telnyx TeXML (TwiML compatible)
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <Stream url="{voice_url}">
+            <Parameter name="call_token" value="{signed_token}" />
+        </Stream>
+    </Connect>
+</Response>"""
 
-    return PlainTextResponse(response.to_xml(), media_type="application/xml")
+    return PlainTextResponse(texml, media_type="application/xml")
 
 @app.post("/api/v1/kb/upload")
 async def upload_kb(tenant_id: str, content: str, db: Session = Depends(get_db)):
@@ -136,7 +137,8 @@ async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)
     
     agent = db.exec(select(Agent).where(Agent.phone_number == from_number)).first()
     if not agent:
-        return PlainTextResponse(plivoxml.Response().to_xml(), media_type="application/xml")
+        texml = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+        return PlainTextResponse(texml, media_type="application/xml")
 
     # Generate Secure JWT with is_recovery flag
     token_payload = {
@@ -156,13 +158,13 @@ async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)
 
     voice_url = os.environ.get("VOICE_ENGINE_URL")
     
-    response = plivoxml.Response()
-    connect = response.addConnect()
-    stream = connect.addStream(
-        url=voice_url,
-        bidirectional=True,
-        contentType="audio/x-mulaw;rate=8000"
-    )
-    stream.addParameter(name="call_token", value=signed_token)
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <Stream url="{voice_url}">
+            <Parameter name="call_token" value="{signed_token}" />
+        </Stream>
+    </Connect>
+</Response>"""
 
-    return PlainTextResponse(response.to_xml(), media_type="application/xml")
+    return PlainTextResponse(texml, media_type="application/xml")

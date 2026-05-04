@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 sqlmodel
-plivo
+telnyx==2.11.0
 loguru
 python-dotenv
 pgvector

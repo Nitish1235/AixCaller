@@ -3,7 +3,7 @@ import os
 import uuid
 import jwt
 import time
-import plivo
+import httpx
 from loguru import logger
 from sqlmodel import Session, select
 from shared.database import engine
@@ -34,30 +34,38 @@ async def process_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60
 
         logger.info(f"Initiating outbound recovery call to {call.from_number}")
         
-        # Plivo Integration
-        auth_id = os.environ.get("PLIVO_AUTH_ID")
-        auth_token = os.environ.get("PLIVO_AUTH_TOKEN")
+        # Telnyx Integration
+        api_key = os.environ.get("TELNYX_API_KEY")
         server_host = os.environ.get("SERVER_HOST")
         
-        if not auth_id or not auth_token or not server_host:
-            logger.error("Missing Plivo credentials or SERVER_HOST.")
+        if not api_key or not server_host:
+            logger.error("Missing Telnyx API Key or SERVER_HOST.")
             return
 
-        client = plivo.RestClient(auth_id, auth_token)
-        
-        # Generate Answer URL for outbound calls
+        # Generate Answer URL for outbound calls (returns TeXML)
         answer_url = f"https://{server_host}/outbound-answer"
         
         try:
-            # Note: We reverse from_number and to_number for the outbound leg.
-            # We call the user (to_) from the agent's number (from_)
-            response = client.calls.create(
-                from_=agent.phone_number,
-                to_=call.from_number,
-                answer_url=answer_url,
-                answer_method='POST'
-            )
-            logger.info(f"Outbound call triggered: {response}")
+            # We use httpx to hit the Telnyx TeXML Calls API directly
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.telnyx.com/v2/texml/calls",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    data={
+                        "To": call.from_number,
+                        "From": agent.phone_number,
+                        "Url": answer_url
+                    }
+                )
+                
+            if response.status_code not in [200, 201]:
+                logger.error(f"Failed to initiate outbound call via Telnyx: {response.text}")
+                return
+                
+            logger.info(f"Outbound call triggered: {response.json()}")
             
             # Save the outbound call record to link it
             outbound_call = CallRecord(
@@ -73,7 +81,7 @@ async def process_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60
             db.commit()
             
         except Exception as e:
-            logger.error(f"Failed to initiate outbound call via Plivo: {e}")
+            logger.error(f"Failed to initiate outbound call via Telnyx: {e}")
             # Optionally revert callback requirement if failed
             # call.requires_callback = True
             # db.add(call)

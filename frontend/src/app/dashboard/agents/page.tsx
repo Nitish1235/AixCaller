@@ -14,7 +14,9 @@ export default async function AgentsPage() {
           <h1 className={styles.title}>Agent Command Center</h1>
           <p className={styles.subtitle}>Manage your AI workforce, edit prompts, and assign tools.</p>
         </div>
-        <button className="glow-button">+ Create New Agent</button>
+        <Link href="/dashboard/agents/create" className="glow-button" style={{ display: 'inline-block', textDecoration: 'none', textAlign: 'center' }}>
+          + Create New Agent
+        </Link>
       </header>
 
       <div className={styles.agentGrid}>
