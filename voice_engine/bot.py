@@ -14,7 +14,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
-from pipecat.processors.aggregators.llm_response import LLMResponseAggregator as SentenceAggregator
 from pipecat.processors.user_idle_processor import UserIdleProcessor
 from shared.kb import search_knowledge_base
 import uuid
@@ -165,7 +164,6 @@ class VoiceAgent:
             aggregators.user(),
             idle_processor,     # Watch for silence here
             llm,
-            SentenceAggregator(),
             tts,
             transport.output(),
             aggregators.assistant()
