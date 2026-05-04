@@ -16,3 +16,4 @@ google-cloud-storage
 langchain
 langchain_openai
 websockets
+python-multipart
