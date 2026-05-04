@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy shared models and logic
+COPY shared /app/shared
+
 # Copy voice engine code
 COPY voice_engine/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -19,5 +22,6 @@ EXPOSE 8080
 
 # Optimization for Cloud Run
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 CMD ["uvicorn", "voice_engine.main:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -16,7 +16,8 @@ from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.processors.aggregators.llm_response import LLMResponseAggregator as SentenceAggregator
 from pipecat.processors.user_idle_processor import UserIdleProcessor
-from shared.models import Tenant, Agent
+from shared.kb import search_knowledge_base
+import uuid
 from .tools import shopify, custom_api
 from pipecat.services.openai import OpenAILLMService # Grok is OpenAI compatible
 from pipecat.frames.frames import LLMMessagesAppendFrame
@@ -32,8 +33,6 @@ class VoiceAgent:
 
     async def search_kb(self, query: str):
         """Semantic search via pgvector — finds the most relevant KB chunks for this agent."""
-        from backend.services.kb import search_knowledge_base
-        import uuid
         try:
             return await search_knowledge_base(
                 query=query,
