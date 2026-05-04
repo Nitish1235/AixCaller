@@ -53,6 +53,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
     try {
       if (!ctxRef.current) ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       const ctx = ctxRef.current;
+      if (ctx.state === "suspended") await ctx.resume();
       const raw = atob(b64); const buf = new ArrayBuffer(raw.length); const view = new Uint8Array(buf);
       for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
       const decoded = await ctx.decodeAudioData(buf);
@@ -91,7 +92,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
       } catch {}
     };
     ws.onerror = () => { setError("Connection failed. Please try again."); setState("idle"); cleanup(); };
-    ws.onclose  = () => cleanup();
+    ws.onclose  = () => { setState("ended"); cleanup(); };
   }, [cleanup, playAudio]);
 
   const end = useCallback(() => { setState("ended"); cleanup(); }, [cleanup]);

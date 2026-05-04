@@ -108,10 +108,8 @@ async def run_demo_session(websocket: WebSocket):
         model="nova-3",
         language="en-US",
         smart_format=True,
-        encoding="opus",
-        container="webm",
-        endpointing=600,          # int, not string
-        utterance_end_ms=1000,    # FIX: must be int, not "1000"
+        endpointing=600,
+        utterance_end_ms="1000",
         interim_results=True,
     )
 
