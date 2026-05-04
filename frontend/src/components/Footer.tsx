@@ -2,21 +2,50 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer style={{ 
-      padding: "3rem 5%", 
-      borderTop: "1px solid var(--glass-border)", 
-      display: "flex",
-      flexDirection: "column",
-      gap: "2rem",
-      alignItems: "center"
-    }}>
-      <div style={{ display: "flex", gap: "2rem", fontWeight: 500, fontSize: "0.9rem", opacity: 0.8 }}>
-        <Link href="/terms">Terms of Service</Link>
-        <Link href="/privacy">Privacy Policy</Link>
-        <Link href="/contact">Contact</Link>
-      </div>
-      <div style={{ opacity: 0.5, fontSize: "0.85rem", textAlign: "center" }}>
-        © 2026 AixCaller.live. Built with Pipecat & Deepgram.
+    <footer style={{ background: "#064E3B", color: "#fff", padding: "4rem 5% 2rem" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: "3rem", marginBottom: "3rem" }}>
+          {/* Brand */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
+              <div style={{ width: 32, height: 32, borderRadius: 9, background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>🎙️</div>
+              <span style={{ fontWeight: 900, fontSize: "1.1rem" }}>AIxCaller.live</span>
+            </div>
+            <p style={{ color: "#6EE7B7", fontSize: "0.88rem", lineHeight: 1.6, maxWidth: 260 }}>
+              The AI voice platform that answers every call, qualifies every lead, and never takes a day off.
+            </p>
+            <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
+              {["Twitter", "LinkedIn", "GitHub"].map(s => (
+                <a key={s} href="#" style={{ color: "#6EE7B7", fontSize: "0.82rem", fontWeight: 600, transition: "color 0.2s" }}>{s}</a>
+              ))}
+            </div>
+          </div>
+          {/* Product */}
+          <div>
+            <h4 style={{ fontWeight: 700, marginBottom: "1rem", fontSize: "0.85rem", letterSpacing: 0.5, textTransform: "uppercase", color: "#6EE7B7" }}>Product</h4>
+            {["Features", "Pricing", "Integrations", "API Docs", "Changelog"].map(l => (
+              <div key={l} style={{ marginBottom: 8 }}><Link href="#" style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
+            ))}
+          </div>
+          {/* Company */}
+          <div>
+            <h4 style={{ fontWeight: 700, marginBottom: "1rem", fontSize: "0.85rem", letterSpacing: 0.5, textTransform: "uppercase", color: "#6EE7B7" }}>Company</h4>
+            {["About Us", "Blog", "Careers", "Press", "Contact"].map(l => (
+              <div key={l} style={{ marginBottom: 8 }}><Link href={l === "Contact" ? "/contact" : "#"} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
+            ))}
+          </div>
+          {/* Legal */}
+          <div>
+            <h4 style={{ fontWeight: 700, marginBottom: "1rem", fontSize: "0.85rem", letterSpacing: 0.5, textTransform: "uppercase", color: "#6EE7B7" }}>Legal</h4>
+            {[["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Cookie Policy", "#"], ["GDPR", "#"]].map(([l, href]) => (
+              <div key={l as string} style={{ marginBottom: 8 }}><Link href={href as string} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
+            ))}
+          </div>
+        </div>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>© 2026 AIxCaller.live. All rights reserved.</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>Built with Pipecat · Deepgram · GPT-4o</p>
+        </div>
       </div>
     </footer>
   );

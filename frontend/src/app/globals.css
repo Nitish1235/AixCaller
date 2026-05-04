@@ -1,75 +1,147 @@
+@import "tailwindcss";
+
+/* ── Zenith Design System ── */
 :root {
-  --bg-color: #050505;
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  
-  --accent-primary: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.4);
-  --accent-purple: #8b5cf6;
-  
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-hover: rgba(255, 255, 255, 0.06);
-  
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --bg:           #FFFFFF;
+  --bg-soft:      #F6FEFA;
+  --bg-card:      #FFFFFF;
+  --text-primary: #064E3B;
+  --text-body:    #374151;
+  --text-muted:   #9CA3AF;
+  --emerald:      #10B981;
+  --emerald-dark: #059669;
+  --emerald-deep: #064E3B;
+  --emerald-light:#D1FAE5;
+  --emerald-pale: #ECFDF5;
+  --border:       #D1FAE5;
+  --border-soft:  #E5E7EB;
+  --shadow-sm:    0 1px 4px rgba(16,185,129,0.08);
+  --shadow-md:    0 4px 20px rgba(16,185,129,0.12);
+  --shadow-lg:    0 12px 40px rgba(16,185,129,0.18);
+  --radius:       16px;
+  --radius-sm:    10px;
+  --radius-full:  9999px;
+  --transition:   all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+* { box-sizing: border-box; }
 
 body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg-color);
-  color: var(--text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
-  background-attachment: fixed;
+  background: var(--bg);
+  color: var(--text-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-* {
-  box-sizing: border-box;
-}
+a { color: inherit; text-decoration: none; }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+/* ── Mesh blobs (subtle) ── */
+.bg-mesh { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.blob { position: absolute; border-radius: 50%; filter: blur(100px); }
+.blob-1 { width: 500px; height: 500px; top: -100px; right: -100px; background: rgba(16,185,129,0.07); }
+.blob-2 { width: 400px; height: 400px; bottom: -80px; left: -80px; background: rgba(16,185,129,0.05); }
 
-/* Global Utility Classes for the Premium Vibe */
-.glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
-  transition: var(--transition);
-}
-
-.glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px -1px rgba(0, 0, 0, 0.3);
-}
-
-.glow-button {
-  background: var(--accent-primary);
-  color: white;
-  border: none;
+/* ── Buttons ── */
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--emerald-deep);
+  color: #fff;
+  font-weight: 700; font-size: 0.95rem;
+  padding: 13px 28px;
   border-radius: var(--radius-sm);
-  padding: 10px 20px;
-  font-weight: 500;
+  border: none; cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 16px rgba(6,78,59,0.25);
+}
+.btn-primary:hover { background: #065F46; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(6,78,59,0.35); }
+
+.btn-emerald {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--emerald);
+  color: #fff;
+  font-weight: 700; font-size: 0.95rem;
+  padding: 13px 28px;
+  border-radius: var(--radius-sm);
+  border: none; cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 16px rgba(16,185,129,0.35);
+}
+.btn-emerald:hover { background: var(--emerald-dark); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(16,185,129,0.45); }
+
+.btn-outline {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 600; font-size: 0.95rem;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 0 15px var(--accent-glow);
+}
+.btn-outline:hover { border-color: var(--emerald); color: var(--emerald-dark); background: var(--emerald-pale); }
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--radius);
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+.card:hover { border-color: var(--emerald-light); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+/* ── Feature card with left green border ── */
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-left: 4px solid var(--emerald);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+.feature-card:hover { border-color: var(--border-soft); border-left-color: var(--emerald-dark); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+/* ── Badge ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--emerald-pale);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 5px 14px;
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--emerald-dark);
 }
 
-.glow-button:hover {
-  background: #2563eb;
-  box-shadow: 0 0 25px var(--accent-glow);
-  transform: translateY(-1px);
+/* ── Section ── */
+.section { padding: 6rem 0; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+.section-title { font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 900; color: var(--text-primary); letter-spacing: -1px; }
+.section-sub { color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem; line-height: 1.6; }
+
+/* ── Text gradient ── */
+.text-gradient {
+  background: linear-gradient(135deg, #10B981, #059669, #064E3B);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Waveform animation ── */
+@keyframes waveBar {
+  0%, 100% { transform: scaleY(0.3); }
+  50%       { transform: scaleY(1); }
+}
+
+/* ── Ripple animation ── */
+@keyframes ripple {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes softPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.05); }
 }

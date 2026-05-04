@@ -27,50 +27,31 @@ async def run_demo_session(websocket: WebSocket):
                                { type: "session_ended" }
     """
     conversation_history = [{"role": "system", "content": DEMO_SYSTEM_PROMPT}]
-    is_speaking = False
-    session_active = True
+    # Use a list so nested async functions can mutate it (avoids nonlocal issues)
+    state = {"is_speaking": False, "session_active": True}
 
     async def send(data: dict):
         try:
-            if session_active:
+            if state["session_active"]:
                 await websocket.send_json(data)
         except Exception:
             pass
 
     async def call_llm(history: list) -> str:
         from openai import AsyncOpenAI
-
-        # -- LLM: OpenAI (default) --
-        # To switch back to Grok, comment this block and uncomment the xAI block below
-        client = AsyncOpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY")
-        )
+        client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         resp = await client.chat.completions.create(
             model="gpt-4o",
             messages=history,
             max_tokens=100,
             temperature=0.7
         )
-
-        # -- LLM: xAI Grok (reserved for later) --
-        # client = AsyncOpenAI(
-        #     api_key=os.environ.get("XAI_API_KEY"),
-        #     base_url="https://api.x.ai/v1"
-        # )
-        # resp = await client.chat.completions.create(
-        #     model="grok-beta",
-        #     messages=history,
-        #     max_tokens=100,
-        #     temperature=0.7
-        # )
-
         return resp.choices[0].message.content.strip()
 
     async def speak(text: str):
-        nonlocal is_speaking
-        is_speaking = True
+        state["is_speaking"] = True
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=20) as client:
                 resp = await client.post(
                     "https://api.deepgram.com/v1/speak",
                     json={"text": text},
@@ -80,10 +61,12 @@ async def run_demo_session(websocket: WebSocket):
                 if resp.status_code == 200:
                     audio_b64 = base64.b64encode(resp.content).decode()
                     await send({"type": "tts_audio", "data": audio_b64})
+                else:
+                    logger.error(f"Deepgram TTS failed: {resp.status_code} {resp.text}")
         except Exception as e:
             logger.error(f"Demo TTS error: {e}")
         finally:
-            is_speaking = False
+            state["is_speaking"] = False
 
     # --- Deepgram STT Setup ---
     from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
@@ -92,7 +75,6 @@ async def run_demo_session(websocket: WebSocket):
     dg_conn = dg_client.listen.asyncwebsocket.v("1")
 
     async def on_transcript(conn, result, **kwargs):
-        nonlocal is_speaking
         try:
             alt = result.channel.alternatives[0]
             text = alt.transcript.strip()
@@ -103,11 +85,12 @@ async def run_demo_session(websocket: WebSocket):
                 await send({"type": "transcript", "role": "user", "text": text, "final": False})
                 return
 
-            # Final transcript received
+            # Final transcript — send and generate reply
             await send({"type": "transcript", "role": "user", "text": text, "final": True})
 
-            if is_speaking:
-                return  # Don't interrupt ongoing TTS
+            # Don't interrupt if Aria is already speaking
+            if state["is_speaking"]:
+                return
 
             conversation_history.append({"role": "user", "content": text})
             response = await call_llm(conversation_history)
@@ -127,43 +110,46 @@ async def run_demo_session(websocket: WebSocket):
         smart_format=True,
         encoding="opus",
         container="webm",
-        endpointing=600,
-        utterance_end_ms="1000"
+        endpointing=600,          # int, not string
+        utterance_end_ms=1000,    # FIX: must be int, not "1000"
+        interim_results=True,
     )
 
     started = await dg_conn.start(options)
     if not started:
-        logger.error("Failed to start Deepgram STT for demo")
+        logger.error("Failed to start Deepgram STT for demo — check DEEPGRAM_API_KEY")
+        await send({"type": "session_ended"})
         return
 
-    logger.info("Demo session started")
+    logger.info("Demo session started — sending greeting")
 
     # Initial greeting
     await speak("Hi! I'm Aria, your live AIxCaller demo agent. You have 2 minutes — ask me anything about what this platform can do for your business!")
 
     async def audio_forwarder():
         """Forward browser audio chunks to Deepgram."""
-        nonlocal session_active
         try:
             async for message in websocket.iter_bytes():
-                if not session_active:
+                if not state["session_active"]:
                     break
                 await dg_conn.send(message)
         except WebSocketDisconnect:
-            pass
+            logger.info("Browser disconnected during demo")
         except Exception as e:
             logger.error(f"Audio forwarder error: {e}")
         finally:
-            session_active = False
+            state["session_active"] = False
 
     try:
-        # Run audio forwarding with a 2-minute timeout
         await asyncio.wait_for(audio_forwarder(), timeout=DEMO_TIMEOUT)
     except asyncio.TimeoutError:
         logger.info("Demo session timed out — sending farewell")
         await speak("Your 2-minute demo has ended. Visit AIxCaller.live to sign up and deploy your own agent today. Goodbye!")
     finally:
-        session_active = False
-        await dg_conn.finish()
+        state["session_active"] = False
+        try:
+            await dg_conn.finish()
+        except Exception:
+            pass
         await send({"type": "session_ended"})
-        logger.info("Demo session ended")
+        logger.info("Demo session ended cleanly")

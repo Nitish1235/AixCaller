@@ -5,7 +5,8 @@ export default function Navbar() {
   return (
     <nav className={styles.nav}>
       <Link href="/" className={styles.logo}>
-        AixCaller.live
+        <div className={styles.logoIcon}>🎙️</div>
+        AIxCaller<span className={styles.logoDot}>.live</span>
       </Link>
       <ul className={styles.navLinks}>
         <li><Link href="/#features">Features</Link></li>
@@ -14,10 +15,8 @@ export default function Navbar() {
         <li><Link href="/#pricing">Pricing</Link></li>
       </ul>
       <div className={styles.actions}>
-        <Link href="/login" style={{ fontWeight: 600, fontSize: "0.95rem", opacity: 0.8 }}>Log in</Link>
-        <Link href="/signup" className="btn btn-primary" style={{ padding: "0.5rem 1.2rem", fontSize: "0.9rem" }}>
-          Get Started
-        </Link>
+        <Link href="/login" className={styles.loginLink}>Log in</Link>
+        <Link href="/signup" className={styles.ctaBtn}>Get Started Free →</Link>
       </div>
     </nav>
   );

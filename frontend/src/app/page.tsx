@@ -1,374 +1,230 @@
 "use client";
-
-import styles from "./page.module.css";
-import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { DemoCard } from "@/components/DemoCard";
 
-const WS_URL = process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL
-  ? `${process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL}/demo`
-  : "ws://localhost:8001/demo";
+const features = [
+  { icon: "⚡", title: "Instant Agent Setup", desc: "Upload your PDFs, website URLs, or plain text. Your AI agent is trained and fully live in under 5 minutes. Zero engineering required." },
+  { icon: "📞", title: "Real Phone Numbers", desc: "Buy new local or toll-free numbers in 1 click, or instantly forward your existing business line to your AI agent." },
+  { icon: "🧠", title: "Zero Hallucinations", desc: "Your agent answers only from your approved business documents. Accurate, consistent, and on-brand every single call." },
+  { icon: "🗣️", title: "Natural Conversations", desc: "Human-like voice with full interruption support, dynamic follow-ups, and long-term context memory across the call." },
+  { icon: "📊", title: "Analytics Dashboard", desc: "Full call transcripts, AI-powered sentiment analysis, lead scoring, and real-time performance metrics — all in one view." },
+  { icon: "🔗", title: "Deep Integrations", desc: "Connect to Shopify, HubSpot, Calendly, Slack, Zoho, and 50+ platforms via native integrations and webhooks." },
+];
 
-type TranscriptLine = { role: "user" | "assistant"; text: string };
+const steps = [
+  { n: "01", title: "Sign Up Free", desc: "Create your account in 30 seconds. No credit card required. Instant dashboard access." },
+  { n: "02", title: "Train Your Agent", desc: "Upload PDFs, paste your website URL, or type plain text. Aria learns your business instantly." },
+  { n: "03", title: "Connect & Go Live", desc: "Buy a new number or forward your existing line. Your AI answers calls within minutes." },
+];
+
+const useCases = [
+  { icon: "🍽️", label: "Restaurants & Cafes", desc: "Handle reservations, menu inquiries, and takeout orders automatically." },
+  { icon: "🩺", label: "Clinics & Doctors", desc: "Book appointments, answer FAQs, and handle after-hours inquiries." },
+  { icon: "🏠", label: "Real Estate Agents", desc: "Qualify leads, schedule viewings, and answer property questions 24/7." },
+  { icon: "🛒", label: "E-commerce Stores", desc: "Handle order tracking, returns, and product queries at scale." },
+  { icon: "💼", label: "Service Businesses", desc: "Capture every inbound lead and book jobs automatically." },
+  { icon: "📈", label: "Agencies", desc: "White-label AI agents for your clients in minutes." },
+];
 
 export default function Home() {
-  const [callState, setCallState] = useState<"idle" | "connecting" | "active" | "ended">("idle");
-  const [callDuration, setCallDuration] = useState("00:00");
-  const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const secondsRef = useRef(0);
-  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
-
-  // Auto-scroll transcript
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [transcript]);
-
-  // Cleanup everything
-  const cleanup = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    mediaRecorderRef.current?.stop();
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.close();
-    }
-    wsRef.current = null;
-    mediaRecorderRef.current = null;
-    streamRef.current = null;
-  }, []);
-
-  // Play base64 mp3 audio
-  const playAudio = useCallback(async (base64: string) => {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      const raw = atob(base64);
-      const buf = new ArrayBuffer(raw.length);
-      const view = new Uint8Array(buf);
-      for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
-      const decoded = await ctx.decodeAudioData(buf);
-      const src = ctx.createBufferSource();
-      src.buffer = decoded;
-      src.connect(ctx.destination);
-      setIsAiSpeaking(true);
-      src.start();
-      src.onended = () => setIsAiSpeaking(false);
-    } catch (e) {
-      setIsAiSpeaking(false);
-    }
-  }, []);
-
-  const startCall = useCallback(async () => {
-    setError(null);
-    setCallState("connecting");
-    setTranscript([]);
-    secondsRef.current = 0;
-    setCallDuration("00:00");
-
-    // Request mic
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("Microphone access denied. Please allow mic access and try again.");
-      setCallState("idle");
-      return;
-    }
-    streamRef.current = stream;
-
-    // Connect WebSocket
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
-    ws.binaryType = "arraybuffer";
-
-    ws.onopen = () => {
-      setCallState("active");
-      // Start timer
-      timerRef.current = setInterval(() => {
-        secondsRef.current++;
-        const m = Math.floor(secondsRef.current / 60).toString().padStart(2, "0");
-        const s = (secondsRef.current % 60).toString().padStart(2, "0");
-        setCallDuration(`${m}:${s}`);
-      }, 1000);
-
-      // Start streaming mic audio
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm";
-      const recorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-          ws.send(e.data);
-        }
-      };
-      recorder.start(250); // 250ms chunks
-    };
-
-    ws.onmessage = async (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "tts_audio") {
-          await playAudio(msg.data);
-        } else if (msg.type === "transcript" && msg.final) {
-          setTranscript((prev) => {
-            // Update last line if same role, else append
-            const last = prev[prev.length - 1];
-            if (last && last.role === msg.role) {
-              return [...prev.slice(0, -1), { role: msg.role, text: msg.text }];
-            }
-            return [...prev, { role: msg.role, text: msg.text }];
-          });
-        } else if (msg.type === "session_ended") {
-          setCallState("ended");
-          cleanup();
-        }
-      } catch {}
-    };
-
-    ws.onerror = () => {
-      setError("Connection error. Please try again.");
-      setCallState("idle");
-      cleanup();
-    };
-
-    ws.onclose = () => {
-      if (callState === "active") setCallState("ended");
-      cleanup();
-    };
-  }, [cleanup, playAudio, callState]);
-
-  const endCall = useCallback(() => {
-    setCallState("ended");
-    cleanup();
-  }, [cleanup]);
-
-  useEffect(() => () => cleanup(), [cleanup]);
-
-
   return (
-    <main>
+    <main style={{ paddingTop: 68 }}>
 
+      {/* ── HERO ── */}
+      <section style={{ background: "linear-gradient(180deg, #ECFDF5 0%, #FFFFFF 100%)", borderBottom: "1px solid #D1FAE5" }}>
+        <div className="container" style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "5rem", alignItems: "center", padding: "6rem 2rem 5rem" }}>
+          <div>
+            <div className="badge" style={{ marginBottom: "1.5rem" }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
+              Powered by GPT-4o + Deepgram Nova-3
+            </div>
+            <h1 style={{ fontSize: "clamp(2.6rem, 4.5vw, 4rem)", fontWeight: 900, lineHeight: 1.06, letterSpacing: -2, color: "#064E3B", margin: "0 0 1.5rem" }}>
+              Hire a 24/7 AI Voice Agent That Answers Calls{" "}
+              <span className="text-gradient">Like a Human.</span>
+            </h1>
+            <p style={{ fontSize: "1.1rem", color: "#374151", lineHeight: 1.7, maxWidth: 500, marginBottom: "2.5rem" }}>
+              AIxCaller.live provides ready-to-use intelligent voice agents that handle inbound & outbound calls, understand your business, and never take a day off.
+            </p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: "2rem" }}>
+              <Link href="/signup"><button className="btn-emerald" style={{ fontSize: "1rem", padding: "14px 32px" }}>Get Your AI Agent — Free</button></Link>
+              <Link href="/#how-it-works"><button className="btn-outline" style={{ fontSize: "1rem", padding: "14px 24px" }}>See How It Works ↓</button></Link>
+            </div>
+            <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+              {["✓ No credit card required", "✓ 5-minute setup", "✓ 99.9% uptime SLA"].map(t => (
+                <span key={t} style={{ fontSize: "0.82rem", color: "#6B7280", fontWeight: 500 }}>{t}</span>
+              ))}
+            </div>
+          </div>
 
-      <section className={styles.hero}>
-        <div className={styles.heroContent}>
-          <div style={{ display: "inline-block", background: "rgba(99, 102, 241, 0.1)", color: "var(--primary)", padding: "0.4rem 1rem", borderRadius: "100px", fontWeight: 700, fontSize: "0.8rem", marginBottom: "1.5rem" }}>
-            Powered by Grok + Deepgram
-          </div>
-          <h1>Hire a 24/7 AI Voice Agent That Answers Calls <span className="text-gradient">Like a Human</span></h1>
-          <p>AixCaller.live provides ready-to-use intelligent virtual call assistants that handle inbound & outbound calls, understand your business, and never sleep.</p>
-          <div className={styles.heroBtns}>
-            <Link href="/dashboard">
-              <button className="btn btn-primary">Get Your AI Agent — Free</button>
-            </Link>
-            <button className="btn btn-secondary">Watch Demo</button>
-          </div>
-          <div className={styles.trustSignals}>
-            <span>🔒 Trusted by 500+ businesses</span>
-            <span>⚡ 99.9% Uptime</span>
+          {/* Live Demo Card */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <DemoCard />
           </div>
         </div>
+      </section>
 
-        <div className={styles.demoCard}>
-          <div className={styles.demoHeader}>
-            <div className={callState === "active" ? styles.pulse : ""} style={callState !== "active" ? { width: 12, height: 12, borderRadius: "50%", background: "#94A3B8" } : {}}></div>
-            <div>
-              <div className={styles.demoTitle}>
-                {callState === "idle" && "Agent Standby"}
-                {callState === "connecting" && "Connecting..."}
-                {callState === "active" && (isAiSpeaking ? "Aria is speaking..." : "Listening...")}
-                {callState === "ended" && "Demo Ended"}
-              </div>
-              <div className={styles.demoSubtitle}>Node: US-East // Latency: 18ms</div>
+      {/* ── STATS ── */}
+      <section style={{ background: "#064E3B", padding: "3rem 2rem" }}>
+        <div className="container" style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "2rem" }}>
+          {[["500+", "Businesses"], ["100%", "Calls Answered"], ["<1s", "Response Time"], ["30+", "Languages"], ["99.9%", "Uptime SLA"]].map(([n, l]) => (
+            <div key={l} style={{ textAlign: "center", color: "#fff" }}>
+              <div style={{ fontWeight: 900, fontSize: "2rem", color: "#6EE7B7", letterSpacing: -1 }}>{n}</div>
+              <div style={{ fontSize: "0.8rem", opacity: 0.7, marginTop: 2, fontWeight: 500 }}>{l}</div>
             </div>
-          </div>
+          ))}
+        </div>
+      </section>
 
-          <div className={styles.avatarWrapper}>
-            <div className={styles.avatarGlow} style={{ opacity: callState === "active" ? 1 : 0 }}></div>
-            <div className={styles.agentAvatar}>
-              <Image src="/agent-avatar.png" alt="AI Voice Agent" width={140} height={140} className={styles.agentImage} />
-            </div>
+      {/* ── PROBLEM / SOLUTION ── */}
+      <section className="section" id="problem">
+        <div className="container">
+          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
+            <h2 className="section-title">Why traditional call handling is <span className="text-gradient">failing businesses</span></h2>
+            <p className="section-sub" style={{ maxWidth: 520, margin: "0.5rem auto 0" }}>Missing calls means missing revenue. See why 500+ businesses switched to AIxCaller.</p>
           </div>
-
-          <div className={styles.timerText}>
-            {callState === "ended" ? "Demo Complete" : callState === "idle" ? "2 min live testing" : callDuration}
-          </div>
-
-          {/* Live Transcript Feed */}
-          {(callState === "active" || callState === "ended") && transcript.length > 0 && (
-            <div style={{ width: "100%", maxHeight: 100, overflowY: "auto", margin: "0.5rem 0", padding: "0 0.5rem", fontSize: "0.72rem", lineHeight: 1.5 }}>
-              {transcript.map((line, i) => (
-                <div key={i} style={{ color: line.role === "assistant" ? "var(--primary)" : "#CBD5E1", marginBottom: 2 }}>
-                  <strong>{line.role === "assistant" ? "Aria: " : "You: "}</strong>{line.text}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
+            <div className="card" style={{ padding: "2.5rem", borderLeft: "4px solid #FCA5A5" }}>
+              <h3 style={{ fontWeight: 800, color: "#DC2626", marginBottom: "1.5rem", fontSize: "1rem" }}>❌ The Old Way</h3>
+              {["Calls go unanswered after business hours", "Expensive human receptionists eating margin", "Inconsistent answers from different staff", "No call transcripts or performance tracking"].map(t => (
+                <div key={t} style={{ display: "flex", gap: 10, marginBottom: 12, color: "#6B7280", fontSize: "0.9rem" }}>
+                  <span style={{ color: "#FCA5A5", marginTop: 2 }}>✖</span>{t}
                 </div>
               ))}
-              <div ref={transcriptEndRef} />
             </div>
-          )}
+            <div className="card" style={{ padding: "2.5rem", borderLeft: "4px solid #10B981" }}>
+              <h3 style={{ fontWeight: 800, color: "#059669", marginBottom: "1.5rem", fontSize: "1rem" }}>✅ The AIxCaller Way</h3>
+              {[["Answers 100% of calls 24/7 — no missed opportunities", true], ["Costs a fraction of a human receptionist", true], ["Always on-brand, trained on your exact knowledge", true], ["Full transcripts, sentiment analysis, and insights", true]].map(([t, b]) => (
+                <div key={t as string} style={{ display: "flex", gap: 10, marginBottom: 12, fontSize: "0.9rem" }}>
+                  <span style={{ color: "#10B981", marginTop: 2 }}>✔</span>
+                  <span style={{ color: "#374151" }}><strong>{(t as string).split(" — ")[0]}</strong>{(t as string).includes(" — ") ? ` — ${(t as string).split(" — ")[1]}` : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
-          <div className={styles.waveform}>
-            {[0, 0.2, 0.4, 0.1, 0.3].map((delay, i) => (
-              <div key={i} className={`${styles.bar} ${callState === "active" ? styles.barActive : ""}`} style={{ animationDelay: `${delay}s` }}></div>
+      {/* ── FEATURES ── */}
+      <section className="section" id="features" style={{ background: "#F6FEFA", borderTop: "1px solid #D1FAE5", borderBottom: "1px solid #D1FAE5" }}>
+        <div className="container">
+          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
+            <h2 className="section-title">Everything you need to <span className="text-gradient">automate voice</span></h2>
+            <p className="section-sub">Powered by Pipecat, Deepgram Nova-3, and GPT-4o for unmatched performance.</p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+            {features.map(f => (
+              <div key={f.title} className="feature-card">
+                <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>{f.icon}</div>
+                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: 8 }}>{f.title}</h3>
+                <p style={{ color: "#6B7280", fontSize: "0.88rem", lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
+              </div>
             ))}
           </div>
-
-          {error && (
-            <div style={{ color: "#F87171", fontSize: "0.75rem", textAlign: "center", marginBottom: "0.5rem", padding: "0 1rem" }}>{error}</div>
-          )}
-
-          <div className={styles.demoControls}>
-            {callState === "idle" && (
-              <button className={styles.micBtn} onClick={startCall} id="demo-start-btn">🎤</button>
-            )}
-            {callState === "connecting" && (
-              <button className={styles.micBtn} disabled style={{ opacity: 0.6 }}>⏳</button>
-            )}
-            {callState === "active" && (
-              <button className={`${styles.micBtn} ${styles.micBtnActive}`} onClick={endCall} id="demo-end-btn">⏹</button>
-            )}
-            {callState === "ended" && (
-              <button className="btn btn-primary" onClick={() => window.location.href = "/dashboard"}>Get Started Free →</button>
-            )}
-          </div>
-
-          {callState === "idle" && (
-            <div className={styles.instructionText}>Tap to talk with Aria — our live AI agent</div>
-          )}
-          {callState === "active" && (
-            <div className={styles.instructionText}>Tap ⏹ to end call early</div>
-          )}
         </div>
       </section>
 
-
-      <section className={styles.section} id="problem">
-        <div className={styles.sectionHeader}>
-          <h2>Why traditional call handling is <span className="text-gradient">failing you</span></h2>
-          <p>Missing calls means missing revenue. See why businesses are switching to AixCaller.live.</p>
-        </div>
-        <div className={styles.problemGrid}>
-          <ul className={styles.problemList}>
-            <li><span className={styles.iconX}>✖</span> Tired of missing customer calls after hours?</li>
-            <li><span className={styles.iconX}>✖</span> Expensive human receptionists eating into your profits?</li>
-            <li><span className={styles.iconX}>✖</span> Inconsistent responses from different team members?</li>
-          </ul>
-          <ul className={styles.solutionList}>
-            <li><span className={styles.iconCheck}>✔</span> <strong>Answers calls 24/7</strong> — Your AI never sleeps or takes a break.</li>
-            <li><span className={styles.iconCheck}>✔</span> <strong>Knows your business inside out</strong> — Trained instantly on your data.</li>
-            <li><span className={styles.iconCheck}>✔</span> <strong>Books & Qualifies</strong> — Books appointments and qualifies leads automatically.</li>
-          </ul>
-        </div>
-      </section>
-
-      <section className={styles.section} id="features">
-        <div className={styles.sectionHeader}>
-          <h2>Everything you need to <span className="text-gradient">automate voice</span></h2>
-          <p>Powerful features built for modern businesses, powered by Pipecat, Deepgram, and Grok.</p>
-        </div>
-        <div className={styles.featuresGrid}>
-          <div className={`${styles.featureCard} glass-panel`}>
-            <div className={styles.featureIcon}>⚡</div>
-            <h3>Instant Agent Setup</h3>
-            <p>Our agents are pre-built. Just upload your PDFs, website, or business info, and your agent is instantly ready.</p>
+      {/* ── HOW IT WORKS ── */}
+      <section className="section" id="how-it-works">
+        <div className="container">
+          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
+            <h2 className="section-title">Deploy in <span className="text-gradient">3 Simple Steps</span></h2>
+            <p className="section-sub">No technical skills required. Your AI agent can be live in under 5 minutes.</p>
           </div>
-          <div className={`${styles.featureCard} glass-panel`}>
-            <div className={styles.featureIcon}>📞</div>
-            <h3>Real Phone Numbers</h3>
-            <p>Buy new local/toll-free numbers or instantly connect your existing ones via Plivo.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "2rem", position: "relative" }}>
+            <div style={{ position: "absolute", top: "3.5rem", left: "calc(16% + 24px)", right: "calc(16% + 24px)", height: 2, background: "linear-gradient(90deg, #10B981, #064E3B)", display: "grid", gridTemplateColumns: "1fr 1fr" }} />
+            {steps.map((s, i) => (
+              <div key={s.n} style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg, #10B981, #064E3B)", color: "#fff", fontWeight: 900, fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", boxShadow: "0 4px 16px rgba(16,185,129,0.4)", border: "3px solid #fff" }}>{s.n}</div>
+                <h3 style={{ fontWeight: 800, fontSize: "1.05rem", color: "#064E3B", marginBottom: 8 }}>{s.title}</h3>
+                <p style={{ color: "#6B7280", fontSize: "0.88rem", lineHeight: 1.6, maxWidth: 220, margin: "0 auto" }}>{s.desc}</p>
+              </div>
+            ))}
           </div>
-          <div className={`${styles.featureCard} glass-panel`}>
-            <div className={styles.featureIcon}>🗣️</div>
-            <h3>Natural Conversations</h3>
-            <p>Human-like voice with interruptions, dynamic questions, and long-term context awareness.</p>
-          </div>
-          <div className={`${styles.featureCard} glass-panel`}>
-            <div className={styles.featureIcon}>🧠</div>
-            <h3>Smart Knowledge Base</h3>
-            <p>Your AI always answers accurately using your documents. No hallucinations, just facts.</p>
-          </div>
-          <div className={`${styles.featureCard} glass-panel`}>
-            <div className={styles.featureIcon}>📊</div>
-            <h3>Analytics Dashboard</h3>
-            <p>Full call transcripts, sentiment analysis, insights, and real-time performance metrics.</p>
-          </div>
-          <div className={`${styles.featureCard} glass-panel`}>
-            <div className={styles.featureIcon}>🔗</div>
-            <h3>Easy Integrations</h3>
-            <p>Connect seamlessly with Calendly, CRM systems, WhatsApp, and more via webhooks.</p>
+          <div style={{ textAlign: "center", marginTop: "3rem" }}>
+            <Link href="/signup"><button className="btn-emerald" style={{ fontSize: "1rem", padding: "14px 36px" }}>Start For Free →</button></Link>
           </div>
         </div>
       </section>
 
-      <section className={styles.section} id="how-it-works">
-        <div className={styles.sectionHeader}>
-          <h2>Deploy in <span className="text-gradient">3 Simple Steps</span></h2>
-          <p>No building required. Your pre-built AI agent can be answering calls in under 5 minutes.</p>
-        </div>
-        <div className={styles.stepsGrid}>
-          <div className={styles.stepCard}>
-            <div className={styles.stepNum}>1</div>
-            <h3>Sign Up</h3>
-            <p>Create your account in 30 seconds and access the dashboard.</p>
+      {/* ── USE CASES ── */}
+      <section className="section" id="use-cases" style={{ background: "#F6FEFA", borderTop: "1px solid #D1FAE5" }}>
+        <div className="container">
+          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
+            <h2 className="section-title">Built for <span className="text-gradient">Every Business</span></h2>
+            <p className="section-sub">Whether you need 24/7 support or automated lead qualification, AIxCaller adapts to you.</p>
           </div>
-          <div className={styles.stepCard}>
-            <div className={styles.stepNum}>2</div>
-            <h3>Train Your Agent</h3>
-            <p>Upload your business knowledge (PDFs, website URLs, plain text).</p>
-          </div>
-          <div className={styles.stepCard}>
-            <div className={styles.stepNum}>3</div>
-            <h3>Connect Number</h3>
-            <p>Buy a new number or forward your existing one. Your AI goes live instantly.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem" }}>
+            {useCases.map(u => (
+              <div key={u.label} className="card" style={{ padding: "1.5rem", display: "flex", gap: "1rem", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "1.8rem", flexShrink: 0 }}>{u.icon}</div>
+                <div>
+                  <div style={{ fontWeight: 700, color: "#064E3B", marginBottom: 4, fontSize: "0.95rem" }}>{u.label}</div>
+                  <div style={{ color: "#6B7280", fontSize: "0.85rem", lineHeight: 1.5 }}>{u.desc}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className={styles.section} id="use-cases">
-        <div className={styles.sectionHeader}>
-          <h2>Built for <span className="text-gradient">Every Business</span></h2>
-          <p>Whether you need lead qualification or 24/7 customer support, AixCaller.live adapts to you.</p>
-        </div>
-        <div className={styles.useCaseTags}>
-          <div className={styles.tag}>🍽️ Restaurants & Cafes</div>
-          <div className={styles.tag}>🩺 Clinics & Doctors</div>
-          <div className={styles.tag}>🏠 Real Estate Agents</div>
-          <div className={styles.tag}>🛒 E-commerce Stores</div>
-          <div className={styles.tag}>💼 Service Businesses</div>
-          <div className={styles.tag}>📈 Agencies & Consultants</div>
+      {/* ── PRICING CTA ── */}
+      <section className="section" id="pricing">
+        <div className="container" style={{ textAlign: "center", maxWidth: 700 }}>
+          <h2 className="section-title">Simple, transparent pricing.<br />Pay only for <span className="text-gradient">what you use.</span></h2>
+          <p className="section-sub" style={{ marginTop: "1rem" }}>No hidden fees. Starts at $29/month + pay-as-you-go call minutes. Scale as you grow.</p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: "2.5rem" }}>
+            <Link href="/signup"><button className="btn-emerald" style={{ fontSize: "1rem", padding: "14px 32px" }}>View Full Pricing</button></Link>
+            <Link href="/contact"><button className="btn-outline" style={{ fontSize: "1rem", padding: "14px 24px" }}>Talk to Sales</button></Link>
+          </div>
         </div>
       </section>
 
-      <section className={styles.section} id="pricing" style={{ textAlign: "center" }}>
-        <h2>Simple, transparent pricing. <br/>Pay only for <span className="text-gradient">what you use.</span></h2>
-        <p style={{ marginTop: "1rem" }}>No hidden fees. Scale your AI receptionist seamlessly as your call volume grows.</p>
-        <button className="btn btn-primary" style={{ marginTop: "2rem" }}>View Pricing Details</button>
-      </section>
-
-      <section className={styles.section} id="testimonials">
-        <div className={`${styles.demoCard} glass-panel`} style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center", padding: "4rem" }}>
-          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⭐⭐⭐⭐⭐</div>
-          <h3 style={{ fontSize: "1.5rem", fontWeight: 400, fontStyle: "italic", marginBottom: "2rem", lineHeight: 1.6 }}>
-            "AixCaller.live handled 400+ calls last month. Our team is finally free to focus on growth instead of answering repetitive questions."
-          </h3>
-          <p style={{ fontWeight: 700 }}>— Founder, QuickFix Services</p>
+      {/* ── TESTIMONIAL ── */}
+      <section className="section" id="testimonials" style={{ background: "#F6FEFA", borderTop: "1px solid #D1FAE5" }}>
+        <div className="container" style={{ maxWidth: 720 }}>
+          <div className="card" style={{ padding: "3.5rem", textAlign: "center", borderTop: "4px solid #10B981" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: "1.5rem" }}>⭐⭐⭐⭐⭐</div>
+            <p style={{ fontSize: "1.2rem", fontStyle: "italic", color: "#374151", lineHeight: 1.7, fontWeight: 500, marginBottom: "2rem" }}>
+              "AIxCaller handled 400+ inbound calls last month with zero misses. Our team is finally free to focus on growth instead of picking up the phone."
+            </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg, #10B981, #064E3B)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800 }}>Q</div>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontWeight: 700, color: "#064E3B" }}>James R.</div>
+                <div style={{ fontSize: "0.8rem", color: "#9CA3AF" }}>Founder, QuickFix Services</div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className={styles.ctaSection}>
-        <h2>Ready to hire your ultimate AI receptionist?</h2>
-        <p style={{ marginTop: "1rem", fontSize: "1.2rem" }}>Join 500+ businesses automating their phone lines today.</p>
-        <button className={`btn btn-primary ${styles.ctaBtn}`} onClick={() => window.location.href = "/dashboard"}>Hire Your Agent Free</button>
+      {/* ── FINAL CTA ── */}
+      <section style={{ background: "linear-gradient(135deg, #064E3B, #065F46)", padding: "7rem 2rem", textAlign: "center" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+          <div className="badge" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#6EE7B7", marginBottom: "2rem" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6EE7B7", display: "inline-block" }} />
+            Join 500+ businesses already live
+          </div>
+          <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 900, color: "#fff", letterSpacing: -1.5, marginBottom: "1rem" }}>
+            Ready to hire your ultimate AI receptionist?
+          </h2>
+          <p style={{ color: "#6EE7B7", fontSize: "1.05rem", marginBottom: "2.5rem", lineHeight: 1.6 }}>
+            Start free. No credit card required. Your agent answers its first call in under 5 minutes.
+          </p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/signup">
+              <button style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 12, padding: "16px 40px", fontWeight: 800, fontSize: "1.05rem", cursor: "pointer", boxShadow: "0 6px 24px rgba(16,185,129,0.4)" }}>
+                Hire Your Agent Free 🚀
+              </button>
+            </Link>
+            <Link href="/contact">
+              <button style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: 12, padding: "16px 28px", fontWeight: 600, fontSize: "1.05rem", cursor: "pointer" }}>
+                Book a Demo
+              </button>
+            </Link>
+          </div>
+        </div>
       </section>
-      
 
     </main>
   );

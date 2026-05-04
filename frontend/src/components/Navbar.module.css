@@ -1,52 +1,90 @@
 .nav {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 80px;
+  top: 0; left: 0; right: 0;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 5%;
   z-index: 100;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid #D1FAE5;
 }
 
 .logo {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--primary);
-  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  font-size: 1.15rem;
+  color: #064E3B;
+  letter-spacing: -0.3px;
+  text-decoration: none;
 }
+
+.logoIcon {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  background: #064E3B;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+}
+
+.logoDot { color: #10B981; }
 
 .navLinks {
   display: flex;
   gap: 2.5rem;
   list-style: none;
+  margin: 0; padding: 0;
 }
 
 .navLinks a {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text);
-  opacity: 0.8;
-  transition: opacity 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  transition: color 0.2s;
 }
 
-.navLinks a:hover {
-  opacity: 1;
-}
+.navLinks a:hover { color: #059669; }
 
 .actions {
   display: flex;
-  gap: 1rem;
+  gap: 12px;
   align-items: center;
 }
 
+.loginLink {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  text-decoration: none;
+  transition: color 0.2s;
+  padding: 8px 4px;
+}
+.loginLink:hover { color: #059669; }
+
+.ctaBtn {
+  background: #064E3B;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 9px 20px;
+  border-radius: 9px;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(6,78,59,0.25);
+}
+.ctaBtn:hover {
+  background: #065F46;
+  box-shadow: 0 4px 16px rgba(6,78,59,0.35);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
-  .navLinks {
-    display: none;
-  }
+  .navLinks { display: none; }
+  .loginLink { display: none; }
 }
