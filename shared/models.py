@@ -36,6 +36,7 @@ class Tenant(SQLModel, table=True):
     salesforce_access_token: Optional[str] = None
     webhook_url: Optional[str] = None # For Zapier/Make.com
     telegram_chat_id: Optional[str] = None # For Telegram alerts
+    resend_email: Optional[str] = None # For Resend call summary emails
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Agent(SQLModel, table=True):

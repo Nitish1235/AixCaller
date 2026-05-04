@@ -1,4 +1,5 @@
 import { fetchAgents } from "@/lib/api";
+import { headers } from "next/headers";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,9 @@ const card = (extra?: React.CSSProperties): React.CSSProperties => ({
 });
 
 export default async function AgentsPage() {
-  const agents = await fetchAgents();
+  const h = await headers();
+  const tenantId = h.get("x-user-tenant-id") || "00000000-0000-0000-0000-000000000000";
+  const agents = await fetchAgents(tenantId);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>

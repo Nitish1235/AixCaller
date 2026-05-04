@@ -17,3 +17,4 @@ langchain
 langchain_openai
 websockets
 python-multipart
+resend

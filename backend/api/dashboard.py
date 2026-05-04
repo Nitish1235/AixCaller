@@ -1,17 +1,87 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-from typing import List
+from typing import List, Optional
 import uuid
+from pydantic import BaseModel
 from shared.database import engine
-from shared.models import Agent, VoiceOption, CallRecord
+from shared.models import Agent, VoiceOption, CallRecord, Tenant
 from backend.services.analytics import AnalyticsService
 from backend.services.crm import ZohoCRMService
 from backend.services.integrations import IntegrationService
 from shared.database import get_db
 from backend.api.telegram import send_telegram_message
+from backend.services.email import send_call_summary_email
 
 router = APIRouter(prefix="/api/v1", tags=["dashboard"])
 analytics_service = AnalyticsService()
+
+
+# ── Integration models ───────────────────────────────────────────────────────
+class IntegrationSettings(BaseModel):
+    shopify_store_url:  Optional[str] = None
+    shopify_api_key:    Optional[str] = None
+    zoho_access_token:  Optional[str] = None
+    zoho_org_id:        Optional[str] = None
+    telegram_chat_id:   Optional[str] = None
+    webhook_url:        Optional[str] = None
+    resend_email:       Optional[str] = None
+
+
+@router.get("/integrations")
+async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
+    """Return current integration settings for a tenant."""
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return {
+        "shopify_store_url":  tenant.tools_config.get("shopify", {}).get("store_url") if hasattr(tenant, "tools_config") else None,
+        "shopify_api_key":    tenant.tools_config.get("shopify", {}).get("api_key")   if hasattr(tenant, "tools_config") else None,
+        "zoho_access_token":  tenant.zoho_access_token,
+        "zoho_org_id":        tenant.zoho_org_id,
+        "telegram_chat_id":   tenant.telegram_chat_id,
+        "webhook_url":        tenant.webhook_url,
+        "resend_email":       tenant.resend_email,
+    }
+
+
+@router.patch("/integrations")
+async def save_integrations(
+    tenant_id: str,
+    settings:  IntegrationSettings,
+    db:        Session = Depends(get_db)
+):
+    """Save integration credentials for a tenant."""
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if settings.zoho_access_token  is not None: tenant.zoho_access_token  = settings.zoho_access_token
+    if settings.zoho_org_id         is not None: tenant.zoho_org_id         = settings.zoho_org_id
+    if settings.telegram_chat_id    is not None: tenant.telegram_chat_id    = settings.telegram_chat_id
+    if settings.webhook_url         is not None: tenant.webhook_url         = settings.webhook_url
+    if settings.resend_email        is not None: tenant.resend_email        = settings.resend_email
+
+    db.add(tenant); db.commit()
+    return {"status": "saved"}
+
+
+@router.delete("/integrations/{key}")
+async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends(get_db)):
+    """Disconnect a specific integration by key."""
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    field_map = {
+        "zoho":     lambda t: setattr(t, "zoho_access_token", None) or setattr(t, "zoho_org_id", None),
+        "telegram": lambda t: setattr(t, "telegram_chat_id", None),
+        "webhook":  lambda t: setattr(t, "webhook_url", None),
+    }
+    if key in field_map:
+        field_map[key](tenant)
+        db.add(tenant); db.commit()
+    return {"status": "disconnected"}
+
 
 @router.get("/voices", response_model=List[VoiceOption])
 async def get_available_voices(db: Session = Depends(get_db)):
@@ -151,5 +221,22 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
                 msg += f"\n*Action Items:* {new_call.action_items}"
             await send_telegram_message(tenant.telegram_chat_id, msg)
         except Exception: pass
+
+    # Resend — Call Summary Email
+    if tenant.resend_email:
+        try:
+            await send_call_summary_email(
+                to_email=tenant.resend_email,
+                data={
+                    "call_id":      str(new_call.id),
+                    "phone":        new_call.from_number,
+                    "summary":      new_call.summary or "",
+                    "sentiment":    new_call.sentiment or "neutral",
+                    "action_items": new_call.action_items or "None",
+                    "transcript":   transcript or "",
+                }
+            )
+        except Exception as e:
+            logger.error(f"Resend email error: {e}")
 
     return {"status": "success"}
