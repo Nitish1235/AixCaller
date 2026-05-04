@@ -19,9 +19,9 @@ import uuid
 from voice_engine.tools import shopify, custom_api
 from pipecat.services.openai.llm import OpenAILLMService # Grok is OpenAI compatible
 from pipecat.frames.frames import LLMMessagesAppendFrame
-from pipecat.transports.network.websocket_server import (
-    WebsocketServerParams as FastAPIWebsocketParams,
-    WebsocketServerTransport as FastAPIWebsocketTransport
+from pipecat.transports.network.fastapi_websocket import (
+    FastAPIWebsocketParams,
+    FastAPIWebsocketTransport
 )
 
 class VoiceAgent:

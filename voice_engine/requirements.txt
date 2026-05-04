@@ -2,7 +2,7 @@ fastapi
 uvicorn
 loguru
 python-dotenv
-pipecat-ai[silero,openai]
+pipecat-ai[silero,openai,websocket]
 aiohttp
 httpx
 pgvector
