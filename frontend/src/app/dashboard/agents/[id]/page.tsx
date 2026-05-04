@@ -1,151 +1,169 @@
 "use client";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import styles from '../agents.module.css';
+const API_URL   = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const TENANT_ID = '00000000-0000-0000-0000-000000000000';
+const inp: React.CSSProperties = {
+  width: "100%", padding: "10px 14px", borderRadius: 9,
+  border: "1.5px solid #D1FAE5", fontSize: "0.9rem", color: "#064E3B",
+  outline: "none", fontFamily: "inherit", background: "#fff",
+};
+const label: React.CSSProperties = {
+  display: "block", marginBottom: 6, fontWeight: 700,
+  fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5,
+};
+const card = (extra?: React.CSSProperties): React.CSSProperties => ({
+  background: "#fff", border: "1.5px solid #D1FAE5", borderRadius: 16,
+  boxShadow: "0 2px 12px rgba(16,185,129,0.07)", padding: "1.75rem", ...extra,
+});
 
 export default function AgentDetailsPage() {
-  const { id } = useParams();
-  const router = useRouter();
-  const [agent, setAgent] = useState<any>(null);
+  const { id }   = useParams();
+  const router   = useRouter();
+  const [agent, setAgent]   = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Settings state
-  const [name, setName] = useState('');
-  const [prompt, setPrompt] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
+  const [name, setName]     = useState("");
+  const [prompt, setPrompt] = useState("");
 
   useEffect(() => {
-    const fetchAgent = async () => {
+    const fetch_ = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/v1/agents?tenant_id=${TENANT_ID}`);
-        const agents = await res.json();
-        const found = agents.find((a: any) => a.id === id);
-        if (found) {
-          setAgent(found);
-          setName(found.name);
-          setPrompt(found.system_prompt);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+        const res  = await fetch(`${API_URL}/api/v1/agents?tenant_id=${TENANT_ID}`);
+        const list = await res.json();
+        const found = list.find((a: any) => a.id === id);
+        if (found) { setAgent(found); setName(found.name); setPrompt(found.system_prompt || ""); }
+      } catch (e) { console.error(e); } finally { setLoading(false); }
     };
-    fetchAgent();
+    fetch_();
   }, [id]);
 
-  const handleSave = async () => {
+  const save = async () => {
+    setSaving(true);
     try {
       await fetch(`${API_URL}/api/v1/agents/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, system_prompt: prompt })
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, system_prompt: prompt }),
       });
-      alert('Settings saved!');
-    } catch (err) {
-      console.error(err);
-    }
+      setSaved(true); setTimeout(() => setSaved(false), 3000);
+    } catch (e) { console.error(e); }
+    setSaving(false);
   };
 
-  if (loading) return <div className={styles.page}>Loading agent details...</div>;
-  if (!agent) return <div className={styles.page}>Agent not found.</div>;
+  if (loading) return <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Loading agent details...</div>;
+  if (!agent)  return <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Agent not found.</div>;
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={() => router.push('/dashboard/agents')} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>←</button>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => router.push("/dashboard/agents")} style={{ background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 9, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "1rem", color: "#064E3B" }}>←</button>
           <div>
-            <h1 className={styles.title}>{agent.name}</h1>
-            <p className={styles.subtitle}>Configure your agent's behavior and telephony.</p>
+            <h1 style={{ fontWeight: 900, fontSize: "1.5rem", color: "#064E3B", margin: 0, letterSpacing: -0.5 }}>{agent.name}</h1>
+            <p style={{ color: "#9CA3AF", margin: "2px 0 0", fontSize: "0.85rem" }}>Configure behavior and telephony settings.</p>
           </div>
         </div>
-        <button onClick={handleSave} className="glow-button">Save Changes</button>
-      </header>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {saved && <span style={{ fontSize: "0.82rem", color: "#059669", fontWeight: 700 }}>✓ Saved!</span>}
+          <button onClick={save} disabled={saving}
+            style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 10, padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
-        
-        {/* Left Column: Settings */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div className={`${styles.agentCard} glass-panel`} style={{ padding: '2rem' }}>
-            <h2>Agent Settings</h2>
-            
-            <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Name</label>
-              <input 
-                type="text" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>System Prompt</label>
-              <textarea 
-                rows={10}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', resize: 'vertical' }}
-              />
+      {/* Status badge */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 999, padding: "4px 12px", fontSize: "0.75rem", fontWeight: 700, color: "#059669" }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
+          Active
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 999, padding: "4px 12px", fontSize: "0.75rem", fontWeight: 600, color: "#6B7280" }}>
+          ID: {String(id).slice(0, 8)}...
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+        {/* Left: Settings */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div style={card()}>
+            <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: "1.5rem" }}>Agent Settings</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <div>
+                <label style={label}>Agent Name</label>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} style={inp} />
+              </div>
+              <div>
+                <label style={label}>System Prompt</label>
+                <textarea rows={10} value={prompt} onChange={e => setPrompt(e.target.value)}
+                  style={{ ...inp, resize: "vertical", lineHeight: 1.6 }} />
+                <p style={{ fontSize: "0.75rem", color: "#9CA3AF", marginTop: 4 }}>How your agent should behave and what it knows about your business.</p>
+              </div>
+              <div>
+                <label style={label}>Voice</label>
+                <select style={inp} defaultValue={agent.voice_id || "aura-asteria-en"}>
+                  <option value="aura-asteria-en">Aria — Female, American English</option>
+                  <option value="aura-orion-en">Orion — Male, American English</option>
+                  <option value="aura-luna-en">Luna — Female, Soft</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Telephony (Option A & B) */}
+        {/* Right: Telephony */}
         <div>
-          <div className={`${styles.agentCard} glass-panel`} style={{ padding: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2>Incoming Calls Configuration</h2>
+          <div style={card()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", margin: 0 }}>Incoming Calls</h2>
               {agent.phone_number ? (
-                <span style={{ background: 'rgba(0, 255, 128, 0.2)', color: '#00ff80', padding: '0.3rem 0.8rem', borderRadius: '12px', fontSize: '0.9rem' }}>Live</span>
+                <span style={{ background: "#ECFDF5", color: "#059669", border: "1px solid #D1FAE5", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700 }}>● Live</span>
               ) : (
-                <span style={{ background: 'rgba(255, 165, 0, 0.2)', color: 'orange', padding: '0.3rem 0.8rem', borderRadius: '12px', fontSize: '0.9rem' }}>No Number</span>
+                <span style={{ background: "#FEF3C7", color: "#D97706", border: "1px solid #FDE68A", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700 }}>⚠ No Number</span>
               )}
             </div>
 
             {agent.phone_number ? (
               <>
-                <div style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', textAlign: 'center', marginBottom: '2rem' }}>
-                  <div style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem', fontSize: '0.9rem', letterSpacing: '1px' }}>YOUR AI PHONE NUMBER</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 'bold', letterSpacing: '2px', color: 'white' }}>{agent.phone_number}</div>
+                {/* Phone display */}
+                <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 12, padding: "1.5rem", textAlign: "center", marginBottom: "1.75rem" }}>
+                  <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9CA3AF", letterSpacing: 1, marginBottom: 6 }}>YOUR AI PHONE NUMBER</div>
+                  <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#064E3B", letterSpacing: 2, fontFamily: "monospace" }}>{agent.phone_number}</div>
                 </div>
 
-                <div style={{ marginBottom: '2rem' }}>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span>📱</span> Option A: The Direct Line
-                  </h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                    Use this number directly for new marketing campaigns. Put it on your website, Google My Business, or Facebook Ads. Anyone who calls this number will speak directly to your AI agent.
-                  </p>
+                {/* Option A */}
+                <div style={{ marginBottom: "1.5rem", padding: "1.25rem", background: "#F6FEFA", borderRadius: 12, border: "1px solid #D1FAE5" }}>
+                  <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "#064E3B", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>📱 Option A — Direct Line</h3>
+                  <p style={{ color: "#6B7280", fontSize: "0.85rem", lineHeight: 1.6, margin: 0 }}>Use this number directly in your marketing — put it on your website, Google My Business, or ads. Callers speak directly to your AI.</p>
                 </div>
 
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span>🔄</span> Option B: Call Forwarding
-                  </h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '1rem' }}>
-                    Keep your existing business number! Just forward missed calls from your current phone to your AI agent so you never miss a lead.
-                  </p>
-                  
-                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', marginBottom: '0.5rem' }}>
-                    <strong>Cell Phones (AT&T/Verizon):</strong><br/>
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Dial <code style={{ color: 'var(--accent)', background: 'rgba(0,0,0,0.5)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>*72 {agent.phone_number.replace('+1', '')}</code> to turn on unconditional forwarding.</span>
-                  </div>
-                  
-                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>
-                    <strong>RingCentral / Google Voice / PBX:</strong><br/>
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Go to your Call Routing settings and paste <code style={{ color: 'var(--accent)', background: 'rgba(0,0,0,0.5)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>{agent.phone_number}</code> as the forwarding destination.</span>
+                {/* Option B */}
+                <div style={{ padding: "1.25rem", background: "#F6FEFA", borderRadius: 12, border: "1px solid #D1FAE5" }}>
+                  <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "#064E3B", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>🔄 Option B — Call Forwarding</h3>
+                  <p style={{ color: "#6B7280", fontSize: "0.85rem", lineHeight: 1.6, marginBottom: "1rem" }}>Keep your existing number. Forward missed calls to your AI so no lead is ever lost.</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                    {[
+                      ["Cell (AT&T/Verizon)", `Dial *72 ${agent.phone_number.replace("+1", "")} to enable forwarding.`],
+                      ["RingCentral / Google Voice", `Set ${agent.phone_number} as your forwarding destination in Call Routing.`],
+                    ].map(([title, inst]) => (
+                      <div key={title} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 9, padding: "10px 14px" }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.78rem", color: "#374151", marginBottom: 3 }}>{title}</div>
+                        <div style={{ color: "#9CA3AF", fontSize: "0.78rem" }}>{inst}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>
             ) : (
-              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>This agent doesn't have a phone number yet.</p>
-                <button onClick={() => router.push('/dashboard/agents/create')} className="glow-button">
+              <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📞</div>
+                <p style={{ color: "#9CA3AF", marginBottom: "1.5rem", fontSize: "0.88rem" }}>This agent doesn't have a phone number yet.</p>
+                <button onClick={() => router.push("/dashboard/agents/create")}
+                  style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "11px 24px", fontWeight: 700, cursor: "pointer" }}>
                   Provision a Number
                 </button>
               </div>
