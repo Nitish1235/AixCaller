@@ -119,7 +119,7 @@ async def run_demo_session(websocket: WebSocket):
             logger.error(f"Deepgram STT processing error: {e}")
 
     try:
-        dg_conn = await websockets.connect(stt_url, extra_headers=headers)
+        dg_conn = await websockets.connect(stt_url, additional_headers=headers)
         # Start a background task to process incoming STT messages
         stt_task = asyncio.create_task(process_deepgram_stt(dg_conn))
     except Exception as e:
