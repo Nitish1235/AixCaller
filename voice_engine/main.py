@@ -4,8 +4,8 @@ import asyncio
 import jwt
 from fastapi import FastAPI, WebSocket
 from loguru import logger
-from .bot import VoiceAgent
-from .demo_session import run_demo_session
+from voice_engine.bot import VoiceAgent
+from voice_engine.demo_session import run_demo_session
 
 app = FastAPI(title="AIxcaller Voice Engine")
 

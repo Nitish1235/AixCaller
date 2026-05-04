@@ -5,7 +5,7 @@ from openai import AsyncOpenAI
 from sqlmodel import Session
 from sqlalchemy import text
 from loguru import logger
-from .database import engine
+from shared.database import engine
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 

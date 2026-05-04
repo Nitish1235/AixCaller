@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
-from ..services.payments import DodoPaymentsService
+from backend.services.payments import DodoPaymentsService
 from shared.database import get_db
 from shared.models import Tenant
 import uuid

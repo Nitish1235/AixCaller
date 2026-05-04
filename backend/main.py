@@ -7,9 +7,9 @@ import time
 from loguru import logger
 from shared.database import engine, get_db
 from shared.models import Agent, Tenant, CallRecord
-from .services.kb import IngestionService
-from .services.outbound_dialer import process_missed_call
-from .api import admin, dashboard, kb, billing, live, telegram, numbers
+from backend.services.kb import IngestionService
+from backend.services.outbound_dialer import process_missed_call
+from backend.api import admin, dashboard, kb, billing, live, telegram, numbers
 
 app = FastAPI(title="AIxcaller SaaS Backend")
 app.include_router(admin.router)

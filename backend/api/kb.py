@@ -4,8 +4,8 @@ from typing import Optional
 import uuid
 from shared.database import engine, get_db
 from shared.models import Agent
-from ..services.kb import IngestionService
-from ..services.scraper import ScraperService
+from backend.services.kb import IngestionService
+from backend.services.scraper import ScraperService
 
 router = APIRouter(prefix="/api/v1/kb", tags=["knowledge-base"])
 kb_service = IngestionService()

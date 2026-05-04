@@ -2,7 +2,7 @@ import os
 from sqlmodel import SQLModel, create_engine, text, Session
 from sqlalchemy import event
 from loguru import logger
-from .models import Tenant, Agent, CallRecord, VoiceOption, KnowledgeChunk
+from shared.models import Tenant, Agent, CallRecord, VoiceOption, KnowledgeChunk
 
 # ------------------------------------------------------------------
 # Supabase PostgreSQL + pgvector

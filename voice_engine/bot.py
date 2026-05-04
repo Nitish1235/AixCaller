@@ -18,7 +18,7 @@ from pipecat.processors.aggregators.llm_response import LLMResponseAggregator as
 from pipecat.processors.user_idle_processor import UserIdleProcessor
 from shared.kb import search_knowledge_base
 import uuid
-from .tools import shopify, custom_api
+from voice_engine.tools import shopify, custom_api
 from pipecat.services.openai import OpenAILLMService # Grok is OpenAI compatible
 from pipecat.frames.frames import LLMMessagesAppendFrame
 from pipecat.transports.network.websocket_server import (

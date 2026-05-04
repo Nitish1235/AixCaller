@@ -4,11 +4,11 @@ from typing import List
 import uuid
 from shared.database import engine
 from shared.models import Agent, VoiceOption, CallRecord
-from ..services.analytics import AnalyticsService
-from ..services.crm import ZohoCRMService
-from ..services.integrations import IntegrationService
+from backend.services.analytics import AnalyticsService
+from backend.services.crm import ZohoCRMService
+from backend.services.integrations import IntegrationService
 from shared.database import get_db
-from .telegram import send_telegram_message
+from backend.api.telegram import send_telegram_message
 
 router = APIRouter(prefix="/api/v1", tags=["dashboard"])
 analytics_service = AnalyticsService()
