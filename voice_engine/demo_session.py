@@ -69,18 +69,10 @@ async def run_demo_session(websocket: WebSocket):
             state["is_speaking"] = False
 
     # --- Deepgram STT Setup ---
-    import deepgram
-    from deepgram import DeepgramClient
+    from deepgram import DeepgramClient, LiveOptions, LiveTranscriptionEvents
     
-    logger.info(f"Deepgram SDK version: {getattr(deepgram, '__version__', 'unknown')}")
-
     dg_client = DeepgramClient(api_key=os.environ["DEEPGRAM_API_KEY"])
-    
-    try:
-        dg_conn = dg_client.listen.asynclive.v("1")
-    except AttributeError:
-        # Fallback for older v3 versions before the rename
-        dg_conn = dg_client.listen.asyncwebsocket.v("1")
+    dg_conn = dg_client.listen.asynclive.v("1")
 
     async def on_transcript(self, result, **kwargs):
         try:
@@ -111,28 +103,15 @@ async def run_demo_session(websocket: WebSocket):
             logger.error(f"Demo transcript handler error: {e}")
 
     # Register the event correctly for the SDK
-    try:
-        from deepgram import LiveTranscriptionEvents
-        dg_conn.on(LiveTranscriptionEvents.Transcript, on_transcript)
-    except ImportError:
-        # Fallback for missing top-level enum in some v3 versions
-        dg_conn.on("Results", on_transcript)
-        dg_conn.on("transcript", on_transcript)
+    dg_conn.on(LiveTranscriptionEvents.Transcript, on_transcript)
 
-    options_dict = {
-        "model": "nova-3",
-        "language": "en-US",
-        "smart_format": True,
-        "endpointing": 600,
-        "interim_results": True,
-    }
-    
-    # Try importing LiveOptions dynamically, if not just use dict
-    try:
-        from deepgram import LiveOptions
-        options = LiveOptions(**options_dict)
-    except ImportError:
-        options = options_dict
+    options = LiveOptions(
+        model="nova-3",
+        language="en-US",
+        smart_format=True,
+        endpointing=600,
+        interim_results=True,
+    )
 
     started = await dg_conn.start(options)
     if not started:
