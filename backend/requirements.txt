@@ -12,3 +12,4 @@ PyJWT
 dodopayments
 beautifulsoup4
 requests
+google-cloud-storage
