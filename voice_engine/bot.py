@@ -14,7 +14,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
-from pipecat.processors.user_idle_processor import UserIdleProcessor
 from shared.kb import search_knowledge_base
 import uuid
 from voice_engine.tools import shopify, custom_api
@@ -154,15 +153,10 @@ class VoiceAgent:
         )
 
         # 4. Assemble Pipeline
-        # We use the user-specific idle_timeout here
-        idle_timeout = self.agent_config.get("idle_timeout", 7.0)
-        idle_processor = UserIdleProcessor(timeout=idle_timeout)
-        
         pipeline = Pipeline([
             transport.input(),
             stt,
             aggregators.user(),
-            idle_processor,     # Watch for silence here
             llm,
             tts,
             transport.output(),
@@ -236,17 +230,6 @@ class VoiceAgent:
                 logger.info("AI calling end_call — initiating hangup.")
                 await task.stop_when_llm_finishes()
 
-        # 8. Handle Silence (User Idle)
-        @idle_processor.event_handler("on_user_idle")
-        async def on_user_idle(processor):
-            timeout = self.agent_config.get("idle_timeout", 7.0)
-            logger.info(f"User is idle for {timeout}s — sending reminder.")
-            await task.queue_frames([
-                LLMMessagesAppendFrame(
-                    messages=[{"role": "user", "content": "The user has been silent. Please ask them if they are still there or if they need more help."}],
-                    run_llm=True
-                )
-            ])
 
         runner = PipelineRunner()
         await runner.run(task)
