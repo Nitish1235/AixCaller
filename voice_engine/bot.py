@@ -17,7 +17,7 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from shared.kb import search_knowledge_base
 import uuid
 from voice_engine.tools import shopify, custom_api
-from pipecat.services.openai import OpenAILLMService # Grok is OpenAI compatible
+from pipecat.services.openai.llm import OpenAILLMService # Grok is OpenAI compatible
 from pipecat.frames.frames import LLMMessagesAppendFrame
 from pipecat.transports.network.websocket_server import (
     WebsocketServerParams as FastAPIWebsocketParams,

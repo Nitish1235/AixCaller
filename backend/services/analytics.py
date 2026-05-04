@@ -7,7 +7,7 @@ class AnalyticsService:
     def __init__(self):
         # Using Grok for post-call analysis
         self.llm = ChatOpenAI(
-            api_key=os.getenv("XAI_API_KEY"),
+            api_key=os.getenv("XAI_API_KEY", "dummy_key_to_prevent_crash_until_configured"),
             base_url="https://api.x.ai/v1",
             model="grok-beta"
         )

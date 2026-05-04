@@ -5,7 +5,7 @@ from loguru import logger
 class DodoPaymentsService:
     def __init__(self):
         self.client = AsyncDodoPayments(
-            bearer_token=os.environ.get("DODO_PAYMENTS_API_KEY"),
+            bearer_token=os.environ.get("DODO_PAYMENTS_API_KEY", "dummy_key_to_prevent_crash_until_configured"),
             environment=os.environ.get("DODO_PAYMENTS_ENVIRONMENT", "test_mode")
         )
 
