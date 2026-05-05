@@ -5,15 +5,16 @@ from google.cloud import storage
 import httpx
 from typing import List
 from sqlmodel import Session, select
-from shared.database import engine
+from shared.database import engine, get_db
 from shared.models import VoiceOption
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 # List of approved Aura-2 voices
 APPROVED_VOICES = [
-    "aura-asteria-en", "aura-luna-en", "aura-stella-en", "aura-athena-en",
-    "aura-orpheus-en", "aura-helios-en", "aura-zeus-en", "aura-apollo-en"
+    "aura-asteria-en", "aura-luna-en", "aura-stella-en", "aura-athena-en", "aura-hera-en",
+    "aura-orpheus-en", "aura-helios-en", "aura-zeus-en", "aura-apollo-en", "aura-orion-en",
+    "aura-arcas-en", "aura-perseus-en", "aura-angus-en"
 ]
 
 @router.post("/generate-voice-previews")
@@ -59,3 +60,10 @@ async def generate_voice_previews():
                     print(f"Error for {voice_id}: {e}")
                     
     return {"message": "Voice catalog updated with previews."}
+
+@router.get("/voices")
+async def get_voices(db: Session = Depends(get_db)):
+    """Returns all available voices for the frontend dropdown."""
+    statement = select(VoiceOption)
+    voices = db.exec(statement).all()
+    return voices

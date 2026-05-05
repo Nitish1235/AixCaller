@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 const API_URL   = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -22,12 +22,26 @@ const card = (extra?: React.CSSProperties): React.CSSProperties => ({
 export default function AgentDetailsPage() {
   const { id }   = useParams();
   const router   = useRouter();
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [agent, setAgent]   = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
   const [name, setName]     = useState("");
   const [prompt, setPrompt] = useState("");
+  const [voice, setVoice]   = useState("");
+  const [voiceList, setVoiceList] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/admin/voices`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setVoiceList(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -35,7 +49,12 @@ export default function AgentDetailsPage() {
         const res  = await fetch(`${API_URL}/api/v1/agents?tenant_id=${TENANT_ID}`);
         const list = await res.json();
         const found = list.find((a: any) => a.id === id);
-        if (found) { setAgent(found); setName(found.name); setPrompt(found.system_prompt || ""); }
+        if (found) { 
+          setAgent(found); 
+          setName(found.name); 
+          setPrompt(found.system_prompt || ""); 
+          setVoice(found.voice_id || "aura-asteria-en");
+        }
       } catch (e) { console.error(e); } finally { setLoading(false); }
     };
     fetch_();
@@ -46,7 +65,7 @@ export default function AgentDetailsPage() {
     try {
       await fetch(`${API_URL}/api/v1/agents/${id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, system_prompt: prompt }),
+        body: JSON.stringify({ name, system_prompt: prompt, voice_id: voice }),
       });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch (e) { console.error(e); }
@@ -105,11 +124,40 @@ export default function AgentDetailsPage() {
               </div>
               <div>
                 <label style={label}>Voice</label>
-                <select style={inp} defaultValue={agent.voice_id || "aura-asteria-en"}>
-                  <option value="aura-asteria-en">Aria — Female, American English</option>
-                  <option value="aura-orion-en">Orion — Male, American English</option>
-                  <option value="aura-luna-en">Luna — Female, Soft</option>
-                </select>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <select value={voice} onChange={e => setVoice(e.target.value)} style={{ ...inp, flex: 1 }}>
+                    {voiceList.length > 0 ? (
+                      voiceList.map(v => (
+                        <option key={v.voice_id} value={v.voice_id}>
+                          {v.name} — {v.gender} ({v.voice_id})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="aura-asteria-en">Aria — Female, American English</option>
+                        <option value="aura-orion-en">Orion — Male, American English</option>
+                        <option value="aura-luna-en">Luna — Female, Soft</option>
+                        <option value="aura-arcas-en">Arcas — Male, Deep</option>
+                        <option value="aura-stella-en">Stella — Female, Upbeat</option>
+                      </>
+                    )}
+                  </select>
+                  <button type="button" onClick={() => {
+                    const selectedVoice = voiceList.find(v => v.voice_id === voice);
+                    if (selectedVoice?.preview_url && audioRef.current) {
+                      audioRef.current.src = selectedVoice.preview_url;
+                      audioRef.current.play();
+                    } else {
+                      alert("Preview not generated yet for this voice! Use Admin panel.");
+                    }
+                  }} style={{
+                    padding: "11px 16px", borderRadius: 8, border: "1.5px solid #D1FAE5", background: "#F6FEFA",
+                    color: "#059669", fontWeight: 800, cursor: "pointer"
+                  }}>
+                    ▶ Play
+                  </button>
+                </div>
+                <audio ref={audioRef} style={{ display: "none" }} />
               </div>
             </div>
           </div>

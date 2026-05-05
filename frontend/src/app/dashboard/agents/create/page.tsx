@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000000";
@@ -64,6 +64,7 @@ function StepBar({ step }: { step: number }) {
 export default function CreateAgentPage() {
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const [step, setStep]     = useState(1);
   const [loading, setLoading] = useState(false);
@@ -73,6 +74,18 @@ export default function CreateAgentPage() {
   const [name, setName]     = useState("");
   const [prompt, setPrompt] = useState("You are a helpful AI assistant for our business. Be warm, concise, and professional.");
   const [voice, setVoice]   = useState("aura-asteria-en");
+  const [voiceList, setVoiceList] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/admin/voices`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setVoiceList(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Step 2
   const [kbText, setKbText]   = useState("");
@@ -222,13 +235,40 @@ export default function CreateAgentPage() {
 
             <div>
               <label style={lbl}>Voice</label>
-              <select value={voice} onChange={e => setVoice(e.target.value)} style={inp}>
-                <option value="aura-asteria-en">Aria — Female, American English</option>
-                <option value="aura-orion-en">Orion — Male, American English</option>
-                <option value="aura-luna-en">Luna — Female, Soft</option>
-                <option value="aura-arcas-en">Arcas — Male, Deep</option>
-                <option value="aura-stella-en">Stella — Female, Upbeat</option>
-              </select>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <select value={voice} onChange={e => setVoice(e.target.value)} style={{ ...inp, flex: 1 }}>
+                  {voiceList.length > 0 ? (
+                    voiceList.map(v => (
+                      <option key={v.voice_id} value={v.voice_id}>
+                        {v.name} — {v.gender} ({v.voice_id})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="aura-asteria-en">Aria — Female, American English</option>
+                      <option value="aura-orion-en">Orion — Male, American English</option>
+                      <option value="aura-luna-en">Luna — Female, Soft</option>
+                      <option value="aura-arcas-en">Arcas — Male, Deep</option>
+                      <option value="aura-stella-en">Stella — Female, Upbeat</option>
+                    </>
+                  )}
+                </select>
+                <button type="button" onClick={() => {
+                  const selectedVoice = voiceList.find(v => v.voice_id === voice);
+                  if (selectedVoice?.preview_url && audioRef.current) {
+                    audioRef.current.src = selectedVoice.preview_url;
+                    audioRef.current.play();
+                  } else {
+                    alert("Preview not generated yet for this voice! Use Admin panel.");
+                  }
+                }} style={{
+                  padding: "11px 16px", borderRadius: 8, border: "1.5px solid #D1FAE5", background: "#F6FEFA",
+                  color: "#059669", fontWeight: 800, cursor: "pointer"
+                }}>
+                  ▶ Play
+                </button>
+              </div>
+              <audio ref={audioRef} style={{ display: "none" }} />
             </div>
 
             <button type="submit" disabled={loading} style={{ ...btn, opacity: loading ? 0.7 : 1 }}>
