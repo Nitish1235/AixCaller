@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app").replace(/\/+$/, "");
 
 export default function AdminVoicesPage() {
   const [loading, setLoading] = useState(false);

@@ -5,7 +5,7 @@ import {
   signSession,
 } from "@/lib/auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
