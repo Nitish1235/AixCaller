@@ -91,7 +91,11 @@ class VoiceAgent:
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
             model="nova-3",
-            params={"language": language}
+            params={
+                "language": language,
+                "endpointing": 300,
+                "smart_format": True
+            }
         )
         
         tts = DeepgramTTSService(
@@ -103,7 +107,7 @@ class VoiceAgent:
         # To switch back to Grok, comment this block and uncomment the xAI block below
         llm = OpenAILLMService(
             api_key=os.environ["OPENAI_API_KEY"],
-            model="gpt-4o",
+            model="gpt-4o-mini",
             params={"temperature": self.agent_config.get("llm_temperature", 0.7)}
         )
 
@@ -122,11 +126,11 @@ class VoiceAgent:
         if self.agent_config.get("is_recovery"):
             system_prompt = "IMPORTANT: You are calling the user back because they just missed us. Start by saying 'Hi there, you just called us a few minutes ago. How can I help you today?'\n\n" + system_prompt
             
-        system_prompt += "\nIMPORTANT: If you need to use a tool to check an order or fetch data, tell the user 'Let me pull that up for you, one moment...' before calling the tool."
+        system_prompt += "\nIMPORTANT: If you need to use a tool to check an order or fetch data, tell the user 'Let me check...' before calling the tool."
         
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "system", "content": "IMPORTANT: Keep answers brief. Use search_knowledge_base for facts."}
+            {"role": "system", "content": "CRITICAL RULE: You are on a live voice call. Keep answers extremely short and conversational. 1-2 short sentences MAXIMUM. Do not list bullet points or ramble. Be brief and direct."}
         ]
         
         # Register base tools
@@ -177,9 +181,9 @@ class VoiceAgent:
         async def on_connected(transport, client):
             logger.info("Telnyx audio stream connected.")
             # Auto-greet the caller
-            greet_msg = "Please greet the caller warmly."
+            greet_msg = "Please give a very short, warm greeting."
             if self.agent_config.get("is_recovery"):
-                greet_msg = "Please greet the caller warmly and mention we are calling them back."
+                greet_msg = "Please give a short greeting and mention we are calling them back."
 
             await task.queue_frames([
                 LLMMessagesAppendFrame(

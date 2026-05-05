@@ -5,13 +5,10 @@ from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 import httpx
 
-DEMO_SYSTEM_PROMPT = """You are Aria, the live voice demo agent for AIxCaller.live — an AI voice SaaS platform.
-Be warm, enthusiastic, and concise. Keep all responses to 1-3 short sentences (voice-optimized).
-Talk about: how AIxCaller works, use cases (AI receptionists, sales agents, support bots), 
-pricing (starts at $29/month + pay-as-you-go minutes), integrations (CRM, Shopify, Telegram alerts), 
-and how businesses deploy in under 5 minutes.
-If asked off-topic questions, redirect warmly back to what AIxCaller can do for their business.
-You are currently in a 2-minute live demo call. Be natural and conversational."""
+DEMO_SYSTEM_PROMPT = """You are Aria, the AIxCaller live demo agent.
+CRITICAL RULE: You are on a voice call. Keep answers extremely short. 1-2 sentences maximum. Do not ramble.
+Core topics: AI receptionists, $29/mo pricing, 5-minute setup, CRM/Shopify integrations.
+Directly answer the user's question and stop."""
 
 DEMO_TIMEOUT = 110  # 110s then farewell before the UI 2-min cutoff
 
@@ -46,7 +43,7 @@ async def run_demo_session(websocket: WebSocket):
         from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         resp = await client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=history,
             max_tokens=100,
             temperature=0.7
@@ -102,7 +99,7 @@ async def run_demo_session(websocket: WebSocket):
     
     stt_url = (
         "wss://api.deepgram.com/v1/listen?"
-        "model=nova-3&language=en-US&smart_format=true&endpointing=600&interim_results=true"
+        "model=nova-3&language=en-US&smart_format=true&endpointing=300&interim_results=true"
     )
     headers = {"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"}
     
@@ -166,7 +163,7 @@ async def run_demo_session(websocket: WebSocket):
     logger.info("Demo session started — sending greeting")
 
     # Initial greeting
-    await speak("Hi! I'm Aria, your live AIxCaller demo agent. You have 2 minutes — ask me anything about what this platform can do for your business!")
+    await speak("Hi! I'm Aria. Ask me anything about AIxCaller.")
 
     async def audio_forwarder():
         """Forward browser audio chunks to Deepgram."""
