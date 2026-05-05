@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-const API_URL   = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL   = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 const TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 const inp: React.CSSProperties = {

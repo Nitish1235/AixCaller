@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000000";
-const API_URL   = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL   = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
