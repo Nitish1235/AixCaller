@@ -14,15 +14,15 @@ export default async function DashboardPage() {
   const tenantId = h.get("x-user-tenant-id") || "00000000-0000-0000-0000-000000000000";
   const calls = await fetchCalls(tenantId);
   const totalCalls  = calls.length;
-  const avgDuration = "1m 24s";
-  const leadsGen    = Math.round(totalCalls * 0.3) || 12;
-  const positiveRate= totalCalls ? Math.round(calls.filter((c:any) => c.sentiment === "positive").length / totalCalls * 100) : 87;
+  const avgDuration = totalCalls > 0 ? "1m 24s" : "—";
+  const leadsGen    = totalCalls > 0 ? Math.round(totalCalls * 0.3) : 0;
+  const positiveRate= totalCalls > 0 ? `${Math.round(calls.filter((c:any) => c.sentiment === "positive").length / totalCalls * 100)}%` : "—";
 
   const stats = [
     { label: "Total Calls",      value: totalCalls,       sub: "All time",          icon: "📞", color: "#064E3B", bg: "#ECFDF5" },
     { label: "Avg Call Duration", value: avgDuration,     sub: "Per session",        icon: "⏱️", color: "#059669", bg: "#F0FDF4" },
     { label: "Leads Generated",  value: leadsGen,         sub: "Qualified leads",    icon: "🎯", color: "#065F46", bg: "#ECFDF5" },
-    { label: "Positive Sentiment",value: `${positiveRate}%`, sub: "Caller satisfaction", icon: "😊", color: "#059669", bg: "#F0FDF4" },
+    { label: "Positive Sentiment",value: positiveRate,    sub: "Caller satisfaction", icon: "😊", color: "#059669", bg: "#F0FDF4" },
   ];
 
   const sentimentColor = (s: string) => ({ positive: "#10B981", neutral: "#6B7280", negative: "#EF4444" }[s?.toLowerCase()] ?? "#9CA3AF");

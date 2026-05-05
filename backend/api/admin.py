@@ -1,7 +1,7 @@
 import os
 import asyncio
 from fastapi import APIRouter, HTTPException, Depends
-from google.cloud import storage
+import base64
 import httpx
 from typing import List
 from sqlmodel import Session, select
@@ -19,8 +19,6 @@ APPROVED_VOICES = [
 
 @router.post("/generate-voice-previews")
 async def generate_voice_previews():
-    gcs_client = storage.Client()
-    bucket = gcs_client.bucket(os.getenv("GCS_BUCKET_NAME", "aixcaller-assets"))
     preview_script = "Hi, I'm your AI assistant from AIxcaller. How can I help you today?"
     
     async with httpx.AsyncClient() as client:
@@ -35,10 +33,9 @@ async def generate_voice_previews():
                     )
                     
                     if response.status_code == 200:
-                        # 2. Upload to GCS
-                        blob = bucket.blob(f"previews/{voice_id}.mp3")
-                        blob.upload_from_string(response.content, content_type="audio/mpeg")
-                        blob.make_public()
+                        # 2. Convert to Base64 Data URI
+                        audio_b64 = base64.b64encode(response.content).decode('utf-8')
+                        data_uri = f"data:audio/mpeg;base64,{audio_b64}"
                         
                         # 3. Upsert into VoiceOption Table
                         statement = select(VoiceOption).where(VoiceOption.voice_id == voice_id)
@@ -52,7 +49,7 @@ async def generate_voice_previews():
                                 gender="Female" if "asteria" in voice_id or "luna" in voice_id else "Male"
                             )
                         
-                        voice_entry.preview_url = blob.public_url
+                        voice_entry.preview_url = data_uri
                         session.add(voice_entry)
                         session.commit()
                         

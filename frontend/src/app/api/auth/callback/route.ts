@@ -12,21 +12,23 @@ export async function GET(req: NextRequest) {
   const code  = searchParams.get("code");
   const error = searchParams.get("error");
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url;
+
   // User denied access
   if (error || !code) {
-    return NextResponse.redirect(new URL("/login?error=access_denied", req.url));
+    return NextResponse.redirect(new URL("/login?error=access_denied", baseUrl));
   }
 
   // 1. Exchange code → tokens
   const tokens = await exchangeCodeForTokens(code);
   if (!tokens) {
-    return NextResponse.redirect(new URL("/login?error=token_exchange_failed", req.url));
+    return NextResponse.redirect(new URL("/login?error=token_exchange_failed", baseUrl));
   }
 
   // 2. Get Google user info
   const googleUser = await getGoogleUser(tokens.access_token);
   if (!googleUser) {
-    return NextResponse.redirect(new URL("/login?error=userinfo_failed", req.url));
+    return NextResponse.redirect(new URL("/login?error=userinfo_failed", baseUrl));
   }
 
   // 3. Sync user with backend → creates Tenant if first login
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
     const data = await syncRes.json();
     tenantId = data.tenant_id;
   } catch {
-    return NextResponse.redirect(new URL("/login?error=backend_sync_failed", req.url));
+    return NextResponse.redirect(new URL("/login?error=backend_sync_failed", baseUrl));
   }
 
   // 4. Create signed session JWT and set as httpOnly cookie
@@ -58,7 +60,7 @@ export async function GET(req: NextRequest) {
     picture:   googleUser.picture,
   });
 
-  const response = NextResponse.redirect(new URL("/dashboard", req.url));
+  const response = NextResponse.redirect(new URL("/dashboard", baseUrl));
   response.cookies.set("session", sessionToken, {
     httpOnly: true,
     secure:   process.env.NODE_ENV === "production",
