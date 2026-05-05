@@ -30,7 +30,15 @@ export async function middleware(req: NextNextRequest) {
   headers.set("x-user-tenant-id", user.tenant_id);
   headers.set("x-user-picture",   user.picture);
 
-  return NextResponse.next({ request: { headers } });
+  const response = NextResponse.next({ request: { headers } });
+  // Expose tenant_id to the client-side JavaScript via a non-httpOnly cookie
+  response.cookies.set("tenant_id", user.tenant_id, {
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+  return response;
 }
 
 export const config = {

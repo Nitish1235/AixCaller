@@ -1,8 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 
-const TENANT_ID = "00000000-0000-0000-0000-000000000000";
-const API_URL   = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const getTenantId = () => {
+  if (typeof document === "undefined") return "00000000-0000-0000-0000-000000000000";
+  const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "00000000-0000-0000-0000-000000000000";
+};
+
+const TENANT_ID = getTenantId();
+const API_URL   = (process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app").replace(/\/+$/, "");
 const BOT_NAME  = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "AIxCaller_Alerts_Bot";
 
 /* ── shared styles ─────────────────────────────────────────────── */
