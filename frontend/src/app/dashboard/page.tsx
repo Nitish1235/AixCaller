@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchCalls } from "@/lib/api";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,9 @@ const card = (extra?: React.CSSProperties): React.CSSProperties => ({
 });
 
 export default async function DashboardPage() {
-  const calls = await fetchCalls();
+  const h = await headers();
+  const tenantId = h.get("x-user-tenant-id") || "00000000-0000-0000-0000-000000000000";
+  const calls = await fetchCalls(tenantId);
   const totalCalls  = calls.length;
   const avgDuration = "1m 24s";
   const leadsGen    = Math.round(totalCalls * 0.3) || 12;

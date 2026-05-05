@@ -110,7 +110,7 @@ export default function IntegrationsPage() {
   const [toast, setToast] = useState("");
 
   // Modal open state
-  const [modal, setModal] = useState<"shopify" | "zoho" | "telegram" | "webhook" | null>(null);
+  const [modal, setModal] = useState<"shopify" | "zoho" | "telegram" | "webhook" | "resend" | null>(null);
 
   // Form fields
   const [shopifyUrl, setShopifyUrl]     = useState("");
