@@ -27,8 +27,13 @@ async def run_demo_session(websocket: WebSocket):
                                { type: "session_ended" }
     """
     conversation_history = [{"role": "system", "content": DEMO_SYSTEM_PROMPT}]
-    # Use a list so nested async functions can mutate it (avoids nonlocal issues)
-    state = {"is_speaking": False, "session_active": True}
+    # Use a list/dict so nested async functions can mutate it (avoids nonlocal issues)
+    state = {
+        "is_generating": False,
+        "is_speaking": False, 
+        "session_active": True,
+        "llm_task": None
+    }
 
     async def send(data: dict):
         try:
@@ -63,10 +68,33 @@ async def run_demo_session(websocket: WebSocket):
                     await send({"type": "tts_audio", "data": audio_b64})
                 else:
                     logger.error(f"Deepgram TTS failed: {resp.status_code} {resp.text}")
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             logger.error(f"Demo TTS error: {e}")
         finally:
             state["is_speaking"] = False
+
+    async def generate_response(text: str):
+        state["is_generating"] = True
+        try:
+            conversation_history.append({"role": "user", "content": text})
+            response = await call_llm(conversation_history)
+            conversation_history.append({"role": "assistant", "content": response})
+
+            await send({"type": "transcript", "role": "assistant", "text": response, "final": True})
+            await speak(response)
+        except asyncio.CancelledError:
+            logger.info("Demo LLM/TTS generation interrupted")
+            # If interrupted, remove the last user message to avoid context corruption
+            # or keep it and let the user append to it. Usually we just drop it.
+            if conversation_history and conversation_history[-1]["role"] == "user":
+                conversation_history.pop()
+        except Exception as e:
+            logger.error(f"Error in demo generate_response: {e}")
+        finally:
+            state["is_generating"] = False
+
 
     # --- Deepgram STT Setup (Raw WebSocket to bypass SDK conflicts) ---
     import websockets
@@ -98,22 +126,30 @@ async def run_demo_session(websocket: WebSocket):
                     is_final = data.get("is_final", False)
                     
                     if not is_final:
+                        # User is speaking - Interrupt if we are generating/speaking
+                        if state["is_generating"] or state["is_speaking"]:
+                            await send({"type": "interrupt"})
+                            if state["llm_task"] and not state["llm_task"].done():
+                                state["llm_task"].cancel()
+                                state["llm_task"] = None
+                            state["is_speaking"] = False
+                            state["is_generating"] = False
+
                         await send({"type": "transcript", "role": "user", "text": text, "final": False})
                         continue
 
-                    # Final transcript — send and generate reply
+                    # Final transcript
                     await send({"type": "transcript", "role": "user", "text": text, "final": True})
 
-                    if state["is_speaking"]:
-                        continue
+                    # Cancel any existing task just in case
+                    if state["llm_task"] and not state["llm_task"].done():
+                        state["llm_task"].cancel()
+                    
+                    await send({"type": "interrupt"}) # clear frontend audio buffer to be safe
+                    state["llm_task"] = asyncio.create_task(generate_response(text))
 
-                    conversation_history.append({"role": "user", "content": text})
-                    response = await call_llm(conversation_history)
-                    conversation_history.append({"role": "assistant", "content": response})
-
-                    await send({"type": "transcript", "role": "assistant", "text": response, "final": True})
-                    await speak(response)
         except websockets.exceptions.ConnectionClosed:
+
             logger.info("Deepgram connection closed")
         except Exception as e:
             logger.error(f"Deepgram STT processing error: {e}")

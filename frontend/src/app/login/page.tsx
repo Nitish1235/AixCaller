@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
 
 const ERROR_MESSAGES: Record<string, string> = {
   access_denied:         "You denied Google access. Please try again.",
@@ -18,8 +18,39 @@ const inp: React.CSSProperties = {
 
 function LoginContent() {
   const params = useSearchParams();
+  const router = useRouter();
   const errorKey = params.get("error");
   const errorMsg = errorKey ? ERROR_MESSAGES[errorKey] : null;
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setFormError("");
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.error || "Login failed");
+        setLoading(false);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      setFormError("Network error. Please try again.");
+      setLoading(false);
+    }
+  };
 
   return (
     <main style={{
@@ -51,12 +82,12 @@ function LoginContent() {
         }}>
 
           {/* Error */}
-          {errorMsg && (
+          {(errorMsg || formError) && (
             <div style={{
               background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10,
               padding: "12px 14px", fontSize: "0.85rem", color: "#DC2626", marginBottom: "1.5rem",
             }}>
-              ⚠️ {errorMsg}
+              ⚠️ {errorMsg || formError}
             </div>
           )}
 
@@ -85,29 +116,30 @@ function LoginContent() {
             <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
           </div>
 
-          {/* Email/password (future) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* Email/password form */}
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <div>
               <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Email Address
               </label>
-              <input type="email" placeholder="you@company.com" style={inp} disabled
-                title="Email/password login coming soon — use Google above" />
+              <input type="email" placeholder="you@company.com" style={inp} required
+                value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div>
               <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Password
               </label>
-              <input type="password" placeholder="••••••••" style={inp} disabled />
+              <input type="password" placeholder="••••••••" style={inp} required
+                value={password} onChange={e => setPassword(e.target.value)} />
             </div>
-            <button disabled style={{
+            <button type="submit" disabled={loading} style={{
               width: "100%", background: "#064E3B", color: "#fff", border: "none",
               borderRadius: 10, padding: "13px", fontWeight: 700, fontSize: "0.95rem",
-              cursor: "not-allowed", opacity: 0.5,
+              cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1,
             }}>
-              Sign In (Coming Soon)
+              {loading ? "Signing in..." : "Sign In"}
             </button>
-          </div>
+          </form>
 
           <p style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.82rem", color: "#9CA3AF" }}>
             Don't have an account?{" "}

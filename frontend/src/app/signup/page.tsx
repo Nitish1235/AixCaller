@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "11px 14px", borderRadius: 10, boxSizing: "border-box",
@@ -8,6 +10,38 @@ const inp: React.CSSProperties = {
 };
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setFormError("");
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.error || "Signup failed");
+        setLoading(false);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      setFormError("Network error. Please try again.");
+      setLoading(false);
+    }
+  };
+
   return (
     <main style={{
       minHeight: "100vh", background: "linear-gradient(135deg,#F0FDF4 0%,#ECFDF5 50%,#F6FEFA 100%)",
@@ -36,6 +70,16 @@ export default function SignupPage() {
           background: "#fff", borderRadius: 20, padding: "2rem",
           border: "1.5px solid #D1FAE5", boxShadow: "0 8px 40px rgba(16,185,129,0.12)",
         }}>
+
+          {/* Error */}
+          {formError && (
+            <div style={{
+              background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10,
+              padding: "12px 14px", fontSize: "0.85rem", color: "#DC2626", marginBottom: "1.5rem",
+            }}>
+              ⚠️ {formError}
+            </div>
+          )}
 
           {/* Feature chips */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "1.5rem" }}>
@@ -72,28 +116,31 @@ export default function SignupPage() {
             <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
           </div>
 
-          {/* Email fields (disabled — coming soon) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* Email form */}
+          <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <div>
               <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>Full Name</label>
-              <input type="text" placeholder="Jane Doe" style={inp} disabled />
+              <input type="text" placeholder="Jane Doe" style={inp} required
+                value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div>
               <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>Email Address</label>
-              <input type="email" placeholder="you@company.com" style={inp} disabled />
+              <input type="email" placeholder="you@company.com" style={inp} required
+                value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div>
               <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>Password</label>
-              <input type="password" placeholder="••••••••" style={inp} disabled />
+              <input type="password" placeholder="••••••••" style={inp} required minLength={6}
+                value={password} onChange={e => setPassword(e.target.value)} />
             </div>
-            <button disabled style={{
+            <button type="submit" disabled={loading} style={{
               width: "100%", background: "#064E3B", color: "#fff", border: "none",
               borderRadius: 10, padding: "13px", fontWeight: 700, fontSize: "0.95rem",
-              cursor: "not-allowed", opacity: 0.5,
+              cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1,
             }}>
-              Create Account (Coming Soon)
+              {loading ? "Creating Account..." : "Create Account"}
             </button>
-          </div>
+          </form>
 
           <p style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.82rem", color: "#9CA3AF" }}>
             Already have an account?{" "}

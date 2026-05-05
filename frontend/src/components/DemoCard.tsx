@@ -18,6 +18,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
   const recRef   = useRef<MediaRecorder | null>(null);
   const streamRef= useRef<MediaStream | null>(null);
   const ctxRef   = useRef<AudioContext | null>(null);
+  const srcRef   = useRef<AudioBufferSourceNode | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const waveRef  = useRef<NodeJS.Timeout | null>(null);
   const secsRef  = useRef(0);
@@ -54,13 +55,21 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
       if (!ctxRef.current) ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       const ctx = ctxRef.current;
       if (ctx.state === "suspended") await ctx.resume();
+      
+      // Stop previous audio if still playing
+      if (srcRef.current) {
+        try { srcRef.current.stop(); } catch {}
+      }
+
       const raw = atob(b64); const buf = new ArrayBuffer(raw.length); const view = new Uint8Array(buf);
       for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
       const decoded = await ctx.decodeAudioData(buf);
       const src = ctx.createBufferSource(); src.buffer = decoded; src.connect(ctx.destination);
+      srcRef.current = src;
       setAiSpeaking(true); src.start(); src.onended = () => setAiSpeaking(false);
     } catch { setAiSpeaking(false); }
   }, []);
+
 
   const start = useCallback(async () => {
     setError(null); setState("connecting"); setLines([]); secsRef.current = 0; setDuration("00:00");
@@ -86,10 +95,18 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
       try {
         const msg = JSON.parse(e.data);
         if (msg.type === "tts_audio") await playAudio(msg.data);
+        else if (msg.type === "interrupt") {
+          if (srcRef.current) {
+            try { srcRef.current.stop(); } catch {}
+            srcRef.current = null;
+          }
+          setAiSpeaking(false);
+        }
         else if (msg.type === "transcript" && msg.final)
           setLines(p => { const last = p[p.length - 1]; if (last?.role === msg.role) return [...p.slice(0, -1), { role: msg.role, text: msg.text }]; return [...p, { role: msg.role, text: msg.text }]; });
         else if (msg.type === "session_ended") { setState("ended"); cleanup(); }
       } catch {}
+
     };
     ws.onerror = () => { setError("Connection failed. Please try again."); setState("idle"); cleanup(); };
     ws.onclose  = () => { setState("ended"); cleanup(); };

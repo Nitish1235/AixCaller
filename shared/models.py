@@ -37,6 +37,7 @@ class Tenant(SQLModel, table=True):
     webhook_url: Optional[str] = None # For Zapier/Make.com
     telegram_chat_id: Optional[str] = None # For Telegram alerts
     resend_email: Optional[str] = None # For Resend call summary emails
+    password_hash: Optional[str] = None # For Email/Password Auth
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Agent(SQLModel, table=True):
