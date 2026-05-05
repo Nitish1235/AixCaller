@@ -18,4 +18,4 @@ langchain_openai
 websockets
 python-multipart
 resend
-passlib[bcrypt]
+bcrypt

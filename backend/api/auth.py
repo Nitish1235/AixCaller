@@ -47,10 +47,8 @@ async def sync_user(req: SyncUserRequest, db: Session = Depends(get_db)):
     return {"tenant_id": str(new_tenant.id), "is_new": True}
 
 
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class EmailSignupRequest(BaseModel):
     name: str
@@ -70,7 +68,7 @@ async def email_signup(req: EmailSignupRequest, db: Session = Depends(get_db)):
         is_active=True,
         credits=500.0,
         resend_email=req.email,
-        password_hash=pwd_context.hash(req.password),
+        password_hash=bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
     )
     db.add(new_tenant)
     db.commit()
@@ -89,7 +87,7 @@ async def email_login(req: EmailLoginRequest, db: Session = Depends(get_db)):
     if not tenant or not tenant.password_hash:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    if not pwd_context.verify(req.password, tenant.password_hash):
+    if not bcrypt.checkpw(req.password.encode('utf-8'), tenant.password_hash.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     logger.info(f"User logged in via email: {req.email} | tenant={tenant.id}")
