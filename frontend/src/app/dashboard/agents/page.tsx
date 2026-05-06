@@ -11,7 +11,15 @@ const card = (extra?: React.CSSProperties): React.CSSProperties => ({
 
 export default async function AgentsPage() {
   const h = await headers();
-  const tenantId = h.get("x-user-tenant-id") || "00000000-0000-0000-0000-000000000000";
+  // Aggressive lookup: check multiple cookie names and headers
+  const cookieHeader = h.get("cookie") || "";
+  const match = cookieHeader.match(/(?:^|; )tenant_id=([^;]*)/);
+  const tenantId = match 
+    ? decodeURIComponent(match[1]) 
+    : (h.get("x-user-tenant-id") || "00000000-0000-0000-0000-000000000000");
+  
+  console.log(`[Dashboard] Listing agents for tenant: ${tenantId}`);
+  
   const agents = await fetchAgents(tenantId);
 
   return (

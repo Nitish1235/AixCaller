@@ -3,9 +3,16 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const getTenantId = () => {
-  if (typeof document === "undefined") return "00000000-0000-0000-0000-000000000000";
+  if (typeof window === "undefined") return "00000000-0000-0000-0000-000000000000";
   const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : "00000000-0000-0000-0000-000000000000";
+  let tid = match ? decodeURIComponent(match[1]) : null;
+  
+  if (tid) {
+    localStorage.setItem("tenant_id", tid);
+    return tid;
+  }
+  
+  return localStorage.getItem("tenant_id") || "00000000-0000-0000-0000-000000000000";
 };
 
 const TENANT_ID = getTenantId();

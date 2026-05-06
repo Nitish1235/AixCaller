@@ -95,7 +95,14 @@ export default function DashboardShell({ user, children }: { user: User; childre
             <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name || "My Workspace"}</div>
             <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
           </div>
-          <a href="/api/auth/logout" title="Sign out" style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.3)", textDecoration: "none", flexShrink: 0 }}>↩</a>
+          <a 
+            href="/api/auth/logout" 
+            onClick={() => { if (typeof window !== "undefined") localStorage.removeItem("tenant_id"); }}
+            title="Sign out" 
+            style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.3)", textDecoration: "none", flexShrink: 0 }}
+          >
+            ↩
+          </a>
         </div>
         <style>{`@keyframes pulse { 0%,100%{opacity:0.5}50%{opacity:1} }`}</style>
       </aside>
