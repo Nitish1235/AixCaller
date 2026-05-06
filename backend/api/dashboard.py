@@ -108,11 +108,14 @@ async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
     """
     Creates a new agent for the given tenant.
     """
+    import uuid
+    tenant_uuid = uuid.UUID(req.tenant_id)
     new_agent = Agent(
-        tenant_id=uuid.UUID(req.tenant_id),
+        tenant_id=tenant_uuid,
         name=req.name,
         system_prompt=req.system_prompt,
-        voice_id=req.voice_id
+        voice_id=req.voice_id,
+        kb_namespace=f"kb_{tenant_uuid.hex[:8]}_{uuid.uuid4().hex[:8]}"
     )
     db.add(new_agent)
     db.commit()
@@ -124,7 +127,9 @@ async def get_my_agents(tenant_id: str, db: Session = Depends(get_db)):
     """
     Returns all agents belonging to the specific tenant.
     """
-    statement = select(Agent).where(Agent.tenant_id == tenant_id)
+    import uuid
+    tenant_uuid = uuid.UUID(tenant_id)
+    statement = select(Agent).where(Agent.tenant_id == tenant_uuid)
     agents = db.exec(statement).all()
     return agents
 
@@ -149,7 +154,9 @@ async def update_agent_config(agent_id: uuid.UUID, config: dict, db: Session = D
 
 @router.get("/calls", response_model=List[CallRecord])
 async def get_call_history(tenant_id: str, db: Session = Depends(get_db)):
-    statement = select(CallRecord).where(CallRecord.tenant_id == tenant_id).order_by(CallRecord.created_at.desc())
+    import uuid
+    tenant_uuid = uuid.UUID(tenant_id)
+    statement = select(CallRecord).where(CallRecord.tenant_id == tenant_uuid).order_by(CallRecord.created_at.desc())
     calls = db.exec(statement).all()
     return calls
 

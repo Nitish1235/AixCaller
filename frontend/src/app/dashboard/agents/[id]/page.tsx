@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { fetchVoices, fetchAgents, updateAgent, apiPost } from "@/lib/api";
 
-const API_URL   = (process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app").replace(/\/+$/, "");
+// Removed hardcoded API_URL
 const getTenantId = () => {
   if (typeof window === "undefined") return "00000000-0000-0000-0000-000000000000";
   const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
@@ -45,10 +46,14 @@ export default function AgentDetailsPage() {
   const [voice, setVoice]   = useState("");
   const [voiceList, setVoiceList] = useState<any[]>([]);
   const [forwardingNumber, setForwardingNumber] = useState("");
+  const [provisioning, setProvisioning] = useState(false);
+  const [areaCode, setAreaCode] = useState("");
+  const [availableNumbers, setAvailableNumbers] = useState<any[]>([]);
+  const [provLoading, setProvLoading] = useState(false);
+  const [provError, setProvError] = useState("");
 
   useEffect(() => {
-    fetch(`${API_URL}/admin/voices`)
-      .then(r => r.json())
+    fetchVoices()
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setVoiceList(data);
@@ -60,8 +65,7 @@ export default function AgentDetailsPage() {
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const res  = await fetch(`${API_URL}/api/v1/agents?tenant_id=${TENANT_ID}`);
-        const list = await res.json();
+        const list = await fetchAgents(TENANT_ID);
         const found = list.find((a: any) => a.id === id);
         if (found) { 
           setAgent(found); 
@@ -78,13 +82,37 @@ export default function AgentDetailsPage() {
   const save = async () => {
     setSaving(true);
     try {
-      await fetch(`${API_URL}/api/v1/agents/${id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, system_prompt: prompt, voice_id: voice, forwarding_number: forwardingNumber }),
-      });
+      await updateAgent(id as string, { name, system_prompt: prompt, voice_id: voice, forwarding_number: forwardingNumber });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch (e) { console.error(e); }
     setSaving(false);
+  };
+
+  const searchNumbers = async () => {
+    if (!areaCode) return;
+    setProvLoading(true); setProvError(""); setAvailableNumbers([]);
+    try {
+      const data = await apiPost("/numbers/search", { area_code: areaCode, limit: 5 });
+      if (data.numbers && data.numbers.length > 0) {
+        setAvailableNumbers(data.numbers);
+      } else {
+        setProvError(`No numbers available for area code ${areaCode}.`);
+      }
+    } catch (err: any) { setProvError("Failed to search numbers. Check backend logs."); }
+    setProvLoading(false);
+  };
+
+  const claimNumber = async (phone: string) => {
+    setProvLoading(true); setProvError("");
+    try {
+      await apiPost("/numbers/purchase", { phone_number: phone, tenant_id: TENANT_ID, agent_id: id });
+      // Refresh agent data
+      const list = await fetchAgents(TENANT_ID);
+      const updated = list.find((a: any) => a.id === id);
+      if (updated) setAgent(updated);
+      setProvisioning(false);
+    } catch (err: any) { setProvError("Failed to purchase number."); }
+    setProvLoading(false);
   };
 
   if (loading) return <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Loading agent details...</div>;
@@ -251,11 +279,26 @@ export default function AgentDetailsPage() {
                   </div>
                 </div>
               </>
+            ) : provisioning ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input type="text" value={areaCode} onChange={e => setAreaCode(e.target.value)} placeholder="Area code (e.g. 212)" style={{ ...inp, flex: 1 }} />
+                  <button onClick={searchNumbers} disabled={provLoading} style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "0 16px", fontWeight: 700, cursor: "pointer" }}>{provLoading ? "..." : "Search"}</button>
+                </div>
+                {provError && <div style={{ color: "#DC2626", fontSize: "0.75rem" }}>{provError}</div>}
+                {availableNumbers.map(n => (
+                  <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10 }}>
+                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#064E3B" }}>{n.phone_number}</div>
+                    <button onClick={() => claimNumber(n.phone_number)} disabled={provLoading} style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}>Claim</button>
+                  </div>
+                ))}
+                <button onClick={() => setProvisioning(false)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: "0.75rem", cursor: "pointer" }}>Cancel</button>
+              </div>
             ) : (
               <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📞</div>
                 <p style={{ color: "#9CA3AF", marginBottom: "1.5rem", fontSize: "0.88rem" }}>This agent doesn't have a phone number yet.</p>
-                <button onClick={() => router.push("/dashboard/agents/create")}
+                <button onClick={() => setProvisioning(true)}
                   style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "11px 24px", fontWeight: 700, cursor: "pointer" }}>
                   Provision a Number
                 </button>

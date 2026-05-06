@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fetchVoices, createAgent as createAgentApi, apiPost, API_BASE_URL } from "@/lib/api";
 
 const getTenantId = () => {
   if (typeof window === "undefined") return "00000000-0000-0000-0000-000000000000";
@@ -16,7 +17,7 @@ const getTenantId = () => {
 };
 
 const TENANT_ID = getTenantId();
-const API_URL   = (process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app").replace(/\/+$/, "");
+// Removed hardcoded API_URL
 
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -90,8 +91,7 @@ export default function CreateAgentPage() {
   const [voiceList, setVoiceList] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(`${API_URL}/admin/voices`)
-      .then(r => r.json())
+    fetchVoices()
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setVoiceList(data);
@@ -120,13 +120,7 @@ export default function CreateAgentPage() {
   const createAgent = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError("");
     try {
-      const res = await fetch(`${API_URL}/api/v1/agents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, system_prompt: prompt, tenant_id: TENANT_ID, voice_id: voice }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const agent = await res.json();
+      const agent = await createAgentApi({ name, system_prompt: prompt, tenant_id: TENANT_ID, voice_id: voice });
       setAgentId(agent.id);
       setStep(2);
     } catch (err: any) { setError(err.message); }
@@ -142,13 +136,8 @@ export default function CreateAgentPage() {
     // 2a. Plain text
     if (kbText.trim()) {
       try {
-        const res = await fetch(`${API_URL}/api/v1/kb/upload-text?agent_id=${agentId}&source=manual`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(kbText),
-        });
-        if (res.ok) { const d = await res.json(); addStatus(`✅ Text ingested — ${d.chunks_stored} chunks stored`); uploaded = true; }
-        else addStatus("⚠️ Text upload failed");
+        const d = await apiPost(`/kb/upload-text?agent_id=${agentId}&source=manual`, kbText);
+        addStatus(`✅ Text ingested — ${d.chunks_stored} chunks stored`); uploaded = true;
       } catch { addStatus("⚠️ Text upload failed"); }
     }
 
@@ -156,7 +145,7 @@ export default function CreateAgentPage() {
     if (kbFile) {
       try {
         const form = new FormData(); form.append("file", kbFile);
-        const res = await fetch(`${API_URL}/api/v1/kb/upload-file?agent_id=${agentId}`, { method: "POST", body: form });
+        const res = await fetch(`${API_BASE_URL}/kb/upload-file?agent_id=${agentId}`, { method: "POST", body: form });
         if (res.ok) { const d = await res.json(); addStatus(`✅ File "${d.filename}" ingested — ${d.chunks_stored} chunks`); uploaded = true; }
         else addStatus("⚠️ File upload failed");
       } catch { addStatus("⚠️ File upload failed"); }
@@ -165,9 +154,8 @@ export default function CreateAgentPage() {
     // 2c. URL scrape (background)
     if (kbUrl.trim()) {
       try {
-        const res = await fetch(`${API_URL}/api/v1/kb/sync-url?agent_id=${agentId}&url=${encodeURIComponent(kbUrl)}`, { method: "POST" });
-        if (res.ok) { addStatus(`🌐 Website sync started for ${kbUrl} — content available in ~30s`); uploaded = true; }
-        else addStatus("⚠️ Website sync failed");
+        await apiPost(`/kb/sync-url?agent_id=${agentId}&url=${encodeURIComponent(kbUrl)}`, {});
+        addStatus(`🌐 Website sync started for ${kbUrl} — content available in ~30s`); uploaded = true;
       } catch { addStatus("⚠️ Website sync failed"); }
     }
 
@@ -180,13 +168,7 @@ export default function CreateAgentPage() {
   const searchNumbers = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError(""); setNumbers([]);
     try {
-      const res = await fetch(`${API_URL}/api/v1/numbers/search`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ area_code: areaCode, limit: 5 }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to search numbers");
-      
+      const data = await apiPost("/numbers/search", { area_code: areaCode, limit: 5 });
       if (data.numbers && data.numbers.length > 0) {
         setNumbers(data.numbers);
       } else {
@@ -199,11 +181,7 @@ export default function CreateAgentPage() {
   const claimNumber = async (phone: string) => {
     if (!agentId) return; setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/numbers/purchase`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: phone, tenant_id: TENANT_ID, agent_id: agentId }),
-      });
-      if (!res.ok) throw new Error("Failed to claim number");
+      await apiPost("/numbers/purchase", { phone_number: phone, tenant_id: TENANT_ID, agent_id: agentId });
       router.push(`/dashboard/agents/${agentId}`);
     } catch (err: any) { setError(err.message); }
     setLoading(false);

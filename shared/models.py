@@ -44,12 +44,12 @@ class Agent(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id")
     name: str
     system_prompt: str
-    phone_number: str = Field(unique=True)
+    phone_number: Optional[str] = Field(default=None, unique=True)
     voice_id: str = "aura-asteria-en"
     idle_timeout: int = 7 # Default 7 seconds
     llm_temperature: float = 0.7
     language: str = "en"
-    kb_namespace: str
+    kb_namespace: Optional[str] = None
     forwarding_number: Optional[str] = None # Number to transfer to if AI can't handle
     tools_config: dict = Field(default_factory=dict, sa_column=Column(JSON))
     

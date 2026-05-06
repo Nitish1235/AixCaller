@@ -96,8 +96,13 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=500, detail="Failed to purchase number")
 
     # 2. Update the Agent in Database
-    agent = db.exec(select(Agent).where(Agent.id == req.agent_id, Agent.tenant_id == req.tenant_id)).first()
+    import uuid
+    agent_uuid = uuid.UUID(req.agent_id)
+    tenant_uuid = uuid.UUID(req.tenant_id)
+    
+    agent = db.exec(select(Agent).where(Agent.id == agent_uuid, Agent.tenant_id == tenant_uuid)).first()
     if not agent:
+        logger.error(f"Agent {agent_uuid} not found for tenant {tenant_uuid}")
         raise HTTPException(status_code=404, detail="Agent not found")
 
     agent.phone_number = req.phone_number

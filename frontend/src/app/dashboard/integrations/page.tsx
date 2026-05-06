@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { fetchIntegrations, apiPatch, apiDelete } from "@/lib/api";
 
 const getTenantId = () => {
   if (typeof document === "undefined") return "00000000-0000-0000-0000-000000000000";
@@ -8,7 +9,7 @@ const getTenantId = () => {
 };
 
 const TENANT_ID = getTenantId();
-const API_URL   = (process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app").replace(/\/+$/, "");
+// Removed hardcoded API_URL
 
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -129,9 +130,8 @@ export default function IntegrationsPage() {
   /* ── Load current settings ── */
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/v1/integrations?tenant_id=${TENANT_ID}`);
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchIntegrations(TENANT_ID);
+      if (data) {
         setCfg(data);
         setShopifyUrl(data.shopify_store_url || "");
         setShopifyKey(data.shopify_api_key   || "");
@@ -152,21 +152,17 @@ export default function IntegrationsPage() {
   const save = async (patch: Record<string, any>) => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/integrations?tenant_id=${TENANT_ID}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (res.ok) { await load(); setModal(null); showToast("✅ Settings saved!"); }
-      else showToast("⚠️ Failed to save — check your credentials.");
-    } catch { showToast("⚠️ Network error."); }
+      await apiPatch(`/integrations?tenant_id=${TENANT_ID}`, patch);
+      await load(); setModal(null); showToast("✅ Settings saved!");
+    } catch { showToast("⚠️ Failed to save — check your credentials."); }
     setSaving(false);
   };
 
   const disconnect = async (key: string) => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/integrations/${key}?tenant_id=${TENANT_ID}`, { method: "DELETE" });
-      if (res.ok) { await load(); showToast(`🔌 ${key} disconnected.`); }
+      await apiDelete(`/integrations/${key}?tenant_id=${TENANT_ID}`);
+      await load(); showToast(`🔌 ${key} disconnected.`);
     } catch {}
     setSaving(false);
   };

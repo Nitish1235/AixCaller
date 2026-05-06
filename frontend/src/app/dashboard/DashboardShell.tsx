@@ -12,9 +12,11 @@ interface User {
 const navItems = [
   { href: "/dashboard",              icon: "📊", label: "Overview" },
   { href: "/dashboard/agents",       icon: "🤖", label: "Agents" },
+  { href: "/dashboard/calls",        icon: "📞", label: "Call History" },
   { href: "/dashboard/knowledge",    icon: "📚", label: "Knowledge Base" },
   { href: "/dashboard/integrations", icon: "🔌", label: "Integrations" },
   { href: "/dashboard/live",         icon: "🔴", label: "Live Monitor" },
+  { href: "/dashboard/billing",      icon: "💳", label: "Billing" },
 ];
 
 function NavItem({ href, icon, label, active }: { href: string; icon: string; label: string; active: boolean }) {
