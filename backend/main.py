@@ -74,6 +74,8 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         "llm_temperature": agent.llm_temperature,
         "language": agent.language,
         "tools_config": agent.tools_config,
+        "forwarding_number": agent.forwarding_number,
+        "call_id": call_uuid,
         "exp": time.time() + 300
     }
     secret = os.environ.get("JWT_SECRET", "super-secret-key")
@@ -164,6 +166,8 @@ async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)
         "llm_temperature": agent.llm_temperature,
         "language": agent.language,
         "tools_config": agent.tools_config,
+        "forwarding_number": agent.forwarding_number,
+        "call_id": form.get("CallUUID"),
         "is_recovery": True,
         "exp": time.time() + 300
     }

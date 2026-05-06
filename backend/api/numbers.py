@@ -48,7 +48,24 @@ async def search_numbers(req: SearchRequest):
             raise HTTPException(status_code=500, detail="Failed to search numbers")
 
         data = response.json()
-        return {"numbers": [item.get("phone_number") for item in data.get("data", [])]}
+        
+        # 3. Extract and Sort by Price
+        results = []
+        for item in data.get("data", []):
+            cost = item.get("cost_information", {})
+            upfront = float(cost.get("upfront_cost", 0))
+            monthly = float(cost.get("monthly_cost", 0))
+            results.append({
+                "phone_number": item.get("phone_number"),
+                "monthly_cost": monthly,
+                "upfront_cost": upfront,
+                "total_initial": upfront + monthly
+            })
+        
+        # Sort by cheapest first (upfront + monthly)
+        results.sort(key=lambda x: x["total_initial"])
+        
+        return {"numbers": results}
 
 @router.post("/purchase")
 async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):

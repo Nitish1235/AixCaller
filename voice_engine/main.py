@@ -80,7 +80,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         "idle_timeout": decoded.get("idle_timeout", 7),
                         "llm_temperature": decoded.get("llm_temperature", 0.7),
                         "language": decoded.get("language", "en"),
-                        "is_recovery": decoded.get("is_recovery", False)
+                        "is_recovery": decoded.get("is_recovery", False),
+                        "forwarding_number": decoded.get("forwarding_number"),
+                        "call_id": decoded.get("call_id"),
+                        "tools_config": decoded.get("tools_config", {})
                     }
                     logger.info(f"Verified token for tenant {tenant_id}")
                     break

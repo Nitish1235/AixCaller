@@ -101,7 +101,7 @@ export default function CreateAgentPage() {
 
   // Step 3
   const [areaCode, setAreaCode] = useState("");
-  const [numbers, setNumbers]   = useState<string[]>([]);
+  const [numbers, setNumbers]   = useState<any[]>([]);
 
   // Created agent id
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -257,19 +257,32 @@ export default function CreateAgentPage() {
                     ))
                   ) : (
                     <>
-                      <option value="aura-asteria-en">Asteria (Female - Professional)</option>
-                      <option value="aura-luna-en">Luna (Female - Soft)</option>
-                      <option value="aura-stella-en">Stella (Female - Upbeat)</option>
-                      <option value="aura-athena-en">Athena (Female - Calm)</option>
-                      <option value="aura-hera-en">Hera (Female - Mature)</option>
-                      <option value="aura-maeda-en">Maeda (Female - Friendly)</option>
-                      <option value="aura-orion-en">Orion (Male - Authoritative)</option>
-                      <option value="aura-arcas-en">Arcas (Male - Deep)</option>
-                      <option value="aura-perseus-en">Perseus (Male - Casual)</option>
-                      <option value="aura-angus-en">Angus (Male - Friendly)</option>
-                      <option value="aura-orpheus-en">Orpheus (Male - Resonant)</option>
-                      <option value="aura-helios-en">Helios (Male - Warm)</option>
-                      <option value="aura-zeus-en">Zeus (Male - Powerful)</option>
+                      <option value="aura-2-thalia-en">Thalia (F - Energetic)</option>
+                      <option value="aura-2-amalthea-en">Amalthea (F - Engaging)</option>
+                      <option value="aura-2-andromeda-en">Andromeda (F - Casual)</option>
+                      <option value="aura-2-apollo-en">Apollo (M - Confident)</option>
+                      <option value="aura-2-arcas-en">Arcas (M - Smooth)</option>
+                      <option value="aura-2-aries-en">Aries (M - Warm)</option>
+                      <option value="aura-2-aurora-en">Aurora (F - Cheerful)</option>
+                      <option value="aura-2-delia-en">Delia (F - Friendly)</option>
+                      <option value="aura-2-electra-en">Electra (F - Professional)</option>
+                      <option value="aura-2-harmonia-en">Harmonia (F - Empathetic)</option>
+                      <option value="aura-2-helena-en">Helena (F - Caring)</option>
+                      <option value="aura-2-hermes-en">Hermes (M - Professional)</option>
+                      <option value="aura-2-hyperion-en">Hyperion (M - Empathetic)</option>
+                      <option value="aura-2-juno-en">Juno (F - Melodic)</option>
+                      <option value="aura-2-jupiter-en">Jupiter (M - Knowledgeable)</option>
+                      <option value="aura-2-mars-en">Mars (M - Trustworthy)</option>
+                      <option value="aura-2-neptune-en">Neptune (M - Polite)</option>
+                      <option value="aura-2-ophelia-en">Ophelia (F - Enthusiastic)</option>
+                      <option value="aura-2-orion-en">Orion (M - Polite)</option>
+                      <option value="aura-2-orpheus-en">Orpheus (M - Trustworthy)</option>
+                      <option value="aura-2-phoebe-en">Phoebe (F - Warm)</option>
+                      <option value="aura-2-pluto-en">Pluto (M - Empathetic)</option>
+                      <option value="aura-2-saturn-en">Saturn (M - Confident)</option>
+                      <option value="aura-2-selene-en">Selene (F - Engaging)</option>
+                      <option value="aura-2-theia-en">Theia (F - Sincere)</option>
+                      <option value="aura-2-vesta-en">Vesta (F - Patient)</option>
                     </>
                   )}
                 </select>
@@ -412,11 +425,16 @@ export default function CreateAgentPage() {
 
           {numbers.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-              <label style={lbl}>Available Numbers</label>
-              {numbers.map(num => (
-                <div key={num} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 10 }}>
-                  <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#064E3B", letterSpacing: 1 }}>{num}</span>
-                  <button onClick={() => claimNumber(num)} disabled={loading}
+              <label style={lbl}>Available Numbers (Cheapest First)</label>
+              {numbers.map(n => (
+                <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 10 }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#064E3B", letterSpacing: 1 }}>{n.phone_number}</span>
+                    <span style={{ fontSize: "0.7rem", color: "#6B7280", marginTop: 2 }}>
+                      ${n.monthly_cost}/mo · ${n.upfront_cost} setup
+                    </span>
+                  </div>
+                  <button onClick={() => claimNumber(n.phone_number)} disabled={loading}
                     style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>
                     {loading ? "..." : "Claim"}
                   </button>

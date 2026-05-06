@@ -44,8 +44,12 @@ class VoiceAgent:
     async def end_call(self):
         """Tool for the AI to gracefully end the call."""
         logger.info(f"AI requested call end for {self.tenant_id}")
-        # Signal the pipeline to stop
         return "Ending the call now. Goodbye!"
+
+    async def transfer_to_human(self):
+        """Tool for the AI to transfer the caller to a human representative."""
+        logger.info(f"AI requested transfer for {self.tenant_id}")
+        return "Please hold while I transfer you to a human representative."
 
     async def stream_to_live_hub(self, call_id: str, role: str, context):
         """
@@ -136,6 +140,9 @@ class VoiceAgent:
         # Register base tools
         llm.register_function("search_knowledge_base", self.search_kb)
         llm.register_function("end_call", self.end_call)
+        
+        if self.agent_config.get("forwarding_number"):
+            llm.register_function("transfer_to_human", self.transfer_to_human)
 
         # Register dynamic tools
         tools_config = self.agent_config.get("tools_config", {})
@@ -230,10 +237,28 @@ class VoiceAgent:
             await self.stream_to_live_hub(call_id, "assistant", context)
 
         # 7. Handle AI-driven hangup via tool call
-        @llm.event_handler("on_function_call")
-        async def on_function_call(llm, name, args, call_id):
             if name == "end_call":
                 logger.info("AI calling end_call — initiating hangup.")
+                await task.stop_when_llm_finishes()
+            
+            if name == "transfer_to_human":
+                logger.info("AI calling transfer_to_human — initiating Telnyx transfer.")
+                forwarding_num = self.agent_config.get("forwarding_number")
+                if forwarding_num:
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            # Telnyx Call Control: Transfer
+                            # Note: call_id here is the Call Control ID (CallUUID)
+                            url = f"https://api.telnyx.com/v2/calls/{call_id}/actions/transfer"
+                            headers = {
+                                "Authorization": f"Bearer {os.environ['TELNYX_API_KEY']}",
+                                "Content-Type": "application/json"
+                            }
+                            payload = {"to": forwarding_num}
+                            await client.post(url, headers=headers, json=payload)
+                            logger.info(f"Telnyx transfer command sent to {forwarding_num}")
+                    except Exception as e:
+                        logger.error(f"Transfer failed: {e}")
                 await task.stop_when_llm_finishes()
 
 

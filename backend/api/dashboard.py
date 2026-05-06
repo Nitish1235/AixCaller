@@ -25,6 +25,13 @@ class IntegrationSettings(BaseModel):
     webhook_url:        Optional[str] = None
     email_summary_enabled: Optional[bool] = None
 
+class AgentConfig(BaseModel):
+    name: Optional[str] = None
+    system_prompt: Optional[str] = None
+    voice_id: Optional[str] = None
+    idle_timeout: Optional[int] = None
+    forwarding_number: Optional[str] = None
+
 
 @router.get("/integrations")
 async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):

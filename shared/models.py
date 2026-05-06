@@ -50,6 +50,7 @@ class Agent(SQLModel, table=True):
     llm_temperature: float = 0.7
     language: str = "en"
     kb_namespace: str
+    forwarding_number: Optional[str] = None # Number to transfer to if AI can't handle
     tools_config: dict = Field(default_factory=dict, sa_column=Column(JSON))
     
 class CallRecord(SQLModel, table=True):

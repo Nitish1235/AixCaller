@@ -37,6 +37,7 @@ export default function AgentDetailsPage() {
   const [prompt, setPrompt] = useState("");
   const [voice, setVoice]   = useState("");
   const [voiceList, setVoiceList] = useState<any[]>([]);
+  const [forwardingNumber, setForwardingNumber] = useState("");
 
   useEffect(() => {
     fetch(`${API_URL}/admin/voices`)
@@ -60,6 +61,7 @@ export default function AgentDetailsPage() {
           setName(found.name); 
           setPrompt(found.system_prompt || ""); 
           setVoice(found.voice_id || "aura-asteria-en");
+          setForwardingNumber(found.forwarding_number || "");
         }
       } catch (e) { console.error(e); } finally { setLoading(false); }
     };
@@ -71,7 +73,7 @@ export default function AgentDetailsPage() {
     try {
       await fetch(`${API_URL}/api/v1/agents/${id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, system_prompt: prompt, voice_id: voice }),
+        body: JSON.stringify({ name, system_prompt: prompt, voice_id: voice, forwarding_number: forwardingNumber }),
       });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch (e) { console.error(e); }
@@ -140,7 +142,32 @@ export default function AgentDetailsPage() {
                       ))
                     ) : (
                       <>
-                        <option value="aura-zeus-en">Zeus (Male - Powerful)</option>
+                        <option value="aura-2-thalia-en">Thalia (F - Energetic)</option>
+                        <option value="aura-2-amalthea-en">Amalthea (F - Engaging)</option>
+                        <option value="aura-2-andromeda-en">Andromeda (F - Casual)</option>
+                        <option value="aura-2-apollo-en">Apollo (M - Confident)</option>
+                        <option value="aura-2-arcas-en">Arcas (M - Smooth)</option>
+                        <option value="aura-2-aries-en">Aries (M - Warm)</option>
+                        <option value="aura-2-aurora-en">Aurora (F - Cheerful)</option>
+                        <option value="aura-2-delia-en">Delia (F - Friendly)</option>
+                        <option value="aura-2-electra-en">Electra (F - Professional)</option>
+                        <option value="aura-2-harmonia-en">Harmonia (F - Empathetic)</option>
+                        <option value="aura-2-helena-en">Helena (F - Caring)</option>
+                        <option value="aura-2-hermes-en">Hermes (M - Professional)</option>
+                        <option value="aura-2-hyperion-en">Hyperion (M - Empathetic)</option>
+                        <option value="aura-2-juno-en">Juno (F - Melodic)</option>
+                        <option value="aura-2-jupiter-en">Jupiter (M - Knowledgeable)</option>
+                        <option value="aura-2-mars-en">Mars (M - Trustworthy)</option>
+                        <option value="aura-2-neptune-en">Neptune (M - Polite)</option>
+                        <option value="aura-2-ophelia-en">Ophelia (F - Enthusiastic)</option>
+                        <option value="aura-2-orion-en">Orion (M - Polite)</option>
+                        <option value="aura-2-orpheus-en">Orpheus (M - Trustworthy)</option>
+                        <option value="aura-2-phoebe-en">Phoebe (F - Warm)</option>
+                        <option value="aura-2-pluto-en">Pluto (M - Empathetic)</option>
+                        <option value="aura-2-saturn-en">Saturn (M - Confident)</option>
+                        <option value="aura-2-selene-en">Selene (F - Engaging)</option>
+                        <option value="aura-2-theia-en">Theia (F - Sincere)</option>
+                        <option value="aura-2-vesta-en">Vesta (F - Patient)</option>
                       </>
                     )}
                   </select>
@@ -160,6 +187,15 @@ export default function AgentDetailsPage() {
                   </button>
                 </div>
                 <audio ref={audioRef} style={{ display: "none" }} />
+              </div>
+              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.25rem", marginTop: "0.5rem" }}>
+                <h3 style={{ fontWeight: 800, fontSize: "0.85rem", color: "#064E3B", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>📞 Call Forwarding (Transfer to Human)</h3>
+                <label style={label}>Transfer Number</label>
+                <input type="tel" value={forwardingNumber} onChange={e => setForwardingNumber(e.target.value)}
+                  placeholder="e.g. +12125550199" style={inp} />
+                <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 4 }}>
+                  The number the AI will transfer the caller to if they ask for a human or if the AI can't help.
+                </p>
               </div>
             </div>
           </div>
