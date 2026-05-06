@@ -3,7 +3,7 @@ from typing import Dict, List
 import json
 from loguru import logger
 
-router = APIRouter(prefix="/ws", tags=["live"])
+router = APIRouter(prefix="/api/v1/live", tags=["live"])
 
 # Stores connected clients for each call: {call_id: [List of WebSockets]}
 class ConnectionManager:
@@ -43,7 +43,7 @@ async def live_stream(websocket: WebSocket, call_id: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket, call_id)
 
-@router.post("/live-update")
+@router.post("/update")
 async def live_update(data: dict):
     """
     Relay endpoint: Voice Engine POSTs here, and we broadcast to all WebSockets.

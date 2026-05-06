@@ -54,10 +54,10 @@ async def process_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/x-www-form-urlencoded"
                     },
-                    data={
-                        "To": call.from_number,
-                        "From": agent.phone_number,
-                        "Url": answer_url
+                    json={
+                        "to": call.from_number,
+                        "from": agent.phone_number,
+                        "url": answer_url
                     }
                 )
                 

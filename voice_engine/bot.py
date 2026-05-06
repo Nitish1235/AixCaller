@@ -64,7 +64,7 @@ class VoiceAgent:
                 # For Phase 2, we'll use the WebSocket Hub via a lightweight POST relay
                 # to keep the Voice Engine simple and stable.
                 await client.post(
-                    f"{backend_url}/api/v1/live-update",
+                    f"{backend_url}/api/v1/live/update",
                     json={
                         "call_id": call_id,
                         "role": role,
@@ -94,7 +94,7 @@ class VoiceAgent:
         
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
-            model="nova-3",
+            model="nova-2-phonecall",
             params={
                 "language": language,
                 "endpointing": 300,

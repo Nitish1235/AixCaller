@@ -42,7 +42,7 @@ kb_service = IngestionService()
 @app.post("/incoming-call")
 async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     """
-    Production-ready Plivo routing.
+    Production-ready Telnyx routing.
     1. Identify Agent by 'To' number.
     2. Check if Tenant is active.
     3. Route to Voice Engine with signed metadata.
