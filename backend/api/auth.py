@@ -37,7 +37,6 @@ async def sync_user(req: SyncUserRequest, db: Session = Depends(get_db)):
         contact_email=req.email,
         is_active=True,
         credits=500.0,            # 500 free minutes on signup
-        resend_email=req.email,   # Auto-set summary emails to their Google email
     )
     db.add(new_tenant)
     db.commit()
@@ -67,7 +66,6 @@ async def email_signup(req: EmailSignupRequest, db: Session = Depends(get_db)):
         contact_email=req.email,
         is_active=True,
         credits=500.0,
-        resend_email=req.email,
         password_hash=bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
     )
     db.add(new_tenant)

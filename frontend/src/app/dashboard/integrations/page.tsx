@@ -9,7 +9,6 @@ const getTenantId = () => {
 
 const TENANT_ID = getTenantId();
 const API_URL   = (process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app").replace(/\/+$/, "");
-const BOT_NAME  = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "AIxCaller_Alerts_Bot";
 
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -111,21 +110,21 @@ function IntCard({ icon, title, description, connected, onConnect, onDisconnect 
    MAIN PAGE
 ══════════════════════════════════════════════════════════════════ */
 export default function IntegrationsPage() {
-  const [cfg, setCfg]     = useState<Record<string, string | null>>({});
+  const [cfg, setCfg]     = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
 
   // Modal open state
-  const [modal, setModal] = useState<"shopify" | "zoho" | "telegram" | "webhook" | "resend" | null>(null);
+  const [modal, setModal] = useState<"shopify" | "zoho" | "webhook" | "email" | null>(null);
 
   // Form fields
   const [shopifyUrl, setShopifyUrl]     = useState("");
   const [shopifyKey, setShopifyKey]     = useState("");
   const [zohoToken, setZohoToken]       = useState("");
   const [zohoOrg, setZohoOrg]           = useState("");
-  const [tgChatId, setTgChatId]         = useState("");
   const [webhookUrl, setWebhookUrl]     = useState("");
-  const [resendEmail, setResendEmail]   = useState("");
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [contactEmail, setContactEmail] = useState("");
 
   /* ── Load current settings ── */
   const load = useCallback(async () => {
@@ -138,9 +137,9 @@ export default function IntegrationsPage() {
         setShopifyKey(data.shopify_api_key   || "");
         setZohoToken(data.zoho_access_token  || "");
         setZohoOrg(data.zoho_org_id          || "");
-        setTgChatId(data.telegram_chat_id    || "");
         setWebhookUrl(data.webhook_url       || "");
-        setResendEmail(data.resend_email     || "");
+        setEmailEnabled(data.email_summary_enabled ?? true);
+        setContactEmail(data.contact_email || "");
       }
     } catch {}
   }, []);
@@ -150,14 +149,14 @@ export default function IntegrationsPage() {
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   /* ── Save helpers ── */
-  const save = async (patch: Record<string, string | null>) => {
+  const save = async (patch: Record<string, any>) => {
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/api/v1/integrations?tenant_id=${TENANT_ID}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
-      if (res.ok) { await load(); setModal(null); showToast("✅ Integration saved!"); }
+      if (res.ok) { await load(); setModal(null); showToast("✅ Settings saved!"); }
       else showToast("⚠️ Failed to save — check your credentials.");
     } catch { showToast("⚠️ Network error."); }
     setSaving(false);
@@ -175,12 +174,10 @@ export default function IntegrationsPage() {
   /* ── Derived connected states ── */
   const shopifyConnected  = !!(cfg.shopify_store_url);
   const zohoConnected     = !!(cfg.zoho_access_token);
-  const telegramConnected = !!(cfg.telegram_chat_id);
   const webhookConnected  = !!(cfg.webhook_url);
-  const resendConnected   = !!(cfg.resend_email);
+  const emailConnected    = !!(cfg.email_summary_enabled);
 
-  /* ── Telegram deep link ── */
-  const tgLink = `https://t.me/${BOT_NAME}?start=tenant-${TENANT_ID}`;
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -225,14 +222,6 @@ export default function IntegrationsPage() {
           onDisconnect={() => disconnect("zoho")}
         />
 
-        {/* ── Telegram ── */}
-        <IntCard
-          icon="✈️" title="Telegram Alerts" connected={telegramConnected}
-          description="Receive instant call summaries, action items, and booking details directly to your Telegram app after each call."
-          onConnect={() => setModal("telegram")}
-          onDisconnect={() => disconnect("telegram")}
-        />
-
         {/* ── Webhook ── */}
         <IntCard
           icon="⚡" title="Zapier / Webhooks" connected={webhookConnected}
@@ -241,12 +230,12 @@ export default function IntegrationsPage() {
           onDisconnect={() => disconnect("webhook")}
         />
 
-        {/* ── Resend Email ── */}
+        {/* ── Email Summary ── */}
         <IntCard
-          icon="📧" title="Summary Emails" connected={resendConnected}
-          description="Automatically email a full call summary, sentiment analysis, and action items to any address after every conversation ends."
-          onConnect={() => setModal("resend")}
-          onDisconnect={() => disconnect("resend")}
+          icon="📧" title="Email Summaries" connected={emailConnected}
+          description="Automatically receive beautiful call reports via email. Defaulted to your Google Account address."
+          onConnect={() => setModal("email")}
+          onDisconnect={() => save({ email_summary_enabled: false })}
         />
       </div>
 
@@ -306,45 +295,7 @@ export default function IntegrationsPage() {
         </div>
       </Modal>
 
-      {/* Telegram Modal */}
-      <Modal open={modal === "telegram"} onClose={() => setModal(null)} title="✈️ Connect Telegram Alerts">
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {telegramConnected ? (
-            <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 10, padding: "14px 16px" }}>
-              <div style={{ fontWeight: 700, color: "#059669", marginBottom: 4 }}>✅ Telegram Connected</div>
-              <div style={{ fontSize: "0.82rem", color: "#064E3B" }}>Chat ID: <code>{cfg.telegram_chat_id}</code></div>
-            </div>
-          ) : (
-            <>
-              <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 14px", fontSize: "0.82rem", color: "#064E3B", lineHeight: 1.8 }}>
-                <strong>Option A — Automatic (Recommended):</strong><br />
-                Click the button below to open our Telegram bot and type <code>/start</code>. It auto-links your account.
-              </div>
-              <a href={tgLink} target="_blank" rel="noopener noreferrer" style={{
-                display: "block", textAlign: "center", background: "#229ED9", color: "#fff",
-                borderRadius: 10, padding: "12px", fontWeight: 700, textDecoration: "none", fontSize: "0.9rem",
-              }}>
-                Open Telegram Bot →
-              </a>
-              <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 14px", fontSize: "0.82rem", color: "#064E3B", lineHeight: 1.8 }}>
-                <strong>Option B — Manual:</strong><br />
-                Message <code>@userinfobot</code> in Telegram to get your Chat ID, then paste it below.
-              </div>
-              <div>
-                <label style={lbl}>Your Telegram Chat ID</label>
-                <input type="text" value={tgChatId} onChange={e => setTgChatId(e.target.value)}
-                  placeholder="e.g. -100123456789" style={inp} />
-              </div>
-              <button
-                disabled={saving || !tgChatId}
-                onClick={() => save({ telegram_chat_id: tgChatId })}
-                style={{ width: "100%", background: "#064E3B", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
-                {saving ? "Saving..." : "Save Chat ID"}
-              </button>
-            </>
-          )}
-        </div>
-      </Modal>
+
 
       {/* Webhook Modal */}
       <Modal open={modal === "webhook"} onClose={() => setModal(null)} title="⚡ Configure Webhook">
@@ -385,38 +336,33 @@ export default function IntegrationsPage() {
         </div>
       </Modal>
 
-      {/* Resend Email Modal */}
-      <Modal open={modal === "resend"} onClose={() => setModal(null)} title="📧 Summary Emails via Resend">
+      {/* Email Modal */}
+      <Modal open={modal === "email"} onClose={() => setModal(null)} title="📧 Email Summary Settings">
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 14px", fontSize: "0.82rem", color: "#064E3B", lineHeight: 1.7 }}>
-            After every call ends, we'll email a <strong>beautiful summary report</strong> to the address below, including:
-            <ul style={{ margin: "8px 0 0 16px", padding: 0, lineHeight: 2 }}>
-              <li>📋 AI-generated call summary</li>
-              <li>💬 Transcript excerpt</li>
-              <li>🎯 Sentiment analysis</li>
-              <li>✅ Action items</li>
-            </ul>
+            By default, we send a <strong>beautiful AI-generated call report</strong> to your Google Account email after every conversation.
           </div>
 
-          {resendConnected && (
-            <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 16px" }}>
-              <div style={{ fontWeight: 700, color: "#059669", marginBottom: 4 }}>✅ Currently sending to:</div>
-              <div style={{ fontSize: "0.88rem", color: "#064E3B", fontFamily: "monospace" }}>{cfg.resend_email}</div>
-            </div>
-          )}
+          <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 16px" }}>
+            <div style={{ fontWeight: 700, color: "#059669", marginBottom: 4 }}>Destination Email:</div>
+            <div style={{ fontSize: "0.88rem", color: "#064E3B", fontFamily: "monospace" }}>{contactEmail}</div>
+          </div>
 
-          <div>
-            <label style={lbl}>Email Address *</label>
-            <input type="email" value={resendEmail} onChange={e => setResendEmail(e.target.value)}
-              placeholder="you@company.com" style={inp} />
-            <p style={hint}>Set <code>RESEND_API_KEY</code> in your backend environment to activate sending.</p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0" }}>
+            <span style={{ fontWeight: 700, color: "#064E3B", fontSize: "0.9rem" }}>Enable Email Summaries</span>
+            <input
+              type="checkbox"
+              checked={emailEnabled}
+              onChange={e => setEmailEnabled(e.target.checked)}
+              style={{ width: 22, height: 22, accentColor: "#064E3B", cursor: "pointer" }}
+            />
           </div>
 
           <button
-            disabled={saving || !resendEmail}
-            onClick={() => save({ resend_email: resendEmail })}
+            disabled={saving}
+            onClick={() => save({ email_summary_enabled: emailEnabled })}
             style={{ width: "100%", background: "#064E3B", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Saving..." : "Save Email Address"}
+            {saving ? "Updating..." : "Save Preferences"}
           </button>
         </div>
       </Modal>

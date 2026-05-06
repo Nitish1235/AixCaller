@@ -168,11 +168,13 @@ class VoiceAgent:
         ])
 
         # 5. Initialize Task
+        idle_timeout = self.agent_config.get("idle_timeout", 7)
         task = PipelineTask(
             pipeline,
             params=PipelineParams(
                 allow_interruptions=True,
-                enable_metrics=True
+                enable_metrics=True,
+                idle_timeout=idle_timeout
             )
         )
 

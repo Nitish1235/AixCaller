@@ -35,8 +35,7 @@ class Tenant(SQLModel, table=True):
     hubspot_api_key: Optional[str] = None
     salesforce_access_token: Optional[str] = None
     webhook_url: Optional[str] = None # For Zapier/Make.com
-    telegram_chat_id: Optional[str] = None # For Telegram alerts
-    resend_email: Optional[str] = None # For Resend call summary emails
+    email_summary_enabled: bool = Field(default=True) # Send call summary to contact_email
     password_hash: Optional[str] = None # For Email/Password Auth
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
