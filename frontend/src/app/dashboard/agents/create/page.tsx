@@ -257,11 +257,19 @@ export default function CreateAgentPage() {
                     ))
                   ) : (
                     <>
-                      <option value="aura-asteria-en">Aria — Female, American English</option>
-                      <option value="aura-orion-en">Orion — Male, American English</option>
-                      <option value="aura-luna-en">Luna — Female, Soft</option>
-                      <option value="aura-arcas-en">Arcas — Male, Deep</option>
-                      <option value="aura-stella-en">Stella — Female, Upbeat</option>
+                      <option value="aura-asteria-en">Asteria (Female - Professional)</option>
+                      <option value="aura-luna-en">Luna (Female - Soft)</option>
+                      <option value="aura-stella-en">Stella (Female - Upbeat)</option>
+                      <option value="aura-athena-en">Athena (Female - Calm)</option>
+                      <option value="aura-hera-en">Hera (Female - Mature)</option>
+                      <option value="aura-maeda-en">Maeda (Female - Friendly)</option>
+                      <option value="aura-orion-en">Orion (Male - Authoritative)</option>
+                      <option value="aura-arcas-en">Arcas (Male - Deep)</option>
+                      <option value="aura-perseus-en">Perseus (Male - Casual)</option>
+                      <option value="aura-angus-en">Angus (Male - Friendly)</option>
+                      <option value="aura-orpheus-en">Orpheus (Male - Resonant)</option>
+                      <option value="aura-helios-en">Helios (Male - Warm)</option>
+                      <option value="aura-zeus-en">Zeus (Male - Powerful)</option>
                     </>
                   )}
                 </select>

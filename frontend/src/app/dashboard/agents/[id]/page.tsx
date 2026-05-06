@@ -140,11 +140,7 @@ export default function AgentDetailsPage() {
                       ))
                     ) : (
                       <>
-                        <option value="aura-asteria-en">Aria — Female, American English</option>
-                        <option value="aura-orion-en">Orion — Male, American English</option>
-                        <option value="aura-luna-en">Luna — Female, Soft</option>
-                        <option value="aura-arcas-en">Arcas — Male, Deep</option>
-                        <option value="aura-stella-en">Stella — Female, Upbeat</option>
+                        <option value="aura-zeus-en">Zeus (Male - Powerful)</option>
                       </>
                     )}
                   </select>

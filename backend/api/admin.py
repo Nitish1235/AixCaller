@@ -11,11 +11,21 @@ from shared.models import VoiceOption
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 # List of approved Aura-2 voices
-APPROVED_VOICES = [
-    "aura-asteria-en", "aura-luna-en", "aura-stella-en", "aura-athena-en", "aura-hera-en",
-    "aura-orpheus-en", "aura-helios-en", "aura-zeus-en", "aura-apollo-en", "aura-orion-en",
-    "aura-arcas-en", "aura-perseus-en", "aura-angus-en"
-]
+APPROVED_VOICES = {
+    "aura-asteria-en": "Asteria (Female - Professional)",
+    "aura-luna-en":    "Luna (Female - Soft)",
+    "aura-stella-en":  "Stella (Female - Upbeat)",
+    "aura-athena-en":  "Athena (Female - Calm)",
+    "aura-hera-en":    "Hera (Female - Mature)",
+    "aura-maeda-en":   "Maeda (Female - Friendly)",
+    "aura-orion-en":   "Orion (Male - Authoritative)",
+    "aura-arcas-en":   "Arcas (Male - Deep)",
+    "aura-perseus-en": "Perseus (Male - Casual)",
+    "aura-angus-en":   "Angus (Male - Friendly)",
+    "aura-orpheus-en": "Orpheus (Male - Resonant)",
+    "aura-helios-en":  "Helios (Male - Warm)",
+    "aura-zeus-en":    "Zeus (Male - Powerful)"
+}
 
 @router.post("/generate-voice-previews")
 async def generate_voice_previews():
@@ -23,7 +33,7 @@ async def generate_voice_previews():
     
     async with httpx.AsyncClient() as client:
         with Session(engine) as session:
-            for voice_id in APPROVED_VOICES:
+            for voice_id, display_name in APPROVED_VOICES.items():
                 try:
                     # 1. Call Deepgram TTS
                     response = await client.post(
@@ -42,11 +52,10 @@ async def generate_voice_previews():
                         voice_entry = session.exec(statement).first()
                         
                         if not voice_entry:
-                            voice_name = voice_id.split("-")[1].capitalize()
                             voice_entry = VoiceOption(
-                                name=voice_name,
+                                name=display_name,
                                 voice_id=voice_id,
-                                gender="Female" if "asteria" in voice_id or "luna" in voice_id else "Male"
+                                gender="Female" if "Female" in display_name else "Male"
                             )
                         
                         voice_entry.preview_url = data_uri

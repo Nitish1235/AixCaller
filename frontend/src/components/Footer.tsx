@@ -14,34 +14,33 @@ export default function Footer() {
             <p style={{ color: "#6EE7B7", fontSize: "0.88rem", lineHeight: 1.6, maxWidth: 260 }}>
               The AI voice platform that answers every call, qualifies every lead, and never takes a day off.
             </p>
-            <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-              {["Twitter", "LinkedIn", "GitHub"].map(s => (
-                <a key={s} href="#" style={{ color: "#6EE7B7", fontSize: "0.82rem", fontWeight: 600, transition: "color 0.2s" }}>{s}</a>
-              ))}
-            </div>
           </div>
+
           {/* Product */}
           <div>
             <h4 style={{ fontWeight: 700, marginBottom: "1rem", fontSize: "0.85rem", letterSpacing: 0.5, textTransform: "uppercase", color: "#6EE7B7" }}>Product</h4>
-            {["Features", "Pricing", "Integrations", "API Docs", "Changelog"].map(l => (
-              <div key={l} style={{ marginBottom: 8 }}><Link href="#" style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
+            {["Features", "Pricing", "Integrations"].map(l => (
+              <div key={l} style={{ marginBottom: 8 }}><Link href={`/#${l.toLowerCase().replace(" ", "-")}`} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
             ))}
           </div>
+
           {/* Company */}
           <div>
             <h4 style={{ fontWeight: 700, marginBottom: "1rem", fontSize: "0.85rem", letterSpacing: 0.5, textTransform: "uppercase", color: "#6EE7B7" }}>Company</h4>
-            {["About Us", "Blog", "Careers", "Press", "Contact"].map(l => (
-              <div key={l} style={{ marginBottom: 8 }}><Link href={l === "Contact" ? "/contact" : "#"} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
+            {["About Us", "Contact"].map(l => (
+              <div key={l} style={{ marginBottom: 8 }}><Link href={l === "Contact" ? "/contact" : "/#use-cases"} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
             ))}
           </div>
+
           {/* Legal */}
           <div>
             <h4 style={{ fontWeight: 700, marginBottom: "1rem", fontSize: "0.85rem", letterSpacing: 0.5, textTransform: "uppercase", color: "#6EE7B7" }}>Legal</h4>
-            {[["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Cookie Policy", "#"], ["GDPR", "#"]].map(([l, href]) => (
+            {[[ "Terms of Service", "/terms" ], [ "Privacy Policy", "/privacy" ]].map(([l, href]) => (
               <div key={l as string} style={{ marginBottom: 8 }}><Link href={href as string} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", textDecoration: "none" }}>{l}</Link></div>
             ))}
           </div>
         </div>
+
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>© 2026 AIxCaller.live. All rights reserved.</p>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>Built with Pipecat · Deepgram · GPT-4o</p>
