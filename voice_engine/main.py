@@ -5,6 +5,9 @@ import jwt
 from fastapi import FastAPI, WebSocket
 from loguru import logger
 import traceback
+from sqlmodel import Session
+from shared.database import engine
+from shared.models import Agent
 
 try:
     from voice_engine.bot import VoiceAgent
@@ -57,11 +60,18 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if event == "start":
                 start_data = msg.get("start", {})
-                stream_id = start_data.get("streamId")
-                call_id = start_data.get("callId")
+                stream_id = start_data.get("stream_id") or start_data.get("streamId") or msg.get("streamSid")
+                call_id = start_data.get("call_id") or start_data.get("callId") or msg.get("callSid")
                 
-                # Check all common parameter field names (Telnyx/Twilio/Plivo compatibility)
-                params = start_data.get("parameters") or start_data.get("customParameters") or start_data.get("parameterData") or {}
+                logger.info(f"Root keys: {list(msg.keys())}")
+                if start_data: logger.info(f"Start data keys: {list(start_data.keys())}")
+                
+                # Check all common parameter field names in both root and 'start' sub-object
+                params = (
+                    msg.get("customParameters") or msg.get("custom_parameters") or msg.get("metadata") or
+                    start_data.get("customParameters") or start_data.get("custom_parameters") or 
+                    start_data.get("parameters") or start_data.get("parameterData") or start_data.get("metadata") or {}
+                )
                 
                 logger.info(f"Start event received. Available params: {list(params.keys())}")
                 
@@ -77,18 +87,28 @@ async def websocket_endpoint(websocket: WebSocket):
                     decoded = jwt.decode(token, secret, algorithms=["HS256"])
                     
                     tenant_id = decoded["tenant_id"]
-                    agent_config = {
-                        "system_prompt": decoded["system_prompt"],
-                        "voice_id": decoded["voice_id"],
-                        "agent_id": decoded["agent_id"],
-                        "idle_timeout": decoded.get("idle_timeout", 7),
-                        "llm_temperature": decoded.get("llm_temperature", 0.7),
-                        "language": decoded.get("language", "en"),
-                        "is_recovery": decoded.get("is_recovery", False),
-                        "forwarding_number": decoded.get("forwarding_number"),
-                        "call_id": decoded.get("call_id"),
-                        "tools_config": decoded.get("tools_config", {})
-                    }
+                    agent_id = decoded["agent_id"]
+                    
+                    # 2. Fetch full config from DB (since JWT is now minimal)
+                    with Session(engine) as db:
+                        agent = db.get(Agent, agent_id)
+                        if not agent:
+                            logger.error(f"Agent {agent_id} not found in DB")
+                            await websocket.close()
+                            return
+                        
+                        agent_config = {
+                            "system_prompt": agent.system_prompt,
+                            "voice_id": agent.voice_id,
+                            "agent_id": str(agent.id),
+                            "idle_timeout": agent.idle_timeout or 7,
+                            "llm_temperature": agent.llm_temperature or 0.7,
+                            "language": agent.language or "en",
+                            "is_recovery": decoded.get("is_recovery", False),
+                            "forwarding_number": agent.forwarding_number,
+                            "call_id": call_id,
+                            "tools_config": agent.tools_config or {}
+                        }
                     logger.info(f"Verified token for tenant {tenant_id}")
                     break
                 except jwt.ExpiredSignatureError:

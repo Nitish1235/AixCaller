@@ -68,14 +68,7 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     token_payload = {
         "tenant_id": str(agent.tenant_id),
         "agent_id": str(agent.id),
-        "system_prompt": agent.system_prompt,
         "voice_id": agent.voice_id,
-        "idle_timeout": agent.idle_timeout,
-        "llm_temperature": agent.llm_temperature,
-        "language": agent.language,
-        "tools_config": agent.tools_config,
-        "forwarding_number": agent.forwarding_number,
-        "call_id": call_uuid,
         "exp": time.time() + 300
     }
     secret = os.environ.get("JWT_SECRET", "super-secret-key")
