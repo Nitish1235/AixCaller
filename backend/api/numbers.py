@@ -35,11 +35,16 @@ async def search_numbers(req: SearchRequest):
             params={
                 "filter[national_destination_code]": req.area_code,
                 "filter[features][]": "voice",
-                "filter[limit]": req.limit
+                "filter[limit]": req.limit,
+                "filter[best_effort]": "true"
             }
         )
+        
         if response.status_code != 200:
             logger.error(f"Telnyx search failed: {response.text}")
+            # If Telnyx returns 10031 (No numbers found), don't crash, just return empty list
+            if "10031" in response.text:
+                return {"numbers": []}
             raise HTTPException(status_code=500, detail="Failed to search numbers")
 
         data = response.json()

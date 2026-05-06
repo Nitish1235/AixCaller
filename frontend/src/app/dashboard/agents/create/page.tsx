@@ -171,14 +171,20 @@ export default function CreateAgentPage() {
 
   /* ── Step 3: Search & claim number ── */
   const searchNumbers = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true); setError("");
+    e.preventDefault(); setLoading(true); setError(""); setNumbers([]);
     try {
       const res = await fetch(`${API_URL}/api/v1/numbers/search`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ area_code: areaCode, limit: 5 }),
       });
-      if (!res.ok) throw new Error("Failed to search numbers");
-      const data = await res.json(); setNumbers(data.numbers || []);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to search numbers");
+      
+      if (data.numbers && data.numbers.length > 0) {
+        setNumbers(data.numbers);
+      } else {
+        throw new Error(`No numbers available for area code ${areaCode}. Please try another one.`);
+      }
     } catch (err: any) { setError(err.message); }
     setLoading(false);
   };
