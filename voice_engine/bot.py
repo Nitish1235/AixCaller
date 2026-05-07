@@ -5,6 +5,7 @@ from loguru import logger
 
 # ── Pipecat: Audio ──────────────────────────────────────────────────────────
 from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
 
 # ── Pipecat: Pipeline ────────────────────────────────────────────────────────
 from pipecat.pipeline.pipeline import Pipeline
@@ -120,27 +121,31 @@ class VoiceAgent:
             )
         )
 
-        # 3. STT
-        # Source-verified: DeepgramSTTService(api_key, settings=Settings(...))
-        # Settings fields: model, language, smart_format, endpointing (all confirmed in source)
+        # 3. STT — latency optimizations:
+        # - nova-3-general: lower latency than nova-2-phonecall for streaming
+        # - endpointing=100: fire transcript after 100ms silence (was 300ms = 200ms extra wait)
+        # - smart_format: keep on for punctuation
         language = self.agent_config.get("language", "en")
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
             settings=DeepgramSTTService.Settings(
-                model="nova-2-phonecall",
+                model="nova-3-general",
                 language=language,
                 smart_format=True,
-                endpointing=300,
+                endpointing=100,   # ms of silence before transcript fires (was 300)
+                interim_results=True,  # get partial results for faster perceived response
             )
         )
 
-        # 4. TTS
-        # Source-verified: voice param deprecated since 0.0.105
-        # Correct pattern: settings=DeepgramTTSService.Settings(voice=...)
+        # 4. TTS — latency optimizations:
+        # - encoding="linear16": skip PCMU→PCM resampling inside TTS service;
+        #   the TelnyxFrameSerializer does PCM→PCMU so one less codec hop.
+        # - aura-2-thalia-en: faster model than aura-asteria-en
         tts = DeepgramTTSService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
+            encoding="linear16",
             settings=DeepgramTTSService.Settings(
-                voice=self.agent_config.get("voice_id", "aura-asteria-en")
+                voice=self.agent_config.get("voice_id", "aura-2-thalia-en")
             )
         )
 
@@ -180,7 +185,23 @@ class VoiceAgent:
         context = LLMContext(messages=messages)
         aggregators = LLMContextAggregatorPair(
             context,
-            user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer())
+            user_params=LLMUserAggregatorParams(
+                # VAD latency tuning (source: vad_analyzer.py defaults: start=0.2, stop=0.2)
+                # stop_secs=0.3: wait 300ms of silence before deciding user stopped speaking.
+                # Shorter = faster response but more false-positives (cuts off mid-sentence).
+                # 0.3s is optimal for phone calls per Pipecat phone-chatbot examples.
+                vad_analyzer=SileroVADAnalyzer(
+                    params=VADParams(
+                        start_secs=0.2,   # confirm speech start after 200ms
+                        stop_secs=0.3,    # confirm speech stop after 300ms (was 200ms default)
+                        confidence=0.7,   # voice confidence threshold
+                        min_volume=0.6,   # minimum volume threshold
+                    )
+                ),
+                # user_turn_stop_timeout: max wait after VAD stop before forcing LLM run.
+                # Reduce from default 5.0s to 1.0s for snappy responses.
+                user_turn_stop_timeout=1.0,
+            )
         )
 
         # 7. Register Tools on LLM

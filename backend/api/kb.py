@@ -1,15 +1,45 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
-from sqlmodel import Session
-from typing import Optional
+from sqlmodel import Session, select
+from typing import Optional, List
 import uuid
 from shared.database import engine, get_db
-from shared.models import Agent
+from shared.models import Agent, KnowledgeChunk
 from backend.services.kb import IngestionService
 from backend.services.scraper import ScraperService
 
 router = APIRouter(prefix="/api/v1/kb", tags=["knowledge-base"])
 kb_service = IngestionService()
 scraper_service = ScraperService()
+
+
+@router.get("/chunks")
+async def list_kb_chunks(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+    """
+    List all knowledge base chunks for a specific agent.
+    Returns source groups with chunk counts so the dashboard can show what's ingested.
+    """
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    chunks = db.exec(
+        select(KnowledgeChunk)
+        .where(KnowledgeChunk.agent_id == agent_id)
+        .order_by(KnowledgeChunk.created_at.desc())
+    ).all()
+
+    # Group by source for a compact summary
+    sources: dict = {}
+    for c in chunks:
+        src = c.source or "manual"
+        if src not in sources:
+            sources[src] = {"source": src, "chunks": 0, "created_at": str(c.created_at)}
+        sources[src]["chunks"] += 1
+
+    return {
+        "total_chunks": len(chunks),
+        "sources": list(sources.values())
+    }
 
 
 @router.post("/upload-text")
