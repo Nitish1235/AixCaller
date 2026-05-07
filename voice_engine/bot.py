@@ -184,96 +184,72 @@ class VoiceAgent:
             )}
         ]
 
-        # Define OpenAI tool schemas so the LLM knows what functions are available
-        tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "search_knowledge_base",
-                    "description": "Searches the internal knowledge base for answers to user questions about the business, products, or services. Use this when the user asks a question you don't know the answer to.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "The search query to look up in the knowledge base."
-                            }
-                        },
-                        "required": ["query"],
-                        "additionalProperties": False
+        from pipecat.adapters.schemas.function_schema import FunctionSchema
+        from pipecat.adapters.schemas.tools_schema import ToolsSchema
+
+        # Define OpenAI tool schemas using Pipecat's 1.1.0 FunctionSchema
+        standard_tools = [
+            FunctionSchema(
+                name="search_knowledge_base",
+                description="Searches the internal knowledge base for answers to user questions about the business, products, or services. Use this when the user asks a question you don't know the answer to.",
+                properties={
+                    "query": {
+                        "type": "string",
+                        "description": "The search query to look up in the knowledge base."
                     }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "end_call",
-                    "description": "Ends the call. Use this when the conversation is over, the user says goodbye, or they ask to hang up.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": False
-                    }
-                }
-            }
+                },
+                required=["query"]
+            ),
+            FunctionSchema(
+                name="end_call",
+                description="Ends the call. Use this when the conversation is over, the user says goodbye, or they ask to hang up.",
+                properties={},
+                required=[]
+            )
         ]
 
         if self.agent_config.get("forwarding_number"):
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": "transfer_to_human",
-                    "description": "Transfers the call to a human representative. Use this when the user specifically asks to speak to a human or manager, or if you cannot help them.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": False
-                    }
-                }
-            })
+            standard_tools.append(
+                FunctionSchema(
+                    name="transfer_to_human",
+                    description="Transfers the call to a human representative. Use this when the user specifically asks to speak to a human or manager, or if you cannot help them.",
+                    properties={},
+                    required=[]
+                )
+            )
 
         tools_config = self.agent_config.get("tools_config", {})
         if "shopify" in tools_config:
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": "check_shopify_order",
-                    "description": "Checks the status of a Shopify order given the order number.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "order_number": {
-                                "type": "string",
-                                "description": "The order number provided by the user (e.g. 1001)."
-                            }
-                        },
-                        "required": ["order_number"],
-                        "additionalProperties": False
-                    }
-                }
-            })
+            standard_tools.append(
+                FunctionSchema(
+                    name="check_shopify_order",
+                    description="Checks the status of a Shopify order given the order number.",
+                    properties={
+                        "order_number": {
+                            "type": "string",
+                            "description": "The order number provided by the user (e.g. 1001)."
+                        }
+                    },
+                    required=["order_number"]
+                )
+            )
 
         if "custom_api" in tools_config:
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": "search_internal_database",
-                    "description": "Searches an external database or API for custom information based on the user's query.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "The query to search in the internal database."
-                            }
-                        },
-                        "required": ["query"],
-                        "additionalProperties": False
-                    }
-                }
-            })
+            standard_tools.append(
+                FunctionSchema(
+                    name="search_internal_database",
+                    description="Searches an external database or API for custom information based on the user's query.",
+                    properties={
+                        "query": {
+                            "type": "string",
+                            "description": "The query to search in the internal database."
+                        }
+                    },
+                    required=["query"]
+                )
+            )
 
-        context = LLMContext(messages=messages, tools=tools)
+        context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
         aggregators = LLMContextAggregatorPair(
             context,
             user_params=LLMUserAggregatorParams(
