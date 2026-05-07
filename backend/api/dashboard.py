@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from typing import List, Optional
-import uuid
+import uuid, json
 from pydantic import BaseModel
 from shared.database import engine
 from shared.models import Agent, VoiceOption, CallRecord, Tenant
@@ -167,7 +167,14 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
     """
     call_id = data.get("call_id")
     transcript = data.get("transcript")
-    
+
+    # transcript arrives as a list of message dicts from context.get_messages().
+    # psycopg2 cannot adapt a Python list/dict → must serialize to JSON string for Text column.
+    if isinstance(transcript, list):
+        transcript_str = json.dumps(transcript)
+    else:
+        transcript_str = str(transcript or "")
+
     # 1. Create the Call Record
     # call_id from voice engine is the Telnyx call_control_id (format: "v3:xxx...")
     # which is NOT a UUID. We generate a fresh UUID for the DB record.
@@ -177,16 +184,19 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
         agent_id=uuid.UUID(data.get("agent_id")),
         from_number=data.get("from_number", "unknown"),
         to_number=data.get("to_number", "unknown"),
-        transcript=transcript
+        transcript=transcript_str
     )
-    
+
     # 2. Run AI Analytics (Summary, Sentiment, Action Items)
+    # Pass the original list so analytics can skip system messages cleanly.
     analysis = await analytics_service.analyze_call(transcript)
     if analysis:
         new_call.summary = analysis.get("summary")
         new_call.sentiment = analysis.get("sentiment")
-        new_call.action_items = str(analysis.get("action_items"))
-        
+        # Serialize action_items list to string for Text column
+        action_items = analysis.get("action_items", [])
+        new_call.action_items = json.dumps(action_items) if isinstance(action_items, list) else str(action_items)
+
     db.add(new_call)
     db.commit()
 

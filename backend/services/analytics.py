@@ -1,50 +1,53 @@
 import os
 import json
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate
+from openai import AsyncOpenAI
 
 class AnalyticsService:
     def __init__(self):
-        # Using Grok for post-call analysis
-        self.llm = ChatOpenAI(
-            api_key=os.getenv("XAI_API_KEY", "dummy_key_to_prevent_crash_until_configured"),
-            base_url="https://api.x.ai/v1",
-            model="grok-beta"
-        )
+        # Use OpenAI gpt-4o-mini — already configured, no extra API key needed.
+        # Grok/XAI "grok-beta" model does not exist anymore and caused 400 errors.
+        self._client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
 
-    async def analyze_call(self, transcript: str):
+    async def analyze_call(self, transcript) -> dict:
         """
-        Analyze the call transcript using Grok to extract summary, sentiment, and action items.
+        Analyze the call transcript to extract summary, sentiment, and action items.
+        transcript may be a list of message dicts or a plain string.
         """
-        if not transcript or len(transcript) < 10:
-            return None
+        # Normalize transcript to a readable string
+        if isinstance(transcript, list):
+            lines = []
+            for m in transcript:
+                role = m.get("role", "")
+                content = m.get("content", "")
+                if role == "system":
+                    continue  # skip system prompts from analysis
+                lines.append(f"{role.upper()}: {content}")
+            transcript_str = "\n".join(lines)
+        else:
+            transcript_str = str(transcript or "")
 
-        prompt = PromptTemplate.from_template("""
-        You are an expert call analyst. Analyze the following transcript from an AI voice call.
-        
-        Transcript:
-        {transcript}
-        
-        Return ONLY a JSON object with the following keys:
-        - summary: A concise 2-sentence summary of the conversation.
-        - sentiment: One word (Happy, Frustrated, or Neutral).
-        - action_items: A list of specific tasks or follow-ups extracted from the call.
-        """)
-        
+        if len(transcript_str.strip()) < 20:
+            return {"summary": "Call too short to analyze.", "sentiment": "Neutral", "action_items": []}
+
+        prompt = f"""You are an expert call analyst. Analyze this AI voice call transcript.
+
+Transcript:
+{transcript_str}
+
+Return ONLY a valid JSON object with these exact keys:
+- summary: A concise 2-sentence summary of the conversation.
+- sentiment: Exactly one word — Happy, Frustrated, or Neutral.
+- action_items: A JSON array of specific follow-up tasks (can be empty []).
+"""
         try:
-            chain = prompt | self.llm
-            response = await chain.ainvoke({"transcript": transcript})
-            
-            # Parse the response (Grok usually returns a string that might contain JSON)
-            content = response.content
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            
+            response = await self._client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.2,
+            )
+            content = response.choices[0].message.content or "{}"
             return json.loads(content)
         except Exception as e:
             print(f"Analytics error: {e}")
-            return {
-                "summary": "Error analyzing transcript.",
-                "sentiment": "Neutral",
-                "action_items": []
-            }
+            return {"summary": "Error analyzing transcript.", "sentiment": "Neutral", "action_items": []}

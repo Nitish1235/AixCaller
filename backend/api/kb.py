@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
+from pydantic import BaseModel
 from sqlmodel import Session, select
 from typing import Optional, List
 import uuid
@@ -42,26 +43,31 @@ async def list_kb_chunks(agent_id: uuid.UUID, db: Session = Depends(get_db)):
     }
 
 
+class TextUploadBody(BaseModel):
+    content: str
+    source: Optional[str] = "manual"
+
+
 @router.post("/upload-text")
 async def upload_text(
     agent_id: uuid.UUID,
-    content: str,
-    source: Optional[str] = "manual",
+    body: TextUploadBody,
     db: Session = Depends(get_db)
 ):
     """
     Ingest plain text into the agent's knowledge base.
     Content is chunked, embedded, and stored in pgvector.
+    Send JSON body: { "content": "...", "source": "manual" }
     """
     agent = db.get(Agent, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     count = await kb_service.ingest_text(
-        content=content,
+        content=body.content,
         tenant_id=agent.tenant_id,
         agent_id=agent.id,
-        source=source
+        source=body.source or "manual"
     )
     return {"status": "success", "chunks_stored": count}
 

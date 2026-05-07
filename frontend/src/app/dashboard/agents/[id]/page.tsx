@@ -36,6 +36,7 @@ export default function AgentDetailsPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Agent state
+  const agentId = Array.isArray(id) ? id[0] : (id as string);
   const [agent, setAgent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,7 +76,7 @@ export default function AgentDetailsPage() {
     const load = async () => {
       try {
         const list = await fetchAgents(TENANT_ID);
-        const found = list.find((a: any) => a.id === id);
+        const found = list.find((a: any) => a.id === agentId);
         if (found) {
           setAgent(found);
           setName(found.name);
@@ -91,7 +92,7 @@ export default function AgentDetailsPage() {
   const loadKb = async () => {
     setKbLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/kb/chunks?agent_id=${id}`);
+      const res = await fetch(`${API_BASE_URL}/kb/chunks?agent_id=${agentId}`);
       const data = await res.json();
       setKbSources(data.sources || []);
       setKbTotal(data.total_chunks || 0);
@@ -113,14 +114,16 @@ export default function AgentDetailsPage() {
     if (!kbText.trim()) return;
     setKbBusy(true); setKbStatus("");
     try {
-      const res = await fetch(`${API_BASE_URL}/kb/upload-text?agent_id=${id}&source=manual`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(kbText),
+      const res = await fetch(`${API_BASE_URL}/kb/upload-text?agent_id=${agentId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: kbText, source: "manual" }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setKbStatus(`✓ Stored ${data.chunks_stored} chunks`);
       setKbText(""); loadKb();
-    } catch { setKbStatus("✗ Upload failed"); }
+    } catch (e: any) { setKbStatus(`✗ Upload failed: ${e.message}`); }
     setKbBusy(false);
   };
 
@@ -130,11 +133,14 @@ export default function AgentDetailsPage() {
     try {
       const form = new FormData();
       form.append("file", kbFile);
-      const res = await fetch(`${API_BASE_URL}/kb/upload-file?agent_id=${id}`, { method: "POST", body: form });
+      const res = await fetch(`${API_BASE_URL}/kb/upload-file?agent_id=${agentId}`, {
+        method: "POST", body: form
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setKbStatus(`✓ Stored ${data.chunks_stored} chunks from ${data.filename}`);
       setKbFile(null); loadKb();
-    } catch { setKbStatus("✗ Upload failed"); }
+    } catch (e: any) { setKbStatus(`✗ Upload failed: ${e.message}`); }
     setKbBusy(false);
   };
 
@@ -142,11 +148,15 @@ export default function AgentDetailsPage() {
     if (!kbUrl.trim()) return;
     setKbBusy(true); setKbStatus("");
     try {
-      const res = await fetch(`${API_BASE_URL}/kb/sync-url?agent_id=${id}&url=${encodeURIComponent(kbUrl)}`, { method: "POST" });
+      const res = await fetch(
+        `${API_BASE_URL}/kb/sync-url?agent_id=${agentId}&url=${encodeURIComponent(kbUrl)}`,
+        { method: "POST" }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setKbStatus(`✓ ${data.message}`);
-      setKbUrl("");
-    } catch { setKbStatus("✗ Sync failed"); }
+      setKbUrl(""); setTimeout(() => loadKb(), 3000); // URL sync is async, wait a bit
+    } catch (e: any) { setKbStatus(`✗ Sync failed: ${e.message}`); }
     setKbBusy(false);
   };
 
@@ -154,10 +164,10 @@ export default function AgentDetailsPage() {
     if (!confirm("Delete ALL knowledge base content for this agent?")) return;
     setKbBusy(true);
     try {
-      await fetch(`${API_BASE_URL}/kb/clear?agent_id=${id}`, { method: "DELETE" });
+      await fetch(`${API_BASE_URL}/kb/clear?agent_id=${agentId}`, { method: "DELETE" });
       setKbStatus("✓ Knowledge base cleared");
       loadKb();
-    } catch { setKbStatus("✗ Failed"); }
+    } catch { setKbStatus("✗ Failed to clear"); }
     setKbBusy(false);
   };
 
