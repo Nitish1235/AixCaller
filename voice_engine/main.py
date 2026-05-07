@@ -60,18 +60,17 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if event == "start":
                 start_data = msg.get("start", {})
-                stream_id = start_data.get("stream_id") or start_data.get("streamId") or msg.get("streamSid")
-                call_id = start_data.get("call_id") or start_data.get("callId") or msg.get("callSid")
+                # Per official Telnyx docs: stream ID is at root level as 'stream_id'
+                # call_control_id is inside the 'start' object
+                stream_id = msg.get("stream_id") or start_data.get("stream_id")
+                call_control_id = start_data.get("call_control_id")
+                call_session_id = start_data.get("call_session_id")
                 
                 logger.info(f"Root keys: {list(msg.keys())}")
                 if start_data: logger.info(f"Start data keys: {list(start_data.keys())}")
                 
-                # Check all common parameter field names in both root and 'start' sub-object
-                params = (
-                    msg.get("customParameters") or msg.get("custom_parameters") or msg.get("metadata") or
-                    start_data.get("customParameters") or start_data.get("custom_parameters") or 
-                    start_data.get("parameters") or start_data.get("parameterData") or start_data.get("metadata") or {}
-                )
+                # custom_parameters is confirmed by logs as the correct key
+                params = start_data.get("custom_parameters") or {}
                 
                 logger.info(f"Start event received. Available params: {list(params.keys())}")
                 
@@ -106,7 +105,8 @@ async def websocket_endpoint(websocket: WebSocket):
                             "language": agent.language or "en",
                             "is_recovery": decoded.get("is_recovery", False),
                             "forwarding_number": agent.forwarding_number,
-                            "call_id": call_id,
+                            "call_control_id": call_control_id,
+                            "call_session_id": call_session_id,
                             "tools_config": agent.tools_config or {}
                         }
                     logger.info(f"Verified token for tenant {tenant_id}")
@@ -125,7 +125,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await agent.start(
             websocket=websocket,
             stream_id=stream_id,
-            call_id=call_id
+            call_id=call_control_id  # Pass call_control_id for Telnyx hangup API
         )
             
     except Exception as e:

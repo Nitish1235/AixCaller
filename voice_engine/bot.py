@@ -11,7 +11,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
-from pipecat.serializers.twilio import TwilioFrameSerializer
+from pipecat.serializers.telnyx import TelnyxFrameSerializer
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 from shared.kb import search_knowledge_base
@@ -76,9 +76,18 @@ class VoiceAgent:
 
     async def start(self, websocket, stream_id, call_id):
         # 1. Transport & Serializer
-        serializer = TwilioFrameSerializer(
-            stream_sid=stream_id,
-            auto_hang_up=False
+        # Use TelnyxFrameSerializer (official Pipecat native serializer for Telnyx)
+        # auto_hang_up=False because we handle hangups manually via Telnyx Call Control API
+        # call_control_id comes from the Telnyx start event's start_data['call_control_id']
+        serializer = TelnyxFrameSerializer(
+            stream_id=stream_id,
+            outbound_encoding="PCMU",
+            inbound_encoding="PCMU",
+            call_control_id=call_id,
+            api_key=os.environ.get("TELNYX_API_KEY"),
+            params=TelnyxFrameSerializer.InputParams(
+                auto_hang_up=True  # Let Pipecat handle hangup via Telnyx REST API properly
+            )
         )
 
         transport = FastAPIWebsocketTransport(
