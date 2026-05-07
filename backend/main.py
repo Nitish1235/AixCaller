@@ -81,11 +81,12 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
-        <Stream url="{voice_url}">
+        <Stream url="{voice_url}" bidirectional="true">
             <Parameter name="call_token" value="{signed_token}" />
         </Stream>
     </Connect>
 </Response>"""
+
 
     return PlainTextResponse(texml, media_type="application/xml")
 

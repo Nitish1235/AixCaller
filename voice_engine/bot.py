@@ -134,9 +134,13 @@ class VoiceAgent:
         )
 
         # 4. TTS
+        # Source-verified: voice param deprecated since 0.0.105
+        # Correct pattern: settings=DeepgramTTSService.Settings(voice=...)
         tts = DeepgramTTSService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
-            voice=self.agent_config.get("voice_id", "aura-asteria-en")
+            settings=DeepgramTTSService.Settings(
+                voice=self.agent_config.get("voice_id", "aura-asteria-en")
+            )
         )
 
         # 5. LLM
@@ -208,16 +212,17 @@ class VoiceAgent:
         ])
 
         # 9. Pipeline Task
-        # Source-verified: PipelineTask(pipeline, params=PipelineParams(...))
-        # PipelineParams does NOT have allow_interruptions or idle_timeout — those
-        # are handled by PipelineTask directly (idle_timeout_secs) and transport.
-        # allow_interruptions is NOT a PipelineParams field — removed.
+        # idle_timeout_secs = how long with NO BotSpeaking/UserSpeaking frames before auto-cancel.
+        # agent_config["idle_timeout"] (default 7) is meant for silence-before-hangup logic
+        # at the APPLICATION level — NOT for the Pipecat pipeline internal idle detection.
+        # For the pipeline we want a much longer window (e.g. 120s) so a normal conversation
+        # doesn't get killed if both sides are briefly quiet.
         task = PipelineTask(
             pipeline,
             params=PipelineParams(
                 enable_metrics=True,
             ),
-            idle_timeout_secs=self.agent_config.get("idle_timeout", 300),
+            idle_timeout_secs=120,  # 2 min pipeline idle safety net
         )
 
         # 10. Event Handlers
