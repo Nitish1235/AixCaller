@@ -43,7 +43,7 @@ from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
 # Source-verified: frames.py exports LLMMessagesAppendFrame
-from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame
+from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSMessagesFrame
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 # Source-verified: transports/websocket/fastapi.py
@@ -164,11 +164,13 @@ class VoiceAgent:
         # Source-verified: LLMContext(messages=[...])
         # Source-verified: LLMContextAggregatorPair(context, user_params=LLMUserAggregatorParams(...))
         # Source-verified: LLMUserAggregatorParams(vad_analyzer=...) ← field confirmed
-        system_prompt = self.agent_config.get("system_prompt", "You are a helpful voice assistant.")
+        agent_name = self.agent_config.get("name", "AI Assistant")
+        system_prompt = f"Your name is {agent_name}. " + self.agent_config.get("system_prompt", "You are a helpful voice assistant.")
+        
         if self.agent_config.get("is_recovery"):
             system_prompt = (
                 "IMPORTANT: You are calling the user back because they just missed us. "
-                "Start by saying 'Hi there, you just called us a few minutes ago. How can I help you today?'\n\n"
+                f"Start by saying 'Hi there, this is {agent_name}, you just called us a few minutes ago. How can I help you today?'\n\n"
                 + system_prompt
             )
         system_prompt += "\nIMPORTANT: If you need to use a tool, tell the user 'Let me check...' before calling it."
@@ -182,7 +184,96 @@ class VoiceAgent:
             )}
         ]
 
-        context = LLMContext(messages=messages)
+        # Define OpenAI tool schemas so the LLM knows what functions are available
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_knowledge_base",
+                    "description": "Searches the internal knowledge base for answers to user questions about the business, products, or services. Use this when the user asks a question you don't know the answer to.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search query to look up in the knowledge base."
+                            }
+                        },
+                        "required": ["query"],
+                        "additionalProperties": False
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "end_call",
+                    "description": "Ends the call. Use this when the conversation is over, the user says goodbye, or they ask to hang up.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": False
+                    }
+                }
+            }
+        ]
+
+        if self.agent_config.get("forwarding_number"):
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": "transfer_to_human",
+                    "description": "Transfers the call to a human representative. Use this when the user specifically asks to speak to a human or manager, or if you cannot help them.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": False
+                    }
+                }
+            })
+
+        tools_config = self.agent_config.get("tools_config", {})
+        if "shopify" in tools_config:
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": "check_shopify_order",
+                    "description": "Checks the status of a Shopify order given the order number.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "order_number": {
+                                "type": "string",
+                                "description": "The order number provided by the user (e.g. 1001)."
+                            }
+                        },
+                        "required": ["order_number"],
+                        "additionalProperties": False
+                    }
+                }
+            })
+
+        if "custom_api" in tools_config:
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": "search_internal_database",
+                    "description": "Searches an external database or API for custom information based on the user's query.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The query to search in the internal database."
+                            }
+                        },
+                        "required": ["query"],
+                        "additionalProperties": False
+                    }
+                }
+            })
+
+        context = LLMContext(messages=messages, tools=tools)
         aggregators = LLMContextAggregatorPair(
             context,
             user_params=LLMUserAggregatorParams(
@@ -247,18 +338,24 @@ class VoiceAgent:
         # 10. Event Handlers
         @transport.event_handler("on_client_connected")
         async def on_connected(transport, client):
-            logger.info("Telnyx audio stream connected. Sending greeting.")
-            greet_msg = "Please give a very short, warm greeting."
+            logger.info("Telnyx audio stream connected. Sending instant TTS greeting.")
+            
+            agent_name = self.agent_config.get("name", "our assistant")
             if self.agent_config.get("is_recovery"):
-                greet_msg = "Please give a short greeting and mention we are calling them back."
+                greeting_text = f"Hi there, this is {agent_name}. You just called us a few minutes ago. How can I help you?"
+            else:
+                greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
 
-            # LLMMessagesAppendFrame with run_llm=True is the correct trigger:
-            # it appends the message to context and immediately fires the LLM.
-            # get_context_frame() does NOT exist on LLMUserAggregator.
+            # 1. INSTANT AUDIO: Send text directly to TTS, bypassing the LLM completely
+            await task.queue_frames([
+                TTSMessagesFrame(messages=[{"role": "assistant", "content": greeting_text}])
+            ])
+
+            # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said, but DO NOT run it
             await task.queue_frames([
                 LLMMessagesAppendFrame(
-                    messages=[{"role": "user", "content": greet_msg}],
-                    run_llm=True
+                    messages=[{"role": "assistant", "content": greeting_text}],
+                    run_llm=False
                 )
             ])
 

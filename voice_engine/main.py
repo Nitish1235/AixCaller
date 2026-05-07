@@ -101,6 +101,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             return
                         
                         agent_config = {
+                            "name": agent.name,
                             "system_prompt": agent.system_prompt,
                             "voice_id": agent.voice_id,
                             "agent_id": str(agent.id),
