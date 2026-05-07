@@ -43,7 +43,7 @@ from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
 # Source-verified: frames.py exports LLMMessagesAppendFrame
-from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSMessagesFrame
+from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 # Source-verified: transports/websocket/fastapi.py
@@ -348,7 +348,7 @@ class VoiceAgent:
 
             # 1. INSTANT AUDIO: Send text directly to TTS, bypassing the LLM completely
             await task.queue_frames([
-                TTSMessagesFrame(messages=[{"role": "assistant", "content": greeting_text}])
+                TTSSpeakFrame(text=greeting_text)
             ])
 
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said, but DO NOT run it
