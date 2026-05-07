@@ -224,7 +224,6 @@ class VoiceAgent:
         )
 
         # 10. Event Handlers
-        # Official example: on_client_connected queues get_context_frame() to trigger the LLM
         @transport.event_handler("on_client_connected")
         async def on_connected(transport, client):
             logger.info("Telnyx audio stream connected. Sending greeting.")
@@ -232,9 +231,15 @@ class VoiceAgent:
             if self.agent_config.get("is_recovery"):
                 greet_msg = "Please give a short greeting and mention we are calling them back."
 
-            # Add greeting as user message then push context frame — matches official Pipecat example
-            messages.append({"role": "user", "content": greet_msg})
-            await task.queue_frames([aggregators.user().get_context_frame()])
+            # LLMMessagesAppendFrame with run_llm=True is the correct trigger:
+            # it appends the message to context and immediately fires the LLM.
+            # get_context_frame() does NOT exist on LLMUserAggregator.
+            await task.queue_frames([
+                LLMMessagesAppendFrame(
+                    messages=[{"role": "user", "content": greet_msg}],
+                    run_llm=True
+                )
+            ])
 
         # Official example: on_client_disconnected sends EndFrame (graceful shutdown)
         # then does post-call processing. task.cancel() is too abrupt.

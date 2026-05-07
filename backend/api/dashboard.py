@@ -169,8 +169,10 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
     transcript = data.get("transcript")
     
     # 1. Create the Call Record
+    # call_id from voice engine is the Telnyx call_control_id (format: "v3:xxx...")
+    # which is NOT a UUID. We generate a fresh UUID for the DB record.
     new_call = CallRecord(
-        id=uuid.UUID(call_id),
+        id=uuid.uuid4(),
         tenant_id=uuid.UUID(data.get("tenant_id")),
         agent_id=uuid.UUID(data.get("agent_id")),
         from_number=data.get("from_number", "unknown"),
