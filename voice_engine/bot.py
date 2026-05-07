@@ -42,7 +42,7 @@ from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
 # Source-verified: frames.py exports LLMMessagesAppendFrame
-from pipecat.frames.frames import LLMMessagesAppendFrame
+from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 # Source-verified: transports/websocket/fastapi.py
@@ -107,14 +107,15 @@ class VoiceAgent:
         )
 
         # 2. Transport
-        # Source-verified: FastAPIWebsocketParams(audio_in_enabled, audio_out_enabled, serializer)
-        # Event handlers: on_client_connected(transport, websocket)
-        #                 on_client_disconnected(transport, websocket)
+        # Official Pipecat Telnyx example uses audio_out_sample_rate=8000, audio_in_sample_rate=8000
+        # because Telnyx streams PCMU at 8kHz. Default pipeline rates (24k/16k) cause silent audio.
         transport = FastAPIWebsocketTransport(
             websocket=websocket,
             params=FastAPIWebsocketParams(
                 audio_in_enabled=True,
                 audio_out_enabled=True,
+                audio_in_sample_rate=8000,
+                audio_out_sample_rate=8000,
                 serializer=serializer,
             )
         )
@@ -223,30 +224,26 @@ class VoiceAgent:
         )
 
         # 10. Event Handlers
-        # Source-verified: on_client_connected(transport, websocket)
+        # Official example: on_client_connected queues get_context_frame() to trigger the LLM
         @transport.event_handler("on_client_connected")
-        async def on_connected(transport, websocket):
+        async def on_connected(transport, client):
             logger.info("Telnyx audio stream connected. Sending greeting.")
             greet_msg = "Please give a very short, warm greeting."
             if self.agent_config.get("is_recovery"):
                 greet_msg = "Please give a short greeting and mention we are calling them back."
 
-            # Source-verified: task.queue_frames([...]) ← confirmed method exists
-            await task.queue_frames([
-                LLMMessagesAppendFrame(
-                    messages=[{"role": "user", "content": greet_msg}],
-                    run_llm=True
-                )
-            ])
+            # Add greeting as user message then push context frame — matches official Pipecat example
+            messages.append({"role": "user", "content": greet_msg})
+            await task.queue_frames([aggregators.user().get_context_frame()])
 
-        # Source-verified: on_client_disconnected(transport, websocket)
+        # Official example: on_client_disconnected sends EndFrame (graceful shutdown)
+        # then does post-call processing. task.cancel() is too abrupt.
         @transport.event_handler("on_client_disconnected")
-        async def on_disconnected(transport, websocket):
+        async def on_disconnected(transport, client):
             logger.info(f"Call {call_id} disconnected. Sending transcript to backend...")
 
-            # Cancel the pipeline task
-            # Source-verified: task.cancel() ← confirmed async method
-            await task.cancel()
+            # Graceful shutdown — matches official Pipecat Telnyx example
+            await task.queue_frames([EndFrame()])
 
             # Send transcript to backend for analytics
             try:

@@ -77,16 +77,17 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     # 4. Route to Voice Engine with the Token
     voice_url = os.environ.get("VOICE_ENGINE_URL")
     
-    # Telnyx TeXML — track="both_tracks" enables bidirectional audio streaming.
-    # Official Telnyx docs: inbound_track (default, receive only) | both_tracks (bidirectional)
-    # bidirectional="true" is Twilio syntax and is NOT valid for Telnyx.
+    # Official Pipecat Telnyx example (pipecat-examples/telnyx-chatbot/outbound/server.py):
+    # bidirectionalMode="rtp" is the CORRECT attribute for two-way audio.
+    # track="both_tracks" alone does NOT enable sending audio back — rtp mode is required.
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
-        <Stream url="{voice_url}" track="both_tracks">
+        <Stream url="{voice_url}" bidirectionalMode="rtp">
             <Parameter name="call_token" value="{signed_token}" />
         </Stream>
     </Connect>
+    <Pause length="40"/>
 </Response>"""
 
     return PlainTextResponse(texml, media_type="application/xml")
