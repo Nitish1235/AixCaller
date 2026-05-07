@@ -79,6 +79,9 @@ class VoiceAgent:
         serializer = TwilioFrameSerializer(
             stream_sid=stream_id
         )
+        # Manually disable auto_hang_up if it's enabled by default in the library
+        if hasattr(serializer, "auto_hang_up"):
+            serializer.auto_hang_up = False
 
         transport = FastAPIWebsocketTransport(
             websocket=websocket,
