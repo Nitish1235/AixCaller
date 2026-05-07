@@ -68,9 +68,10 @@ class VoiceAgent:
         self.agent_config = agent_config
 
     # ── Tool: Knowledge Base Search ──────────────────────────────────────────
-    async def search_kb(self, query: str):
+    async def search_kb(self, args):
         """Semantic search via pgvector — finds the most relevant KB chunks for this agent."""
         try:
+            query = args.arguments.get("query", "")
             return await search_knowledge_base(
                 query=query,
                 tenant_id=uuid.UUID(self.tenant_id),
@@ -81,12 +82,12 @@ class VoiceAgent:
             return "No relevant information found in the knowledge base."
 
     # ── Tool: End Call ───────────────────────────────────────────────────────
-    async def end_call(self):
+    async def end_call(self, args):
         logger.info(f"AI requested call end for tenant {self.tenant_id}")
         return "Ending the call now. Goodbye!"
 
     # ── Tool: Transfer to Human ──────────────────────────────────────────────
-    async def transfer_to_human(self):
+    async def transfer_to_human(self, args):
         logger.info(f"AI requested transfer for tenant {self.tenant_id}")
         return "Please hold while I transfer you to a human representative."
 
@@ -280,12 +281,14 @@ class VoiceAgent:
 
         tools_config = self.agent_config.get("tools_config", {})
         if "shopify" in tools_config:
-            async def shopify_wrapper(order_number: str):
+            async def shopify_wrapper(args):
+                order_number = args.arguments.get("order_number", "")
                 return await shopify.check_order_status(order_number, tools_config["shopify"])
             llm.register_function("check_shopify_order", shopify_wrapper)
 
         if "custom_api" in tools_config:
-            async def custom_api_wrapper(query: str):
+            async def custom_api_wrapper(args):
+                query = args.arguments.get("query", "")
                 return await custom_api.fetch_custom_data(query, tools_config["custom_api"])
             llm.register_function("search_internal_database", custom_api_wrapper)
 
