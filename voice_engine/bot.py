@@ -212,17 +212,14 @@ class VoiceAgent:
         ])
 
         # 9. Pipeline Task
-        # idle_timeout_secs = how long with NO BotSpeaking/UserSpeaking frames before auto-cancel.
-        # agent_config["idle_timeout"] (default 7) is meant for silence-before-hangup logic
-        # at the APPLICATION level — NOT for the Pipecat pipeline internal idle detection.
-        # For the pipeline we want a much longer window (e.g. 120s) so a normal conversation
-        # doesn't get killed if both sides are briefly quiet.
+        # idle_timeout_secs: how long with NO speaking activity before auto-cancelling.
+        # 30 seconds is a reasonable "dead air" limit for a voice call.
         task = PipelineTask(
             pipeline,
             params=PipelineParams(
                 enable_metrics=True,
             ),
-            idle_timeout_secs=120,  # 2 min pipeline idle safety net
+            idle_timeout_secs=30,  # hang up after 30s of total silence
         )
 
         # 10. Event Handlers

@@ -72,6 +72,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 # custom_parameters is confirmed by logs as the correct key
                 params = start_data.get("custom_parameters") or {}
                 
+                # Log media_format to verify Telnyx codec negotiation
+                media_format = start_data.get("media_format", {})
+                logger.info(f"Telnyx media_format: {media_format}")
+                
                 logger.info(f"Start event received. Available params: {list(params.keys())}")
                 
                 # 1. Verify the Security Token
