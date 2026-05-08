@@ -251,24 +251,23 @@ class VoiceAgent:
                 )
             )
 
+        # Create VAD analyzer (shared between pipeline and aggregator)
+        vad_analyzer = SileroVADAnalyzer(
+            sample_rate=8000,
+            params=VADParams(
+                start_secs=0.2,   # confirm speech start after 200ms
+                stop_secs=0.2,    # confirm speech stop after 200ms
+                confidence=0.7,   # VAD confidence threshold
+                min_volume=0.6    # min volume to consider as speech
+            )
+        )
+
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
         aggregators = LLMContextAggregatorPair(
             context,
             user_params=LLMUserAggregatorParams(
-                # VAD latency tuning (source: vad_analyzer.py defaults: start=0.2, stop=0.2)
-                # stop_secs=0.3: wait 300ms of silence before deciding user stopped speaking.
-                # Shorter = faster response but more false-positives (cuts off mid-sentence).
-                # 0.3s is optimal for phone calls per Pipecat phone-chatbot examples.
-                vad_analyzer=SileroVADAnalyzer(
-                    sample_rate=8000,
-                    params=VADParams(
-                        start_secs=0.2,   # confirm speech start after 200ms
-                        stop_secs=0.2,    # confirm speech stop after 200ms (recommended)
-                    )
-                ),
-                # user_turn_stop_timeout: max wait after VAD stop before forcing LLM run.
-                # Reduce from default 5.0s to 1.0s for snappy responses.
-                user_turn_stop_timeout=1.0,
+                vad_analyzer=vad_analyzer,  # ← CRITICAL: Tell aggregator HOW to detect speech turns
+                user_turn_stop_timeout=1.0,  # max wait after VAD stop before forcing LLM run
             )
         )
 
@@ -293,6 +292,9 @@ class VoiceAgent:
             llm.register_function("search_internal_database", custom_api_wrapper)
 
         # 8. Assemble Pipeline
+        # NOTE: VAD is NOT a separate processor in the pipeline.
+        # Instead, it's passed to LLMUserAggregatorParams above,
+        # where it controls when user turns start/stop and triggers the LLM.
         pipeline = Pipeline([
             transport.input(),
             stt,
