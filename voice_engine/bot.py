@@ -174,7 +174,6 @@ class VoiceAgent:
                 f"Start by saying 'Hi there, this is {agent_name}, you just called us a few minutes ago. How can I help you today?'\n\n"
                 + system_prompt
             )
-        system_prompt += "\nIMPORTANT: If you need to use a tool, tell the user 'Let me check...' before calling it."
 
         messages = [
             {"role": "system", "content": system_prompt},

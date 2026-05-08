@@ -9,10 +9,12 @@ from shared.database import engine
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
+# Global client for connection pooling
+openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
 async def get_embeddings(texts: List[str]) -> List[List[float]]:
     """Call OpenAI Embeddings API and return vectors."""
-    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    response = await client.embeddings.create(
+    response = await openai_client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=texts
     )
@@ -28,8 +30,7 @@ async def search_knowledge_base(
     Semantic search via pgvector cosine similarity.
     Returns the top matching chunks as a single string for LLM context injection.
     """
-    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    embed_response = await client.embeddings.create(
+    embed_response = await openai_client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=[query]
     )
