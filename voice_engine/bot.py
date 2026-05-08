@@ -329,13 +329,9 @@ class VoiceAgent:
                 TTSSpeakFrame(text=greeting_text)
             ])
 
-            # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said, but DO NOT run it
-            await task.queue_frames([
-                LLMMessagesAppendFrame(
-                    messages=[{"role": "assistant", "content": greeting_text}],
-                    run_llm=False
-                )
-            ])
+            # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said by directly mutating context
+            # This is safer than queuing LLMMessagesAppendFrame(run_llm=False) which can cause pipeline race conditions
+            context.add_message({"role": "assistant", "content": greeting_text})
 
         # Official example: on_client_disconnected sends EndFrame (graceful shutdown)
         # then does post-call processing. task.cancel() is too abrupt.
