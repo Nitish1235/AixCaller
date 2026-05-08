@@ -132,10 +132,10 @@ class VoiceAgent:
             sample_rate=8000,
             audio_passthrough=True,
             settings=DeepgramSTTService.Settings(
-                model="nova-3-general",
+                model="nova-2-phonecall",
                 language=language,
                 smart_format=True,
-                endpointing=100,   # ms of silence before transcript fires (was 300)
+                endpointing=300,   # ms of silence before transcript fires
                 interim_results=True,  # get partial results for faster perceived response
             )
         )
@@ -263,7 +263,7 @@ class VoiceAgent:
                     sample_rate=8000,
                     params=VADParams(
                         start_secs=0.2,   # confirm speech start after 200ms
-                        stop_secs=0.3,    # confirm speech stop after 300ms (was 200ms default)
+                        stop_secs=0.2,    # confirm speech stop after 200ms (recommended)
                     )
                 ),
                 # user_turn_stop_timeout: max wait after VAD stop before forcing LLM run.
