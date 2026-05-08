@@ -129,7 +129,8 @@ class VoiceAgent:
         language = self.agent_config.get("language", "en")
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
-            audio_in_sample_rate=8000,
+            sample_rate=8000,
+            audio_passthrough=True,
             settings=DeepgramSTTService.Settings(
                 model="nova-3-general",
                 language=language,
