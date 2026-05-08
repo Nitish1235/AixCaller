@@ -9,12 +9,19 @@ from shared.database import engine
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
-# Global client for connection pooling
-openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Global client for connection pooling, lazy loaded inside the event loop
+_openai_client = None
+
+def get_openai_client():
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    return _openai_client
 
 async def get_embeddings(texts: List[str]) -> List[List[float]]:
     """Call OpenAI Embeddings API and return vectors."""
-    response = await openai_client.embeddings.create(
+    client = get_openai_client()
+    response = await client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=texts
     )
@@ -30,7 +37,8 @@ async def search_knowledge_base(
     Semantic search via pgvector cosine similarity.
     Returns the top matching chunks as a single string for LLM context injection.
     """
-    embed_response = await openai_client.embeddings.create(
+    client = get_openai_client()
+    embed_response = await client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=[query]
     )
