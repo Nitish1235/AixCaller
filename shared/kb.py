@@ -47,25 +47,29 @@ async def search_knowledge_base(
     # Format as pgvector literal string
     vector_str = "[" + ",".join(str(x) for x in query_vector) + "]"
 
-    # Use SQLAlchemy execute() with bindparams — NOT SQLModel db.exec() with params={}
-    # db.exec() does NOT accept a params kwarg for raw text queries.
-    with Session(engine) as db:
-        result = db.execute(
-            text("""
-                SELECT content
-                FROM knowledge_chunks
-                WHERE agent_id = :agent_id
-                  AND tenant_id = :tenant_id
-                ORDER BY embedding <=> CAST(:query_vec AS vector)
-                LIMIT :limit
-            """).bindparams(
-                agent_id=str(agent_id),
-                tenant_id=str(tenant_id),
-                query_vec=vector_str,
-                limit=limit
+    def _run_db_query():
+        # Use SQLAlchemy execute() with bindparams — NOT SQLModel db.exec() with params={}
+        # db.exec() does NOT accept a params kwarg for raw text queries.
+        with Session(engine) as db:
+            result = db.execute(
+                text("""
+                    SELECT content
+                    FROM knowledge_chunks
+                    WHERE agent_id = CAST(:agent_id AS UUID)
+                      AND tenant_id = CAST(:tenant_id AS UUID)
+                    ORDER BY embedding <=> CAST(:query_vec AS vector)
+                    LIMIT :limit
+                """).bindparams(
+                    agent_id=str(agent_id),
+                    tenant_id=str(tenant_id),
+                    query_vec=vector_str,
+                    limit=limit
+                )
             )
-        )
-        rows = result.fetchall()
+            return result.fetchall()
+
+    import asyncio
+    rows = await asyncio.to_thread(_run_db_query)
 
     if not rows:
         return "No relevant information found in the knowledge base."

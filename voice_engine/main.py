@@ -18,6 +18,29 @@ except Exception as e:
 
 app = FastAPI(title="AIxcaller Voice Engine")
 
+@app.on_event("startup")
+async def startup_event():
+    from shared.kb import get_openai_client, EMBEDDING_MODEL
+    from sqlalchemy import text
+    logger.info("Warming up database and OpenAI connection pools...")
+    
+    def _warm_db():
+        with Session(engine) as db:
+            db.execute(text("SELECT 1"))
+    
+    try:
+        await asyncio.to_thread(_warm_db)
+        logger.info("Database connection pool warmed up.")
+    except Exception as e:
+        logger.warning(f"Failed to warm up DB: {e}")
+
+    try:
+        client = get_openai_client()
+        await client.embeddings.create(model=EMBEDDING_MODEL, input=["warmup"])
+        logger.info("OpenAI connection pool warmed up.")
+    except Exception as e:
+        logger.warning(f"Failed to warm up OpenAI: {e}")
+
 @app.websocket("/demo")
 async def demo_endpoint(websocket: WebSocket):
     """
