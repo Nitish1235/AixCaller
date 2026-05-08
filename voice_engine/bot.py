@@ -129,6 +129,7 @@ class VoiceAgent:
         language = self.agent_config.get("language", "en")
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
+            audio_in_sample_rate=8000,
             settings=DeepgramSTTService.Settings(
                 model="nova-3-general",
                 language=language,
@@ -258,11 +259,10 @@ class VoiceAgent:
                 # Shorter = faster response but more false-positives (cuts off mid-sentence).
                 # 0.3s is optimal for phone calls per Pipecat phone-chatbot examples.
                 vad_analyzer=SileroVADAnalyzer(
+                    sample_rate=8000,
                     params=VADParams(
                         start_secs=0.2,   # confirm speech start after 200ms
                         stop_secs=0.3,    # confirm speech stop after 300ms (was 200ms default)
-                        confidence=0.7,   # voice confidence threshold
-                        min_volume=0.6,   # minimum volume threshold
                     )
                 ),
                 # user_turn_stop_timeout: max wait after VAD stop before forcing LLM run.
