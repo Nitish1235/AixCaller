@@ -287,11 +287,20 @@ class VoiceAgent:
             )
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
-        # VAD lives ONLY in the aggregator (per official Pipecat Telnyx example)
+        # VAD with PHONE-tuned params (defaults are too strict for 8kHz PCMU phone audio)
+        phone_vad = SileroVADAnalyzer(
+            sample_rate=8000,
+            params=VADParams(
+                confidence=0.5,    # ↓ from 0.7 (phone has noise)
+                min_volume=0.15,   # ↓ from 0.6 (phone audio is quiet)
+                start_secs=0.15,   # ↓ from 0.2 (faster start)
+                stop_secs=0.4,     # ↑ from 0.2 (allow natural pauses)
+            )
+        )
         aggregators = LLMContextAggregatorPair(
             context,
             user_params=LLMUserAggregatorParams(
-                vad_analyzer=SileroVADAnalyzer(),  # default params work for phone audio
+                vad_analyzer=phone_vad,
             )
         )
 
@@ -365,15 +374,6 @@ class VoiceAgent:
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said by directly mutating context
             # This is safer than queuing LLMMessagesAppendFrame(run_llm=False) which can cause pipeline race conditions
             context.add_message({"role": "assistant", "content": greeting_text})
-
-        # Add VAD event handlers for debugging
-        @transport.event_handler("on_user_started_speaking")
-        async def on_user_started(transport, client):
-            logger.info("🎤 USER STARTED SPEAKING (VAD detected)")
-
-        @transport.event_handler("on_user_stopped_speaking")
-        async def on_user_stopped(transport, client):
-            logger.info("🔇 USER STOPPED SPEAKING (VAD detected)")
 
         # Official example: on_client_disconnected sends EndFrame (graceful shutdown)
         # then does post-call processing. task.cancel() is too abrupt.
