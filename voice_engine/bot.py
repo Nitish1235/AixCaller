@@ -108,49 +108,26 @@ class VoiceAgent:
             )
         )
 
-        # 2b. Create VAD analyzer FIRST - shared by transport and aggregator
-        # The transport injects VAD frames into the pipeline so STT can finalize transcripts
-        # CRITICAL: Phone audio is quiet & compressed - use LOW thresholds!
-        vad_analyzer = SileroVADAnalyzer(
-            sample_rate=8000,
-            params=VADParams(
-                start_secs=0.15,  # confirm speech start after 150ms
-                stop_secs=0.4,    # wait 400ms of silence to confirm stop (phones have pauses)
-                confidence=0.5,   # LOWERED from 0.7 - phone audio is noisier
-                min_volume=0.15   # LOWERED from 0.6 - phone audio is much quieter!
-            )
-        )
-
-        # 2. Transport — VAD goes HERE so it intercepts audio at entry point
-        # When VAD detects speech end, it emits frames that STT uses to finalize transcripts
+        # 2. Transport — matches OFFICIAL Pipecat Telnyx example
+        # NO vad_analyzer here, NO sample rates here (those go in PipelineParams below)
         transport = FastAPIWebsocketTransport(
             websocket=websocket,
             params=FastAPIWebsocketParams(
                 audio_in_enabled=True,
                 audio_out_enabled=True,
-                audio_in_sample_rate=8000,
-                audio_out_sample_rate=8000,
-                vad_analyzer=vad_analyzer,  # ← CRITICAL: VAD lives in transport
+                add_wav_header=False,
                 serializer=serializer,
             )
         )
 
-        # 3. STT — latency optimizations:
-        # - nova-2-phonecall: optimized for phone calls
-        # - endpointing=80: fire transcript after 80ms silence (reduced from 300ms)
-        # - smart_format: keep on for punctuation
-        # NOTE: VAD is in the transport, NOT in STT settings
+        # 3. STT — Simple configuration matching official example
         language = self.agent_config.get("language", "en")
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
-            sample_rate=8000,
-            audio_passthrough=True,
             settings=DeepgramSTTService.Settings(
                 model="nova-2-phonecall",
                 language=language,
                 smart_format=True,
-                endpointing=80,    # REDUCED: fire transcript after just 80ms of silence (was 300ms)
-                interim_results=False,  # disable interim to avoid false transcripts
             )
         )
 
@@ -266,11 +243,11 @@ class VoiceAgent:
             )
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
+        # VAD lives ONLY in the aggregator (per official Pipecat Telnyx example)
         aggregators = LLMContextAggregatorPair(
             context,
             user_params=LLMUserAggregatorParams(
-                vad_analyzer=vad_analyzer,  # ← CRITICAL: Tell aggregator HOW to detect speech turns
-                user_turn_stop_timeout=1.0,  # max wait after VAD stop before forcing LLM run
+                vad_analyzer=SileroVADAnalyzer(),  # default params work for phone audio
             )
         )
 
@@ -308,15 +285,16 @@ class VoiceAgent:
             aggregators.assistant()
         ])
 
-        # 9. Pipeline Task
-        # idle_timeout_secs: how long with NO speaking activity before auto-cancelling.
-        # 30 seconds is a reasonable "dead air" limit for a voice call.
+        # 9. Pipeline Task — sample rates go HERE per official example
         task = PipelineTask(
             pipeline,
             params=PipelineParams(
+                audio_in_sample_rate=8000,   # Telnyx PCMU is 8kHz
+                audio_out_sample_rate=8000,  # Telnyx PCMU is 8kHz
                 enable_metrics=True,
+                enable_usage_metrics=True,
             ),
-            idle_timeout_secs=30,  # hang up after 30s of total silence
+            idle_timeout_secs=30,
         )
 
         # 10. Event Handlers
