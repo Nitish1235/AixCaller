@@ -108,21 +108,8 @@ class VoiceAgent:
             )
         )
 
-        # 2. Transport
-        # Official Pipecat Telnyx example uses audio_out_sample_rate=8000, audio_in_sample_rate=8000
-        # because Telnyx streams PCMU at 8kHz. Default pipeline rates (24k/16k) cause silent audio.
-        transport = FastAPIWebsocketTransport(
-            websocket=websocket,
-            params=FastAPIWebsocketParams(
-                audio_in_enabled=True,
-                audio_out_enabled=True,
-                audio_in_sample_rate=8000,
-                audio_out_sample_rate=8000,
-                serializer=serializer,
-            )
-        )
-
-        # 2b. Create VAD analyzer FIRST - will be shared by STT, aggregator, and LLM
+        # 2b. Create VAD analyzer FIRST - shared by transport and aggregator
+        # The transport injects VAD frames into the pipeline so STT can finalize transcripts
         vad_analyzer = SileroVADAnalyzer(
             sample_rate=8000,
             params=VADParams(
@@ -133,11 +120,25 @@ class VoiceAgent:
             )
         )
 
+        # 2. Transport — VAD goes HERE so it intercepts audio at entry point
+        # When VAD detects speech end, it emits frames that STT uses to finalize transcripts
+        transport = FastAPIWebsocketTransport(
+            websocket=websocket,
+            params=FastAPIWebsocketParams(
+                audio_in_enabled=True,
+                audio_out_enabled=True,
+                audio_in_sample_rate=8000,
+                audio_out_sample_rate=8000,
+                vad_analyzer=vad_analyzer,  # ← CRITICAL: VAD lives in transport
+                serializer=serializer,
+            )
+        )
+
         # 3. STT — latency optimizations:
         # - nova-2-phonecall: optimized for phone calls
-        # - endpointing=80: fire transcript immediately after 80ms silence (reduced from 300ms)
+        # - endpointing=80: fire transcript after 80ms silence (reduced from 300ms)
         # - smart_format: keep on for punctuation
-        # - vad_analyzer: connect VAD to STT so it forces finalization when user stops speaking
+        # NOTE: VAD is in the transport, NOT in STT settings
         language = self.agent_config.get("language", "en")
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
@@ -149,7 +150,6 @@ class VoiceAgent:
                 smart_format=True,
                 endpointing=80,    # REDUCED: fire transcript after just 80ms of silence (was 300ms)
                 interim_results=False,  # disable interim to avoid false transcripts
-                vad_analyzer=vad_analyzer  # ← STT gets VAD for forced finalization
             )
         )
 
