@@ -18,12 +18,14 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable is not set.")
 
 # Runtime engine — Transaction Pooler for Cloud Run
+# Pool sized for concurrent voice calls: each call may run KB queries in parallel.
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     pool_recycle=300,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=10,         # ↑ from 5 — handles more concurrent calls
+    max_overflow=20,      # ↑ from 10 — burst capacity for KB queries
+    pool_timeout=5,       # fail fast if pool exhausted (don't block voice path)
     connect_args={
         "sslmode": "require",
         "connect_timeout": 10,
@@ -68,6 +70,16 @@ def init_db():
         """))
         conn.commit()
         logger.info("HNSW vector index created on knowledge_chunks.")
+
+        # 4. Composite B-tree index on (agent_id, tenant_id) — speeds up the WHERE
+        # filter that runs BEFORE the vector ORDER BY. Without this, large tenants
+        # cause sequential scans.
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS knowledge_chunks_agent_tenant_idx
+            ON knowledge_chunks (agent_id, tenant_id);
+        """))
+        conn.commit()
+        logger.info("Composite (agent_id, tenant_id) index created.")
 
     logger.info("Database initialization complete.")
 

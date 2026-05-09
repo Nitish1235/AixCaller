@@ -70,15 +70,20 @@ class VoiceAgent:
     # ── Tool: Knowledge Base Search ──────────────────────────────────────────
     async def search_kb(self, args):
         """Semantic search via pgvector — finds the most relevant KB chunks for this agent."""
+        import time
+        t0 = time.time()
         try:
             query = args.arguments.get("query", "")
-            return await search_knowledge_base(
+            logger.info(f"🔍 KB SEARCH started for query: '{query}'")
+            result = await search_knowledge_base(
                 query=query,
                 tenant_id=uuid.UUID(self.tenant_id),
                 agent_id=uuid.UUID(self.agent_config["agent_id"])
             )
+            logger.info(f"✅ KB SEARCH completed in {(time.time() - t0) * 1000:.0f}ms")
+            return result
         except Exception as e:
-            logger.error(f"KB search error: {e}")
+            logger.error(f"❌ KB search error after {(time.time() - t0) * 1000:.0f}ms: {e}")
             return "No relevant information found in the knowledge base."
 
     # ── Tool: End Call ───────────────────────────────────────────────────────
@@ -171,9 +176,18 @@ class VoiceAgent:
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "system", "content": (
-                "CRITICAL RULE: You are on a live voice call. "
-                "Keep answers extremely short and conversational. "
-                "1-2 short sentences MAXIMUM. Be brief and direct."
+                "CRITICAL RULES — YOU MUST FOLLOW THESE:\n"
+                "1. You are on a live voice call. Keep answers EXTREMELY short — 1-2 sentences MAX.\n"
+                "2. KNOWLEDGE BASE USAGE (MANDATORY): For ANY question about this business — "
+                "products, services, pricing, hours, location, policies, features, availability, "
+                "shipping, returns, contact info, or anything specific to the company — "
+                "you MUST call `search_knowledge_base` FIRST before answering. "
+                "NEVER answer business questions from memory or general knowledge — only from KB results.\n"
+                "3. If KB returns 'No relevant information found', say: "
+                "'I don't have that information right now, would you like me to connect you with a human?'\n"
+                "4. Be conversational and natural — sound like a real person, not a robot.\n"
+                "5. NEVER use lists, bullet points, or markdown — this is a phone call.\n"
+                "6. If user asks something off-topic, gently redirect to how you can help."
             )}
         ]
 
@@ -184,11 +198,16 @@ class VoiceAgent:
         standard_tools = [
             FunctionSchema(
                 name="search_knowledge_base",
-                description="Searches the internal knowledge base for answers to user questions about the business, products, or services. Use this when the user asks a question you don't know the answer to.",
+                description=(
+                    "MANDATORY for any business-specific question. Searches the company's knowledge base "
+                    "for accurate answers about products, services, pricing, hours, policies, locations, "
+                    "shipping, returns, features, availability, contact info, or anything specific to this company. "
+                    "ALWAYS call this FIRST before answering — never guess or use general knowledge."
+                ),
                 properties={
                     "query": {
                         "type": "string",
-                        "description": "The search query to look up in the knowledge base."
+                        "description": "The user's question, rephrased as a clear search query. Include key terms."
                     }
                 },
                 required=["query"]
