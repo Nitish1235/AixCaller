@@ -63,38 +63,63 @@ from voice_engine.tools import shopify, custom_api
 
 
 class VoiceAgent:
+    # Filler phrases — randomized so it doesn't sound robotic
+    FILLER_PHRASES = [
+        "Let me check that for you.",
+        "One moment, looking that up.",
+        "Sure, let me find that.",
+        "Just a sec, checking now.",
+    ]
+
     def __init__(self, tenant_id: str, agent_config: dict):
         self.tenant_id = tenant_id
         self.agent_config = agent_config
+        self.task = None  # Pipeline task ref — set in start() so tools can push frames
 
     # ── Tool: Knowledge Base Search ──────────────────────────────────────────
-    async def search_kb(self, args):
-        """Semantic search via pgvector — finds the most relevant KB chunks for this agent."""
+    async def search_kb(self, params):
+        """Semantic search via pgvector — finds the most relevant KB chunks for this agent.
+
+        Pipecat 1.x API: must call params.result_callback(result) to deliver the result.
+        Returning a value does NOT work — LLM sees "IN_PROGRESS" forever.
+
+        UX: While KB search runs (~1-2s), play a filler phrase so user hears
+        immediate audio and doesn't think the agent froze.
+        """
         import time
+        import random
         t0 = time.time()
         try:
-            query = args.arguments.get("query", "")
+            query = params.arguments.get("query", "")
             logger.info(f"🔍 KB SEARCH started for query: '{query}'")
+
+            # ── Speak a filler IMMEDIATELY so user hears feedback ──────────
+            if self.task:
+                filler = random.choice(self.FILLER_PHRASES)
+                await self.task.queue_frames([TTSSpeakFrame(text=filler)])
+                logger.info(f"🗣️  Filler spoken: '{filler}'")
+
+            # ── Run the actual KB search ───────────────────────────────────
             result = await search_knowledge_base(
                 query=query,
                 tenant_id=uuid.UUID(self.tenant_id),
                 agent_id=uuid.UUID(self.agent_config["agent_id"])
             )
             logger.info(f"✅ KB SEARCH completed in {(time.time() - t0) * 1000:.0f}ms")
-            return result
+            await params.result_callback(result)
         except Exception as e:
             logger.error(f"❌ KB search error after {(time.time() - t0) * 1000:.0f}ms: {e}")
-            return "No relevant information found in the knowledge base."
+            await params.result_callback("No relevant information found in the knowledge base.")
 
     # ── Tool: End Call ───────────────────────────────────────────────────────
-    async def end_call(self, args):
+    async def end_call(self, params):
         logger.info(f"AI requested call end for tenant {self.tenant_id}")
-        return "Ending the call now. Goodbye!"
+        await params.result_callback("Ending the call now. Goodbye!")
 
     # ── Tool: Transfer to Human ──────────────────────────────────────────────
-    async def transfer_to_human(self, args):
+    async def transfer_to_human(self, params):
         logger.info(f"AI requested transfer for tenant {self.tenant_id}")
-        return "Please hold while I transfer you to a human representative."
+        await params.result_callback("Please hold while I transfer you to a human representative.")
 
     # ── Main Entry Point ─────────────────────────────────────────────────────
     async def start(self, websocket, stream_id: str, call_id: str):
@@ -279,15 +304,17 @@ class VoiceAgent:
 
         tools_config = self.agent_config.get("tools_config", {})
         if "shopify" in tools_config:
-            async def shopify_wrapper(args):
-                order_number = args.arguments.get("order_number", "")
-                return await shopify.check_order_status(order_number, tools_config["shopify"])
+            async def shopify_wrapper(params):
+                order_number = params.arguments.get("order_number", "")
+                result = await shopify.check_order_status(order_number, tools_config["shopify"])
+                await params.result_callback(result)
             llm.register_function("check_shopify_order", shopify_wrapper)
 
         if "custom_api" in tools_config:
-            async def custom_api_wrapper(args):
-                query = args.arguments.get("query", "")
-                return await custom_api.fetch_custom_data(query, tools_config["custom_api"])
+            async def custom_api_wrapper(params):
+                query = params.arguments.get("query", "")
+                result = await custom_api.fetch_custom_data(query, tools_config["custom_api"])
+                await params.result_callback(result)
             llm.register_function("search_internal_database", custom_api_wrapper)
 
         # 8. Assemble Pipeline
@@ -315,6 +342,9 @@ class VoiceAgent:
             ),
             idle_timeout_secs=30,
         )
+        # Expose task to tool functions so they can push filler audio (TTSSpeakFrame)
+        # while long-running operations like KB search are in progress.
+        self.task = task
 
         # 10. Event Handlers
         @transport.event_handler("on_client_connected")
