@@ -110,13 +110,14 @@ class VoiceAgent:
 
         # 2b. Create VAD analyzer FIRST - shared by transport and aggregator
         # The transport injects VAD frames into the pipeline so STT can finalize transcripts
+        # CRITICAL: Phone audio is quiet & compressed - use LOW thresholds!
         vad_analyzer = SileroVADAnalyzer(
             sample_rate=8000,
             params=VADParams(
-                start_secs=0.2,   # confirm speech start after 200ms
-                stop_secs=0.2,    # confirm speech stop after 200ms
-                confidence=0.7,   # VAD confidence threshold
-                min_volume=0.6    # min volume to consider as speech
+                start_secs=0.15,  # confirm speech start after 150ms
+                stop_secs=0.4,    # wait 400ms of silence to confirm stop (phones have pauses)
+                confidence=0.5,   # LOWERED from 0.7 - phone audio is noisier
+                min_volume=0.15   # LOWERED from 0.6 - phone audio is much quieter!
             )
         )
 
@@ -337,6 +338,15 @@ class VoiceAgent:
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said by directly mutating context
             # This is safer than queuing LLMMessagesAppendFrame(run_llm=False) which can cause pipeline race conditions
             context.add_message({"role": "assistant", "content": greeting_text})
+
+        # Add VAD event handlers for debugging
+        @transport.event_handler("on_user_started_speaking")
+        async def on_user_started(transport, client):
+            logger.info("🎤 USER STARTED SPEAKING (VAD detected)")
+
+        @transport.event_handler("on_user_stopped_speaking")
+        async def on_user_stopped(transport, client):
+            logger.info("🔇 USER STOPPED SPEAKING (VAD detected)")
 
         # Official example: on_client_disconnected sends EndFrame (graceful shutdown)
         # then does post-call processing. task.cancel() is too abrupt.
