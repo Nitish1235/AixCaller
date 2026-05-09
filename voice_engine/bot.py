@@ -122,10 +122,22 @@ class VoiceAgent:
             )
         )
 
+        # 2b. Create VAD analyzer FIRST - will be shared by STT, aggregator, and LLM
+        vad_analyzer = SileroVADAnalyzer(
+            sample_rate=8000,
+            params=VADParams(
+                start_secs=0.2,   # confirm speech start after 200ms
+                stop_secs=0.2,    # confirm speech stop after 200ms
+                confidence=0.7,   # VAD confidence threshold
+                min_volume=0.6    # min volume to consider as speech
+            )
+        )
+
         # 3. STT — latency optimizations:
-        # - nova-3-general: lower latency than nova-2-phonecall for streaming
-        # - endpointing=100: fire transcript after 100ms silence (was 300ms = 200ms extra wait)
+        # - nova-2-phonecall: optimized for phone calls
+        # - endpointing=80: fire transcript immediately after 80ms silence (reduced from 300ms)
         # - smart_format: keep on for punctuation
+        # - vad_analyzer: connect VAD to STT so it forces finalization when user stops speaking
         language = self.agent_config.get("language", "en")
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
@@ -135,8 +147,9 @@ class VoiceAgent:
                 model="nova-2-phonecall",
                 language=language,
                 smart_format=True,
-                endpointing=300,   # ms of silence before transcript fires
-                interim_results=True,  # get partial results for faster perceived response
+                endpointing=80,    # REDUCED: fire transcript after just 80ms of silence (was 300ms)
+                interim_results=False,  # disable interim to avoid false transcripts
+                vad_analyzer=vad_analyzer  # ← STT gets VAD for forced finalization
             )
         )
 
@@ -250,17 +263,6 @@ class VoiceAgent:
                     required=["query"]
                 )
             )
-
-        # Create VAD analyzer (shared between pipeline and aggregator)
-        vad_analyzer = SileroVADAnalyzer(
-            sample_rate=8000,
-            params=VADParams(
-                start_secs=0.2,   # confirm speech start after 200ms
-                stop_secs=0.2,    # confirm speech stop after 200ms
-                confidence=0.7,   # VAD confidence threshold
-                min_volume=0.6    # min volume to consider as speech
-            )
-        )
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
         aggregators = LLMContextAggregatorPair(
