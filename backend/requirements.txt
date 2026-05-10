@@ -19,3 +19,4 @@ websockets
 python-multipart
 resend
 bcrypt
+redis>=5.0.0

@@ -22,24 +22,54 @@ app = FastAPI(title="AIxcaller Voice Engine")
 async def startup_event():
     from shared.kb import get_openai_client, EMBEDDING_MODEL
     from sqlalchemy import text
-    logger.info("Warming up database and OpenAI connection pools...")
-    
+    from voice_engine.preload import warmup_models
+
+    logger.info("=" * 60)
+    logger.info("Voice engine startup — warming connection pools & ML models")
+    logger.info("=" * 60)
+
+    # ── 1. Pre-load ML models (Silero VAD, Smart Turn V3) ────────────────
+    # This saves ~150ms on EVERY subsequent call. Runs in a thread to avoid
+    # blocking the event loop (torch.hub.load is sync).
+    try:
+        await asyncio.to_thread(warmup_models)
+    except Exception as e:
+        logger.warning(f"Model warmup failed (calls will still work): {e}")
+
+    # ── 2. Warm up database connection pool ──────────────────────────────
     def _warm_db():
         with Session(engine) as db:
             db.execute(text("SELECT 1"))
-    
+
     try:
         await asyncio.to_thread(_warm_db)
-        logger.info("Database connection pool warmed up.")
+        logger.info("✅ Database connection pool warmed up")
     except Exception as e:
         logger.warning(f"Failed to warm up DB: {e}")
 
+    # ── 3. Warm up OpenAI connection pool ────────────────────────────────
     try:
         client = get_openai_client()
         await client.embeddings.create(model=EMBEDDING_MODEL, input=["warmup"])
-        logger.info("OpenAI connection pool warmed up.")
+        logger.info("✅ OpenAI connection pool warmed up")
     except Exception as e:
         logger.warning(f"Failed to warm up OpenAI: {e}")
+
+    # ── 4. Warm up Redis connection (if configured) ──────────────────────
+    try:
+        from shared.cache import get_redis
+        redis_client = get_redis()
+        if redis_client:
+            await redis_client.ping()
+            logger.info("✅ Redis connection warmed up")
+        else:
+            logger.info("ℹ️  Redis not configured — KB cache layers disabled")
+    except Exception as e:
+        logger.warning(f"Failed to warm up Redis: {e}")
+
+    logger.info("=" * 60)
+    logger.info("✅ Startup complete — ready to handle calls")
+    logger.info("=" * 60)
 
 @app.websocket("/demo")
 async def demo_endpoint(websocket: WebSocket):

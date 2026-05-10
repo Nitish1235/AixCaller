@@ -13,3 +13,4 @@ sqlalchemy
 PyJWT
 deepgram-sdk>=3.4.0
 websockets
+redis>=5.0.0

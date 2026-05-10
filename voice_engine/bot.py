@@ -76,6 +76,18 @@ class VoiceAgent:
         self.agent_config = agent_config
         self.task = None  # Pipeline task ref — set in start() so tools can push frames
 
+    # ── Hot KB Pre-warm (background task) ────────────────────────────────────
+    async def _prewarm_hot_kb_safe(self):
+        """Pre-warm hot KB cache at call start. Failures are non-fatal."""
+        try:
+            from shared.kb import prewarm_hot_kb
+            await prewarm_hot_kb(
+                tenant_id=uuid.UUID(self.tenant_id),
+                agent_id=uuid.UUID(self.agent_config["agent_id"]),
+            )
+        except Exception as e:
+            logger.warning(f"Hot KB pre-warm skipped: {e}")
+
     # ── Tool: Knowledge Base Search ──────────────────────────────────────────
     async def search_kb(self, params):
         """Semantic search via pgvector — finds the most relevant KB chunks for this agent.
@@ -288,7 +300,9 @@ class VoiceAgent:
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
         # VAD with PHONE-tuned params (defaults are too strict for 8kHz PCMU phone audio)
-        phone_vad = SileroVADAnalyzer(
+        # Uses CachedSileroVAD — torch model loaded ONCE per process, not per call.
+        from voice_engine.preload import CachedSileroVAD
+        phone_vad = CachedSileroVAD(
             sample_rate=8000,
             params=VADParams(
                 confidence=0.5,    # ↓ from 0.7 (phone has noise)
@@ -359,7 +373,7 @@ class VoiceAgent:
         @transport.event_handler("on_client_connected")
         async def on_connected(transport, client):
             logger.info("Telnyx audio stream connected. Sending instant TTS greeting.")
-            
+
             agent_name = self.agent_config.get("name", "our assistant")
             if self.agent_config.get("is_recovery"):
                 greeting_text = f"Hi there, this is {agent_name}. You just called us a few minutes ago. How can I help you?"
@@ -371,9 +385,15 @@ class VoiceAgent:
                 TTSSpeakFrame(text=greeting_text)
             ])
 
-            # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said by directly mutating context
-            # This is safer than queuing LLMMessagesAppendFrame(run_llm=False) which can cause pipeline race conditions
+            # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said
             context.add_message({"role": "assistant", "content": greeting_text})
+
+            # 3. PRE-WARM HOT KB IN BACKGROUND
+            # Fires 3 broad KB queries in parallel and caches the top chunks in Redis.
+            # By the time the user asks their first question, results are ready (5-10ms vs 700ms).
+            # Runs as a background task — does NOT block the greeting.
+            import asyncio
+            asyncio.create_task(self._prewarm_hot_kb_safe())
 
         # Official example: on_client_disconnected sends EndFrame (graceful shutdown)
         # then does post-call processing. task.cancel() is too abrupt.
