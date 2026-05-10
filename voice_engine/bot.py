@@ -299,10 +299,11 @@ class VoiceAgent:
             )
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
-        # VAD with PHONE-tuned params (defaults are too strict for 8kHz PCMU phone audio)
-        # Uses CachedSileroVAD — torch model loaded ONCE per process, not per call.
-        from voice_engine.preload import CachedSileroVAD
-        phone_vad = CachedSileroVAD(
+        # VAD with PHONE-tuned params (defaults are too strict for 8kHz PCMU phone audio).
+        # NOTE: We instantiate fresh per call because Silero has per-call internal state
+        # (self._state, self._context) that must not be shared. Preload at startup just
+        # warms the ONNX runtime + OS file cache so this instantiation is fast.
+        phone_vad = SileroVADAnalyzer(
             sample_rate=8000,
             params=VADParams(
                 confidence=0.5,    # ↓ from 0.7 (phone has noise)
