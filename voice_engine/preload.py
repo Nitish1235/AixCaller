@@ -62,11 +62,12 @@ def warmup_models():
         logger.warning(f"Silero VAD pre-load failed: {e}")
 
     # ── Smart Turn V3 (auto-loaded by Pipecat default turn analyzer) ────
-    # Even just importing + instantiating once warms torch + ONNX runtime
-    # and populates the OS file cache for the .onnx file.
+    # Correct class name in Pipecat: LocalSmartTurnAnalyzerV3 (not LocalSmartTurnV3).
+    # Even just instantiating once warms ONNX runtime and the OS file cache for
+    # the bundled smart-turn-v3.2-cpu.onnx file.
     try:
-        from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnV3
-        _ = LocalSmartTurnV3()
+        from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+        _ = LocalSmartTurnAnalyzerV3()
         logger.info("✅ Smart Turn V3 pre-loaded")
     except Exception as e:
         logger.warning(f"Smart Turn V3 pre-load failed: {e}")
