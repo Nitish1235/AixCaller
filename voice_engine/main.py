@@ -147,6 +147,22 @@ async def websocket_endpoint(websocket: WebSocket):
                     
                     # 2. Fetch full config from DB (since JWT is now minimal)
                     with Session(engine) as db:
+                        from shared.models import Tenant
+                        tenant = db.get(Tenant, uuid.UUID(tenant_id))
+                        if not tenant:
+                            logger.error(f"Tenant {tenant_id} not found in DB")
+                            await websocket.close()
+                            return
+                            
+                        # ── Credit Gate ───────────────────────────────────────────────
+                        minutes_used = tenant.minutes_used or 0.0
+                        minutes_included = tenant.minutes_included or 0
+                        if minutes_used >= minutes_included:
+                            logger.warning(f"Tenant {tenant_id} out of minutes ({minutes_used}/{minutes_included}). Blocking call.")
+                            await websocket.close()
+                            return
+                        # ──────────────────────────────────────────────────────────────
+
                         agent = db.get(Agent, agent_id)
                         if not agent:
                             logger.error(f"Agent {agent_id} not found in DB")
