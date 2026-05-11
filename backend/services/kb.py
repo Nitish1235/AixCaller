@@ -1,13 +1,13 @@
 import os
 import uuid
 from typing import List
-from openai import AsyncOpenAI
 from sqlmodel import Session, select
 from sqlalchemy import text
 from loguru import logger
 from shared.database import engine
 from shared.models import KnowledgeChunk
 
+# get_embeddings now uses local MiniLM (see shared/local_embeddings.py)
 from shared.kb import get_embeddings as _get_embeddings, search_knowledge_base
 
 # Chunk size: 400 words, 50-word overlap keeps context across chunk boundaries

@@ -86,6 +86,7 @@ export default function CreateAgentPage() {
 
   // Step 1
   const [name, setName]     = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [prompt, setPrompt] = useState("You are a helpful AI assistant for our business. Be warm, concise, and professional.");
   const [voice, setVoice]   = useState("aura-asteria-en");
   const [voiceList, setVoiceList] = useState<any[]>([]);
@@ -120,7 +121,13 @@ export default function CreateAgentPage() {
   const createAgent = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError("");
     try {
-      const agent = await createAgentApi({ name, system_prompt: prompt, tenant_id: TENANT_ID, voice_id: voice });
+      const agent = await createAgentApi({
+        name,
+        business_name: businessName.trim() || null,
+        system_prompt: prompt,
+        tenant_id: TENANT_ID,
+        voice_id: voice,
+      });
       setAgentId(agent.id);
       setStep(2);
     } catch (err: any) { setError(err.message); }
@@ -213,15 +220,49 @@ export default function CreateAgentPage() {
       {/* ─── STEP 1: Agent Setup ─────────────────────────────── */}
       {step === 1 && (
         <div style={card}>
+          {/* Marketplace CTA */}
+          <div
+            onClick={() => router.push("/dashboard/agents/marketplace")}
+            style={{
+              background: "linear-gradient(135deg, #ECFDF5, #D1FAE5)",
+              border: "1px solid #10B981",
+              borderRadius: 12, padding: "1rem 1.25rem", marginBottom: "1.5rem",
+              display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+            }}
+          >
+            <div style={{ fontSize: "1.8rem" }}>✨</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, color: "#064E3B", fontSize: "0.92rem" }}>
+                Want a head start?
+              </div>
+              <div style={{ color: "#059669", fontSize: "0.82rem", marginTop: 2 }}>
+                Choose a pre-built template — clinic, e-commerce, real estate, restaurant.
+              </div>
+            </div>
+            <div style={{ color: "#059669", fontWeight: 700 }}>→</div>
+          </div>
+
           <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B", marginBottom: "0.4rem" }}>Agent Details</h2>
           <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Give your agent a name, define its persona, and pick a voice.</p>
 
           <form onSubmit={createAgent} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            <div>
-              <label style={lbl}>Agent Name *</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)}
-                placeholder="e.g. Sarah — Sales Representative" required style={inp} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={lbl}>Agent Name *</label>
+                <input type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="e.g. Sarah" required style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Business Name</label>
+                <input type="text" value={businessName} onChange={e => setBusinessName(e.target.value)}
+                  placeholder="e.g. NovaEdge Solutions" style={inp} />
+              </div>
             </div>
+            {businessName.trim() && name.trim() && (
+              <div style={{ padding: "10px 14px", background: "#F6FEFA", borderRadius: 8, border: "1px dashed #D1FAE5", fontSize: "0.85rem", color: "#064E3B", fontStyle: "italic" }}>
+                💬 Greeting: "Hi, thanks for calling {businessName.trim()}. This is {name.trim()} — how can I help you today?"
+              </div>
+            )}
 
             <div>
               <label style={lbl}>System Prompt & Instructions *</label>

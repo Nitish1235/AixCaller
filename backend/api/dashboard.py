@@ -11,9 +11,51 @@ from backend.services.integrations import IntegrationService
 from shared.database import get_db
 from backend.api.telegram import send_telegram_message
 from backend.services.email import send_call_summary_email
+from backend.services.agent_templates import list_templates, get_template
 
 router = APIRouter(prefix="/api/v1", tags=["dashboard"])
 analytics_service = AnalyticsService()
+
+
+# ── Marketplace: pre-built agent templates ──────────────────────────────────
+@router.get("/agent-templates")
+async def get_agent_templates():
+    """Public list of marketplace templates (Healthcare, E-commerce, etc.)."""
+    return {"templates": list_templates()}
+
+
+class CreateFromTemplateRequest(BaseModel):
+    template_id: str
+    tenant_id: str
+    business_name: str
+    agent_name: Optional[str] = None   # override template's default_name
+
+
+@router.post("/agents/from-template", response_model=Agent)
+async def create_agent_from_template(req: CreateFromTemplateRequest, db: Session = Depends(get_db)):
+    """Spin up a new agent pre-configured from a marketplace template."""
+    template = get_template(req.template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail=f"Template '{req.template_id}' not found")
+
+    tenant_uuid = uuid.UUID(req.tenant_id)
+    tenant = db.get(Tenant, tenant_uuid)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    new_agent = Agent(
+        tenant_id=tenant_uuid,
+        name=req.agent_name or template["default_name"],
+        business_name=req.business_name,
+        system_prompt=template["system_prompt"],
+        voice_id=template["voice_id"],
+        template_id=template["id"],
+        kb_namespace=f"kb_{tenant_uuid.hex[:8]}_{uuid.uuid4().hex[:8]}"
+    )
+    db.add(new_agent)
+    db.commit()
+    db.refresh(new_agent)
+    return new_agent
 
 
 # ── Integration models ───────────────────────────────────────────────────────
@@ -99,28 +141,79 @@ async def get_available_voices(db: Session = Depends(get_db)):
 from pydantic import BaseModel
 class CreateAgentRequest(BaseModel):
     name: str
+    business_name: Optional[str] = None
     system_prompt: str
     voice_id: str = "aura-asteria-en"
     tenant_id: str
+    template_id: Optional[str] = None
+
+
+# ─── Plan limits ─────────────────────────────────────────────────────────────
+# Agent slots per plan tier — only counts agents WITH a phone number assigned.
+PLAN_AGENT_LIMITS = {
+    "free":     1,
+    "starter":  2,   # $50 plan
+    "pro":      2,   # $119 plan
+    "premium":  4,   # $250 plan
+}
+
+
+def _count_active_agents(db: Session, tenant_id: uuid.UUID) -> int:
+    """Counts agents that have a phone number assigned (don't count drafts)."""
+    statement = select(Agent).where(
+        Agent.tenant_id == tenant_id,
+        Agent.phone_number.is_not(None),
+    )
+    return len(db.exec(statement).all())
+
 
 @router.post("/agents", response_model=Agent)
 async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
     """
     Creates a new agent for the given tenant.
+    Note: plan limit only counts agents with a phone number assigned.
     """
-    import uuid
     tenant_uuid = uuid.UUID(req.tenant_id)
+    tenant = db.get(Tenant, tenant_uuid)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Plan limit check (only counts agents with phone numbers — drafts are free)
+    active_count = _count_active_agents(db, tenant_uuid)
+    limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
+    # We allow creating drafts beyond limit; the phone assignment endpoint
+    # is where the limit is actually enforced. We still warn here for clarity.
+
     new_agent = Agent(
         tenant_id=tenant_uuid,
         name=req.name,
+        business_name=req.business_name,
         system_prompt=req.system_prompt,
         voice_id=req.voice_id,
+        template_id=req.template_id,
         kb_namespace=f"kb_{tenant_uuid.hex[:8]}_{uuid.uuid4().hex[:8]}"
     )
     db.add(new_agent)
     db.commit()
     db.refresh(new_agent)
     return new_agent
+
+
+@router.get("/agents/limits")
+async def get_agent_limits(tenant_id: str, db: Session = Depends(get_db)):
+    """Returns current active agent count + plan limit for the UI to show usage."""
+    tenant_uuid = uuid.UUID(tenant_id)
+    tenant = db.get(Tenant, tenant_uuid)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    used = _count_active_agents(db, tenant_uuid)
+    limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
+    return {
+        "plan_tier": tenant.plan_tier,
+        "agents_used": used,
+        "agents_limit": limit,
+        "can_assign_number": used < limit,
+    }
 
 @router.get("/agents", response_model=List[Agent])
 async def get_my_agents(tenant_id: str, db: Session = Depends(get_db)):
@@ -178,13 +271,15 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
     # 1. Create the Call Record
     # call_id from voice engine is the Telnyx call_control_id (format: "v3:xxx...")
     # which is NOT a UUID. We generate a fresh UUID for the DB record.
+    duration_sec = int(data.get("duration_seconds", 0))
     new_call = CallRecord(
         id=uuid.uuid4(),
         tenant_id=uuid.UUID(data.get("tenant_id")),
         agent_id=uuid.UUID(data.get("agent_id")),
         from_number=data.get("from_number", "unknown"),
         to_number=data.get("to_number", "unknown"),
-        transcript=transcript_str
+        transcript=transcript_str,
+        duration_seconds=duration_sec,
     )
 
     # 2. Run AI Analytics (Summary, Sentiment, Action Items)
@@ -198,10 +293,15 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
         new_call.action_items = json.dumps(action_items) if isinstance(action_items, list) else str(action_items)
 
     db.add(new_call)
+
+    # 2b. Increment tenant's minutes_used so we can enforce plan limits
+    tenant = db.get(Tenant, uuid.UUID(data.get("tenant_id")))
+    if tenant and duration_sec > 0:
+        tenant.minutes_used = (tenant.minutes_used or 0.0) + (duration_sec / 60.0)
+        db.add(tenant)
+
     db.commit()
 
-    # 3. CRM & Webhook Automation (Push-Only)
-    tenant = db.get(Tenant, uuid.UUID(data.get("tenant_id")))
     if not tenant:
         return {"status": "success"}
 

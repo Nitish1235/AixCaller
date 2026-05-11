@@ -9,16 +9,24 @@ class DodoPaymentsService:
             environment=os.environ.get("DODO_PAYMENTS_ENVIRONMENT", "test_mode")
         )
 
-    async def create_checkout_session(self, customer_email: str, product_id: str, tenant_id: str):
+    async def create_checkout_session(
+        self,
+        customer_email: str,
+        product_id: str,
+        tenant_id: str,
+        metadata: dict | None = None,
+    ):
         """
         Creates a Dodo Payments checkout session for a subscription or credit top-up.
+        `metadata` is merged with tenant_id so we can route the webhook back to
+        the correct plan tier.
         """
         try:
+            merged_metadata = {"tenant_id": tenant_id, **(metadata or {})}
             session = await self.client.checkout_sessions.create(
                 product_cart=[{"product_id": product_id, "quantity": 1}],
                 customer={"email": customer_email},
-                # Metadata helps us link the payment back to the tenant
-                metadata={"tenant_id": tenant_id},
+                metadata=merged_metadata,
                 return_url=os.environ.get("DASHBOARD_URL", "http://localhost:3000/dashboard")
             )
             return session.checkout_url

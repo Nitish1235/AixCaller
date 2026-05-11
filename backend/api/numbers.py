@@ -67,44 +67,84 @@ async def search_numbers(req: SearchRequest):
         
         return {"numbers": results}
 
+# Plan limits — kept in sync with backend/api/dashboard.py
+PLAN_AGENT_LIMITS = {
+    "free":     1,
+    "starter":  2,
+    "pro":      2,
+    "premium":  4,
+}
+
+
 @router.post("/purchase")
 async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
     """
     Purchases a Telnyx number and assigns it to the specified agent.
+    Enforces the per-plan agent limit at assignment time (agents only "count"
+    once they have a phone number).
     """
+    import uuid
     api_key = os.environ.get("TELNYX_API_KEY")
     connection_id = os.environ.get("TELNYX_CONNECTION_ID")
-    
+
     if not api_key or not connection_id:
         raise HTTPException(status_code=500, detail="Telnyx config missing (TELNYX_API_KEY or TELNYX_CONNECTION_ID)")
 
-    # 1. Purchase the number via Telnyx Number Orders API
+    agent_uuid = uuid.UUID(req.agent_id)
+    tenant_uuid = uuid.UUID(req.tenant_id)
+
+    # ── Pre-flight: check subscription is active + agent limit ──────────────
+    tenant = db.get(Tenant, tenant_uuid)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if tenant.subscription_status != "active" and tenant.plan_tier != "free":
+        raise HTTPException(
+            status_code=402,
+            detail="Active subscription required to assign a phone number. Please subscribe to a plan."
+        )
+
+    # Count agents that already have a phone number (only THOSE consume slots)
+    active_agents = db.exec(
+        select(Agent).where(
+            Agent.tenant_id == tenant_uuid,
+            Agent.phone_number.is_not(None),
+        )
+    ).all()
+    limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
+
+    # If this agent already has a number, allow swapping (no new slot consumed)
+    agent = db.exec(select(Agent).where(Agent.id == agent_uuid, Agent.tenant_id == tenant_uuid)).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    is_new_slot = agent.phone_number is None
+    if is_new_slot and len(active_agents) >= limit:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"Your {tenant.plan_tier} plan allows up to {limit} active agent(s). "
+                f"You already have {len(active_agents)} with phone numbers. "
+                f"Upgrade your plan or delete an agent to add another."
+            )
+        )
+
+    # ── Purchase via Telnyx Number Orders API ───────────────────────────────
     async with httpx.AsyncClient() as client:
         order_payload = {
             "phone_numbers": [{"phone_number": req.phone_number}],
             "connection_id": connection_id
         }
-        
         response = await client.post(
             "https://api.telnyx.com/v2/number_orders",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json=order_payload
         )
-        
         if response.status_code not in [200, 201]:
             logger.error(f"Telnyx purchase failed: {response.text}")
             raise HTTPException(status_code=500, detail="Failed to purchase number")
 
-    # 2. Update the Agent in Database
-    import uuid
-    agent_uuid = uuid.UUID(req.agent_id)
-    tenant_uuid = uuid.UUID(req.tenant_id)
-    
-    agent = db.exec(select(Agent).where(Agent.id == agent_uuid, Agent.tenant_id == tenant_uuid)).first()
-    if not agent:
-        logger.error(f"Agent {agent_uuid} not found for tenant {tenant_uuid}")
-        raise HTTPException(status_code=404, detail="Agent not found")
-
+    # ── Assign to agent ────────────────────────────────────────────────────
     agent.phone_number = req.phone_number
     db.add(agent)
     db.commit()

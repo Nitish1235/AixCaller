@@ -19,7 +19,7 @@ class KnowledgeChunk(SQLModel, table=True):
     source: Optional[str] = None          # e.g. "https://mysite.com" or "menu.pdf"
     embedding: List[float] = Field(
         default=None,
-        sa_column=Column(Vector(1536))    # OpenAI text-embedding-3-small = 1536 dims
+        sa_column=Column(Vector(384))     # MiniLM (all-MiniLM-L6-v2) = 384 dims
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -29,28 +29,39 @@ class Tenant(SQLModel, table=True):
     contact_email: str = Field(unique=True)
     is_active: bool = Field(default=False)
     credits: float = Field(default=0.0)
+    # ── Subscription / Plan ──────────────────────────────────────────────
+    plan_tier: str = Field(default="free")      # free | starter | pro | premium
+    minutes_included: int = Field(default=0)    # total minutes for current cycle
+    minutes_used: float = Field(default=0.0)    # consumed in current cycle (decimal for partial mins)
+    subscription_id: Optional[str] = None       # DodoPayments subscription ID
+    subscription_status: str = Field(default="inactive")  # active | inactive | cancelled | past_due
+    cycle_start: Optional[datetime] = None      # current billing cycle start
+    cycle_end: Optional[datetime] = None        # current billing cycle end
+    # ── Integrations ─────────────────────────────────────────────────────
     zoho_access_token: Optional[str] = None
     zoho_refresh_token: Optional[str] = None
     zoho_org_id: Optional[str] = None
     hubspot_api_key: Optional[str] = None
     salesforce_access_token: Optional[str] = None
-    webhook_url: Optional[str] = None # For Zapier/Make.com
-    email_summary_enabled: bool = Field(default=True) # Send call summary to contact_email
-    password_hash: Optional[str] = None # For Email/Password Auth
+    webhook_url: Optional[str] = None
+    email_summary_enabled: bool = Field(default=True)
+    password_hash: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Agent(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id")
-    name: str
+    name: str                              # e.g. "Sarah" — agent's persona name
+    business_name: Optional[str] = None    # e.g. "NovaEdge Solutions" — used in greeting
     system_prompt: str
     phone_number: Optional[str] = Field(default=None, unique=True)
     voice_id: str = "aura-asteria-en"
-    idle_timeout: int = 7 # Default 7 seconds
+    idle_timeout: int = 7
     llm_temperature: float = 0.7
     language: str = "en"
     kb_namespace: Optional[str] = None
-    forwarding_number: Optional[str] = None # Number to transfer to if AI can't handle
+    forwarding_number: Optional[str] = None
+    template_id: Optional[str] = None      # Marketplace template used (clinic, ecommerce, etc.)
     tools_config: dict = Field(default_factory=dict, sa_column=Column(JSON))
     
 class CallRecord(SQLModel, table=True):
@@ -67,6 +78,7 @@ class CallRecord(SQLModel, table=True):
     summary: Optional[str] = None
     sentiment: Optional[str] = None
     action_items: Optional[str] = None
+    duration_seconds: int = Field(default=0)  # call duration in seconds
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class VoiceOption(SQLModel, table=True):

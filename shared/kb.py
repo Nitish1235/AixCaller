@@ -4,7 +4,6 @@ import uuid
 import hashlib
 from typing import List, Optional
 from collections import OrderedDict
-from openai import AsyncOpenAI
 from sqlmodel import Session
 from sqlalchemy import text
 from loguru import logger
@@ -15,8 +14,14 @@ from shared.cache import (
     get_hot_kb,
     set_hot_kb,
 )
+from shared.local_embeddings import (
+    async_embed_query,
+    async_embed_texts,
+    EMBEDDING_DIM,
+)
 
-EMBEDDING_MODEL = "text-embedding-3-small"
+# Local MiniLM model — 384 dims, ~5-10ms per query, $0 ongoing cost
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 # ── In-memory LRU cache for embeddings (per-instance) ──────────────────────
 # Cuts OpenAI embedding calls for repeated queries within an instance.
@@ -32,8 +37,10 @@ _openai_client = None
 
 
 def get_openai_client():
+    """OpenAI client retained for analytics/LLM use cases (NOT embeddings)."""
     global _openai_client
     if _openai_client is None:
+        from openai import AsyncOpenAI
         _openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     return _openai_client
 
@@ -43,17 +50,16 @@ def _cache_key(text: str) -> str:
 
 
 async def get_embeddings(texts: List[str]) -> List[List[float]]:
-    """Call OpenAI Embeddings API and return vectors."""
-    client = get_openai_client()
-    response = await client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=texts
-    )
-    return [item.embedding for item in response.data]
+    """Local MiniLM batch embeddings (replaces OpenAI text-embedding-3-small)."""
+    return await async_embed_texts(texts)
 
 
 async def _get_query_embedding_cached(query: str) -> List[float]:
-    """Get embedding for a single query, with LRU caching."""
+    """Get embedding for a single query, with LRU caching.
+
+    Uses local MiniLM — ~5-10ms per uncached call (vs 150-300ms for OpenAI API).
+    Cached lookups are ~0.1ms.
+    """
     key = _cache_key(query)
 
     if key in _embedding_cache:
@@ -62,13 +68,8 @@ async def _get_query_embedding_cached(query: str) -> List[float]:
         return _embedding_cache[key]
 
     t0 = time.time()
-    client = get_openai_client()
-    response = await client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=[query]
-    )
-    vector = response.data[0].embedding
-    logger.info(f"KB embedding API call: {(time.time() - t0) * 1000:.0f}ms for: {query[:50]}...")
+    vector = await async_embed_query(query)
+    logger.info(f"KB MiniLM embed: {(time.time() - t0) * 1000:.0f}ms for: {query[:50]}...")
 
     _embedding_cache[key] = vector
     if len(_embedding_cache) > _EMBEDDING_CACHE_SIZE:
@@ -133,20 +134,34 @@ async def _vector_search(
 # PUBLIC API
 # ════════════════════════════════════════════════════════════════════════════
 
+# L3 distance threshold — higher = more lenient cache hits.
+# 0.5 was too strict (only ~30% hit rate on basic questions).
+# 0.7 covers most variations of "business name", "hours", "services", etc.
+HOT_KB_DISTANCE_THRESHOLD = 0.7
+
+
 async def search_knowledge_base(
     query: str,
     tenant_id: uuid.UUID,
     agent_id: uuid.UUID,
     limit: int = 5,
-) -> str:
+    fast_only: bool = False,
+) -> "str | None":
     """
     Multi-layer KB search:
       L1: Redis exact-match cache (1ms)        ← if cached
       L2: In-memory result cache (1ms)         ← per-instance fallback
-      L3: Hot KB pre-warmed chunks (5-10ms)   ← if user query matches pre-warmed topics
-      L4: Full pgvector search (700ms)         ← last resort
+      L3: Hot KB pre-warmed chunks (5-10ms)   ← matches basic FAQ-type questions
+      L4: Full pgvector search (700ms)         ← last resort, only if fast_only=False
 
-    Returns formatted KB result string for LLM injection.
+    Args:
+        fast_only: If True, only checks L1/L2/L3 (all <50ms).
+                   Returns None on cache miss instead of falling through to L4.
+                   Use this to decide whether to play a filler phrase before
+                   the expensive L4 search.
+
+    Returns:
+        Formatted KB string for LLM, or None if fast_only=True and all caches missed.
     """
     total_start = time.time()
     agent_id_str = str(agent_id)
@@ -164,7 +179,6 @@ async def search_knowledge_base(
         if time.time() - cached_at < _RESULT_TTL_SECONDS:
             _result_cache.move_to_end(mem_key)
             logger.info(f"⚡ L2 in-memory HIT ({(time.time() - total_start) * 1000:.0f}ms)")
-            # Backfill Redis so other instances benefit
             await set_exact_cache(agent_id_str, query, cached_result)
             return cached_result
         else:
@@ -173,7 +187,6 @@ async def search_knowledge_base(
     # ── Layer 3: Hot KB (pre-warmed at call start) ────────────────────────
     hot_chunks = await get_hot_kb(agent_id_str)
     if hot_chunks:
-        # Embed query and re-rank locally against hot chunks (no DB hit!)
         query_vector = await _get_query_embedding_cached(query)
         try:
             scored = [
@@ -182,18 +195,22 @@ async def search_knowledge_base(
                 if "embedding" in c
             ]
             scored.sort(key=lambda x: x[0])
-            top = [c for dist, c in scored[:limit] if dist < 0.5]  # 0.5 = decent similarity
+            top = [c for dist, c in scored[:limit] if dist < HOT_KB_DISTANCE_THRESHOLD]
             if top:
                 formatted = _format_chunks_for_llm(top)
                 logger.info(f"🔥 L3 Hot KB HIT ({(time.time() - total_start) * 1000:.0f}ms, top dist: {scored[0][0]:.3f})")
-                # Populate L1 + L2 for next time
                 await set_exact_cache(agent_id_str, query, formatted)
                 _result_cache[mem_key] = (time.time(), formatted)
                 return formatted
             else:
-                logger.info(f"L3 Hot KB no good match (best dist: {scored[0][0]:.3f}), falling to L4")
+                logger.info(f"L3 Hot KB no good match (best dist: {scored[0][0]:.3f})")
         except Exception as e:
-            logger.warning(f"Hot KB ranking failed: {e}, falling to L4")
+            logger.warning(f"Hot KB ranking failed: {e}, falling through")
+
+    # ── Fast-only mode: return None to signal cache miss (no L4 fallback) ─
+    if fast_only:
+        logger.info(f"Fast-only mode: cache miss in {(time.time() - total_start) * 1000:.0f}ms, returning None")
+        return None
 
     # ── Layer 4: Full pgvector search (the slow path) ─────────────────────
     query_vector = await _get_query_embedding_cached(query)
@@ -205,7 +222,6 @@ async def search_knowledge_base(
 
     formatted = _format_chunks_for_llm(chunks)
 
-    # Populate caches for next time
     await set_exact_cache(agent_id_str, query, formatted)
     _result_cache[mem_key] = (time.time(), formatted)
     if len(_result_cache) > _RESULT_CACHE_SIZE:
@@ -239,13 +255,8 @@ async def prewarm_hot_kb(
     ]
 
     try:
-        # Embed all 3 queries in one OpenAI call (faster than 3 separate calls)
-        client = get_openai_client()
-        embed_resp = await client.embeddings.create(
-            model=EMBEDDING_MODEL,
-            input=seed_queries,
-        )
-        vectors = [item.embedding for item in embed_resp.data]
+        # Embed all 3 broad queries locally via MiniLM (one batch call)
+        vectors = await async_embed_texts(seed_queries)
 
         # Run all 3 vector searches in parallel
         results = await asyncio.gather(*[
@@ -264,15 +275,12 @@ async def prewarm_hot_kb(
         # Attach embeddings to each chunk so we can re-rank locally on user queries
         unique_chunks = list(seen.values())
 
-        # Fetch embeddings for the unique chunks (we need them for L3 re-ranking)
+        # Re-embed the unique chunks locally for L3 re-ranking
         contents = [c["content"] for c in unique_chunks]
         if contents:
-            chunk_embed_resp = await client.embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=contents,
-            )
-            for c, item in zip(unique_chunks, chunk_embed_resp.data):
-                c["embedding"] = item.embedding
+            chunk_vectors = await async_embed_texts(contents)
+            for c, vec in zip(unique_chunks, chunk_vectors):
+                c["embedding"] = vec
 
         await set_hot_kb(agent_id_str, unique_chunks)
         logger.info(

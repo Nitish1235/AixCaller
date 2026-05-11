@@ -1,4 +1,6 @@
 import os
+import time
+import random
 import httpx
 import json
 from loguru import logger
@@ -71,10 +73,15 @@ class VoiceAgent:
         "Just a sec, checking now.",
     ]
 
+    # Don't play another filler within this window (prevents stacking when LLM
+    # makes parallel function calls — e.g. "Let me check that..." playing twice)
+    FILLER_COOLDOWN_SECONDS = 4.0
+
     def __init__(self, tenant_id: str, agent_config: dict):
         self.tenant_id = tenant_id
         self.agent_config = agent_config
         self.task = None  # Pipeline task ref — set in start() so tools can push frames
+        self._last_filler_time = 0.0  # for filler debounce
 
     # ── Hot KB Pre-warm (background task) ────────────────────────────────────
     async def _prewarm_hot_kb_safe(self):
@@ -90,34 +97,59 @@ class VoiceAgent:
 
     # ── Tool: Knowledge Base Search ──────────────────────────────────────────
     async def search_kb(self, params):
-        """Semantic search via pgvector — finds the most relevant KB chunks for this agent.
+        """Semantic search via pgvector with smart filler logic.
 
         Pipecat 1.x API: must call params.result_callback(result) to deliver the result.
-        Returning a value does NOT work — LLM sees "IN_PROGRESS" forever.
 
-        UX: While KB search runs (~1-2s), play a filler phrase so user hears
-        immediate audio and doesn't think the agent froze.
+        UX strategy:
+          1. First try the fast cache layers (L1/L2/L3) — all <50ms.
+             If hit, deliver the answer instantly with NO filler phrase.
+             (Basic questions like "business name", "hours", "services" hit Hot KB.)
+          2. Only if all caches miss do we fall through to the slow L4 path.
+             In that case, queue a filler phrase so the user knows we're working,
+             then run the full pgvector search (~700ms).
         """
-        import time
-        import random
         t0 = time.time()
         try:
             query = params.arguments.get("query", "")
             logger.info(f"🔍 KB SEARCH started for query: '{query}'")
 
-            # ── Speak a filler IMMEDIATELY so user hears feedback ──────────
-            if self.task:
-                filler = random.choice(self.FILLER_PHRASES)
-                await self.task.queue_frames([TTSSpeakFrame(text=filler)])
-                logger.info(f"🗣️  Filler spoken: '{filler}'")
+            tenant_uuid = uuid.UUID(self.tenant_id)
+            agent_uuid = uuid.UUID(self.agent_config["agent_id"])
 
-            # ── Run the actual KB search ───────────────────────────────────
+            # ── Step 1: Try the fast cache layers (L1 → L2 → L3) ────────────
+            # Returns None if all caches miss (no filler needed yet).
             result = await search_knowledge_base(
                 query=query,
-                tenant_id=uuid.UUID(self.tenant_id),
-                agent_id=uuid.UUID(self.agent_config["agent_id"])
+                tenant_id=tenant_uuid,
+                agent_id=agent_uuid,
+                fast_only=True,
             )
-            logger.info(f"✅ KB SEARCH completed in {(time.time() - t0) * 1000:.0f}ms")
+
+            if result is not None:
+                # Fast cache hit — answer is ready in <50ms. NO filler needed.
+                logger.info(f"⚡ KB SEARCH fast-cache hit in {(time.time() - t0) * 1000:.0f}ms (no filler)")
+                await params.result_callback(result)
+                return
+
+            # ── Step 2: Cache missed — going to slow L4 path. Play filler. ──
+            now = time.time()
+            if self.task and (now - self._last_filler_time) > self.FILLER_COOLDOWN_SECONDS:
+                self._last_filler_time = now
+                filler = random.choice(self.FILLER_PHRASES)
+                await self.task.queue_frames([TTSSpeakFrame(text=filler)])
+                logger.info(f"🗣️  Filler spoken (slow path): '{filler}'")
+            else:
+                logger.info("🤐 Filler skipped (debounce — another just played)")
+
+            # ── Step 3: Run the slow L4 search ──────────────────────────────
+            result = await search_knowledge_base(
+                query=query,
+                tenant_id=tenant_uuid,
+                agent_id=agent_uuid,
+                fast_only=False,
+            )
+            logger.info(f"✅ KB SEARCH completed (L4 path) in {(time.time() - t0) * 1000:.0f}ms")
             await params.result_callback(result)
         except Exception as e:
             logger.error(f"❌ KB search error after {(time.time() - t0) * 1000:.0f}ms: {e}")
@@ -125,8 +157,47 @@ class VoiceAgent:
 
     # ── Tool: End Call ───────────────────────────────────────────────────────
     async def end_call(self, params):
-        logger.info(f"AI requested call end for tenant {self.tenant_id}")
-        await params.result_callback("Ending the call now. Goodbye!")
+        """LLM decided the conversation is over. Hang up the Telnyx call gracefully.
+
+        Flow:
+          1. Acknowledge the tool call (LLM has already said goodbye in its message)
+          2. Wait briefly so the farewell TTS finishes playing
+          3. POST to Telnyx hangup API to terminate the call
+          4. Voice engine pipeline cleanup is triggered by Telnyx disconnect
+        """
+        import asyncio
+        logger.info(f"🛑 AI requested call end for tenant {self.tenant_id}")
+        await params.result_callback("Goodbye message delivered. Hanging up now.")
+
+        # Telnyx call_control_id — passed in from voice_engine/main.py
+        call_control_id = self.agent_config.get("call_control_id")
+        telnyx_api_key = os.environ.get("TELNYX_API_KEY")
+
+        if not call_control_id or not telnyx_api_key:
+            logger.warning("Cannot hang up — missing call_control_id or TELNYX_API_KEY")
+            return
+
+        # Give the farewell TTS ~2 seconds to play out before hanging up
+        async def _delayed_hangup():
+            await asyncio.sleep(2.0)
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.post(
+                        f"https://api.telnyx.com/v2/calls/{call_control_id}/actions/hangup",
+                        headers={
+                            "Authorization": f"Bearer {telnyx_api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={},
+                    )
+                    if resp.status_code in (200, 201, 204):
+                        logger.info(f"✅ Telnyx hangup successful for call {call_control_id}")
+                    else:
+                        logger.warning(f"Telnyx hangup returned {resp.status_code}: {resp.text}")
+            except Exception as e:
+                logger.error(f"Telnyx hangup failed: {e}")
+
+        asyncio.create_task(_delayed_hangup())
 
     # ── Tool: Transfer to Human ──────────────────────────────────────────────
     async def transfer_to_human(self, params):
@@ -162,14 +233,23 @@ class VoiceAgent:
             )
         )
 
-        # 3. STT — Simple configuration matching official example
+        # 3. STT — Phone-optimized model + keyword boosting for agent name
+        # Deepgram supports `keywords` (model bias) — useful since phone audio
+        # often mishears proper nouns. Boost the agent name + business terms.
         language = self.agent_config.get("language", "en")
+        agent_name_for_stt = self.agent_config.get("name", "")
+        keywords = []
+        if agent_name_for_stt:
+            # Format: "word:weight" — weight 2-5 nudges Deepgram toward this word
+            keywords.append(f"{agent_name_for_stt}:3")
+
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
             settings=DeepgramSTTService.Settings(
                 model="nova-2-phonecall",
                 language=language,
                 smart_format=True,
+                keywords=keywords if keywords else None,
             )
         )
 
@@ -224,7 +304,30 @@ class VoiceAgent:
                 "'I don't have that information right now, would you like me to connect you with a human?'\n"
                 "4. Be conversational and natural — sound like a real person, not a robot.\n"
                 "5. NEVER use lists, bullet points, or markdown — this is a phone call.\n"
-                "6. If user asks something off-topic, gently redirect to how you can help."
+                "6. If user asks something off-topic, gently redirect to how you can help.\n"
+                "7. CLARIFICATION: If the user's message is garbled, incomplete, makes no sense "
+                "in context, sounds like background noise, or is just one or two unclear words "
+                "(e.g. 'hello?', random fragments, transcription gibberish), DO NOT guess. "
+                "Politely ask them to repeat using ONE of these natural phrases (vary it):\n"
+                "   - 'Sorry, I didn't quite catch that. Could you say it again?'\n"
+                "   - 'I'm having trouble hearing you. Could you repeat that?'\n"
+                "   - 'Could you say that one more time, please?'\n"
+                "   - 'Sorry, the line broke up. What did you say?'\n"
+                "Never echo back gibberish. Never invent a question. Just ask politely.\n"
+                "8. NAME RECOGNITION: Your name (the agent's name) might be misheard by speech "
+                "recognition (e.g. 'Sarah' → 'Sheila', 'Cita'). If the user calls you by a similar-"
+                "sounding name, just continue naturally — assume they meant you.\n"
+                "9. END THE CALL when the conversation is clearly over. Call `end_call` "
+                "immediately (no warning, no asking 'is there anything else?') when the user:\n"
+                "   - Says goodbye: 'bye', 'goodbye', 'see you', 'talk to you later', 'have a good day'\n"
+                "   - Says thanks and signals they're done: 'thanks, that's all', 'okay thanks bye', "
+                "'great, thank you', 'perfect, thanks'\n"
+                "   - Explicitly asks to hang up: 'I have to go', 'I'll call back later', "
+                "'that's it', 'we're done', 'hang up'\n"
+                "   - Has no more questions after you ask if they need anything else\n"
+                "Before calling end_call, say ONE short farewell like: 'You're welcome, have a "
+                "great day!' or 'Glad I could help. Take care!' or 'Thanks for calling. Bye!' — "
+                "then immediately call end_call. Don't drag it out."
             )}
         ]
 
@@ -370,16 +473,29 @@ class VoiceAgent:
         # while long-running operations like KB search are in progress.
         self.task = task
 
+        # Track call start so we can compute duration on disconnect
+        call_started_at = {"value": None}
+
         # 10. Event Handlers
         @transport.event_handler("on_client_connected")
         async def on_connected(transport, client):
             logger.info("Telnyx audio stream connected. Sending instant TTS greeting.")
+            call_started_at["value"] = time.time()
 
             agent_name = self.agent_config.get("name", "our assistant")
+            business_name = self.agent_config.get("business_name")
+
+            # Build greeting — include business name when available for natural intro
             if self.agent_config.get("is_recovery"):
-                greeting_text = f"Hi there, this is {agent_name}. You just called us a few minutes ago. How can I help you?"
+                if business_name:
+                    greeting_text = f"Hi, this is {agent_name} from {business_name}. You just called us a few minutes ago — how can I help you?"
+                else:
+                    greeting_text = f"Hi, this is {agent_name}. You just called us a few minutes ago. How can I help you?"
             else:
-                greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
+                if business_name:
+                    greeting_text = f"Hi, thanks for calling {business_name}. This is {agent_name} — how can I help you today?"
+                else:
+                    greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
 
             # 1. INSTANT AUDIO: Send text directly to TTS, bypassing the LLM completely
             await task.queue_frames([
@@ -405,7 +521,12 @@ class VoiceAgent:
             # Graceful shutdown — matches official Pipecat Telnyx example
             await task.queue_frames([EndFrame()])
 
-            # Send transcript to backend for analytics
+            # Compute call duration in seconds
+            duration_seconds = 0
+            if call_started_at["value"]:
+                duration_seconds = int(time.time() - call_started_at["value"])
+
+            # Send transcript + duration to backend for analytics + minute tracking
             try:
                 transcript = context.get_messages()
                 async with httpx.AsyncClient() as client:
@@ -416,10 +537,12 @@ class VoiceAgent:
                             "call_id": call_id,
                             "transcript": transcript,
                             "tenant_id": self.tenant_id,
-                            "agent_id": self.agent_config.get("agent_id")
+                            "agent_id": self.agent_config.get("agent_id"),
+                            "duration_seconds": duration_seconds,
                         },
                         timeout=10.0
                     )
+                logger.info(f"📞 Call duration: {duration_seconds}s — sent to backend")
             except Exception as e:
                 logger.error(f"Failed to send post-call hook: {e}")
 

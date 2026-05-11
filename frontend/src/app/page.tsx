@@ -66,12 +66,23 @@ export default function Home() {
       {/* ── STATS ── */}
       <section style={{ background: "#064E3B", padding: "3rem 2rem" }}>
         <div className="container" style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "2rem" }}>
-          {[["500+", "Businesses"], ["100%", "Calls Answered"], ["<1s", "Response Time"], ["30+", "Languages"], ["99.9%", "Uptime SLA"]].map(([n, l]) => (
+          {[["500+", "Businesses"], ["100%", "Calls Answered"], ["<1s", "Response Time"], ["English", "Available Now"], ["99.9%", "Uptime SLA"]].map(([n, l]) => (
             <div key={l} style={{ textAlign: "center", color: "#fff" }}>
               <div style={{ fontWeight: 900, fontSize: "2rem", color: "#6EE7B7", letterSpacing: -1 }}>{n}</div>
               <div style={{ fontSize: "0.8rem", opacity: 0.7, marginTop: 2, fontWeight: 500 }}>{l}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── LANGUAGE NOTICE ── */}
+      <section style={{ background: "#FFFBEB", borderTop: "1px solid #FDE68A", borderBottom: "1px solid #FDE68A", padding: "1rem 2rem" }}>
+        <div className="container" style={{ textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: "1.2rem" }}>🌍</span>
+          <span style={{ color: "#92400E", fontSize: "0.92rem", fontWeight: 500 }}>
+            <strong>English voice support available today.</strong> Our STT can transcribe many languages,
+            but the AI currently responds in English only. <strong>Hindi, Spanish, French & more coming in a few days.</strong>
+          </span>
         </div>
       </section>
 
@@ -167,15 +178,107 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── PRICING CTA ── */}
+      {/* ── PRICING CARDS ── */}
       <section className="section" id="pricing">
-        <div className="container" style={{ textAlign: "center", maxWidth: 700 }}>
-          <h2 className="section-title">Simple, transparent pricing.<br />Pay only for <span className="text-gradient">what you use.</span></h2>
-          <p className="section-sub" style={{ marginTop: "1rem" }}>No hidden fees. Starts at $29/month + pay-as-you-go call minutes. Scale as you grow.</p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: "2.5rem" }}>
-            <Link href="/signup"><button className="btn-emerald" style={{ fontSize: "1rem", padding: "14px 32px" }}>View Full Pricing</button></Link>
-            <Link href="/contact"><button className="btn-outline" style={{ fontSize: "1rem", padding: "14px 24px" }}>Talk to Sales</button></Link>
+        <div className="container">
+          <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
+            <h2 className="section-title">Simple, transparent <span className="text-gradient">pricing</span></h2>
+            <p className="section-sub" style={{ marginTop: "1rem" }}>Pick a plan that fits your call volume. Upgrade or cancel anytime.</p>
           </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", maxWidth: 1100, margin: "0 auto" }}>
+
+            {/* Starter */}
+            <div className="card" style={{ padding: "2.5rem 2rem", display: "flex", flexDirection: "column", border: "1px solid #D1FAE5" }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6B7280", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Starter</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+                <span style={{ fontSize: "2.5rem", fontWeight: 900, color: "#064E3B", letterSpacing: -1 }}>$50</span>
+                <span style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>/month</span>
+              </div>
+              <div style={{ color: "#6B7280", fontSize: "0.85rem", marginBottom: "1.5rem" }}>Perfect for small businesses just getting started</div>
+              {[
+                "200 call minutes / month",
+                "Up to 2 active AI agents",
+                "1 phone number included",
+                "Knowledge base (PDFs, URLs, text)",
+                "Call transcripts & analytics",
+                "Email summary notifications",
+                "English voice support",
+              ].map(f => (
+                <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10, fontSize: "0.88rem", color: "#374151" }}>
+                  <span style={{ color: "#10B981", flexShrink: 0, marginTop: 2 }}>✓</span>{f}
+                </div>
+              ))}
+              <div style={{ flex: 1 }} />
+              <Link href="/signup?plan=starter" style={{ marginTop: "2rem" }}>
+                <button className="btn-outline" style={{ width: "100%", padding: "12px", fontSize: "0.95rem" }}>Start with Starter</button>
+              </Link>
+            </div>
+
+            {/* Pro - HIGHLIGHTED */}
+            <div className="card" style={{ padding: "2.5rem 2rem", display: "flex", flexDirection: "column", border: "2px solid #10B981", position: "relative", transform: "scale(1.03)", boxShadow: "0 10px 40px rgba(16,185,129,0.18)" }}>
+              <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #10B981, #064E3B)", color: "#fff", padding: "4px 14px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 700, letterSpacing: 0.5 }}>MOST POPULAR</div>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#059669", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Pro</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+                <span style={{ fontSize: "2.5rem", fontWeight: 900, color: "#064E3B", letterSpacing: -1 }}>$119</span>
+                <span style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>/month</span>
+              </div>
+              <div style={{ color: "#6B7280", fontSize: "0.85rem", marginBottom: "1.5rem" }}>For growing teams handling more calls daily</div>
+              {[
+                "500 call minutes / month",
+                "Up to 2 active AI agents",
+                "Includes phone numbers",
+                "Everything in Starter, plus:",
+                "Marketplace agent templates",
+                "Shopify & CRM integrations",
+                "Webhook + Zapier support",
+                "Telegram alerts",
+                "Priority email support",
+              ].map(f => (
+                <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10, fontSize: "0.88rem", color: "#374151" }}>
+                  <span style={{ color: "#10B981", flexShrink: 0, marginTop: 2 }}>✓</span>{f}
+                </div>
+              ))}
+              <div style={{ flex: 1 }} />
+              <Link href="/signup?plan=pro" style={{ marginTop: "2rem" }}>
+                <button className="btn-emerald" style={{ width: "100%", padding: "12px", fontSize: "0.95rem" }}>Get Started with Pro</button>
+              </Link>
+            </div>
+
+            {/* Premium */}
+            <div className="card" style={{ padding: "2.5rem 2rem", display: "flex", flexDirection: "column", border: "1px solid #D1FAE5" }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6B7280", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Premium</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+                <span style={{ fontSize: "2.5rem", fontWeight: 900, color: "#064E3B", letterSpacing: -1 }}>$250</span>
+                <span style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>/month</span>
+              </div>
+              <div style={{ color: "#6B7280", fontSize: "0.85rem", marginBottom: "1.5rem" }}>For high-volume agencies and enterprises</div>
+              {[
+                "1100 call minutes / month",
+                "Up to 4 active AI agents",
+                "Multiple phone numbers",
+                "Everything in Pro, plus:",
+                "Custom agent voices",
+                "Advanced analytics & sentiment",
+                "Outbound recovery dialer",
+                "Live call monitoring",
+                "Dedicated success manager",
+                "99.9% SLA",
+              ].map(f => (
+                <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10, fontSize: "0.88rem", color: "#374151" }}>
+                  <span style={{ color: "#10B981", flexShrink: 0, marginTop: 2 }}>✓</span>{f}
+                </div>
+              ))}
+              <div style={{ flex: 1 }} />
+              <Link href="/signup?plan=premium" style={{ marginTop: "2rem" }}>
+                <button className="btn-outline" style={{ width: "100%", padding: "12px", fontSize: "0.95rem" }}>Go Premium</button>
+              </Link>
+            </div>
+
+          </div>
+          <p style={{ textAlign: "center", color: "#9CA3AF", fontSize: "0.85rem", marginTop: "2rem" }}>
+            All plans include English voice support. Multi-language support (Hindi, Spanish, French) launching in a few days.<br />
+            Need more? <Link href="/contact" style={{ color: "#10B981", fontWeight: 600 }}>Contact sales</Link> for custom volume pricing.
+          </p>
         </div>
       </section>
 

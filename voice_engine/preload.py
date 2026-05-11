@@ -36,14 +36,22 @@ def warmup_models():
         logger.warning(f"Silero VAD pre-load failed: {e}")
 
     # ── Smart Turn V3 ────────────────────────────────────────────────────
-    # Correct class name: LocalSmartTurnAnalyzerV3 (not LocalSmartTurnV3)
-    # Triggers: WhisperFeatureExtractor download, transformers/soxr imports,
-    # smart-turn-v3.2-cpu.onnx → OS cache.
     try:
         from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
         _ = LocalSmartTurnAnalyzerV3()
         logger.info("✅ Smart Turn V3 pre-loaded")
     except Exception as e:
         logger.warning(f"Smart Turn V3 pre-load failed: {e}")
+
+    # ── MiniLM embeddings (~80MB, ~5-10ms per query) ─────────────────────
+    # Load it now so first call doesn't pay the ~1-2 second model load.
+    try:
+        from shared.local_embeddings import get_model, embed_query
+        get_model()
+        # Warm the inference path with a dummy embedding
+        _ = embed_query("warmup")
+        logger.info("✅ MiniLM (all-MiniLM-L6-v2) pre-loaded")
+    except Exception as e:
+        logger.warning(f"MiniLM pre-load failed: {e}")
 
     logger.info("✅ Model warmup complete — per-call loading will be faster")

@@ -20,3 +20,4 @@ python-multipart
 resend
 bcrypt
 redis>=5.0.0
+sentence-transformers>=2.7.0
