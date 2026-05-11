@@ -46,6 +46,17 @@ export default function AgentDetailsPage() {
   const [voice, setVoice] = useState("");
   const [voiceList, setVoiceList] = useState<any[]>([]);
   const [forwardingNumber, setForwardingNumber] = useState("");
+  const [transferEnabled, setTransferEnabled] = useState(false);
+  const [transferTz, setTransferTz] = useState("UTC");
+  // Each day → array of "HH:MM-HH:MM" strings. Empty = closed.
+  const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+  type DayKey = (typeof DAYS)[number];
+  const DEFAULT_HOURS: Record<DayKey, string[]> = {
+    mon: ["09:00-18:00"], tue: ["09:00-18:00"], wed: ["09:00-18:00"],
+    thu: ["09:00-18:00"], fri: ["09:00-18:00"],
+    sat: ["10:00-14:00"], sun: [],
+  };
+  const [transferHours, setTransferHours] = useState<Record<DayKey, string[]>>(DEFAULT_HOURS);
 
   // Telephony
   const [provisioning, setProvisioning] = useState(false);
@@ -61,7 +72,7 @@ export default function AgentDetailsPage() {
   const [kbSources, setKbSources] = useState<any[]>([]);
   const [kbTotal, setKbTotal] = useState(0);
   const [kbLoading, setKbLoading] = useState(false);
-  const [kbTab, setKbTab] = useState<"text" | "file" | "url">("text");
+  const [kbTab, setKbTab] = useState<"text" | "file">("text");
   const [kbText, setKbText] = useState("");
   const [kbUrl, setKbUrl] = useState("");
   const [kbFile, setKbFile] = useState<File | null>(null);
@@ -83,6 +94,14 @@ export default function AgentDetailsPage() {
           setPrompt(found.system_prompt || "");
           setVoice(found.voice_id || "aura-2-thalia-en");
           setForwardingNumber(found.forwarding_number || "");
+          setTransferEnabled(!!found.human_transfer_enabled);
+          // Detect browser timezone for first-time users
+          const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+          setTransferTz(found.human_transfer_timezone || browserTz);
+          const savedHours = found.human_transfer_hours;
+          if (savedHours && Object.keys(savedHours).length > 0) {
+            setTransferHours({ ...DEFAULT_HOURS, ...savedHours });
+          }
         }
       } catch (e) { console.error(e); } finally { setLoading(false); }
     };
@@ -104,10 +123,44 @@ export default function AgentDetailsPage() {
   const save = async () => {
     setSaving(true);
     try {
-      await updateAgent(id as string, { name, system_prompt: prompt, voice_id: voice, forwarding_number: forwardingNumber });
+      await updateAgent(id as string, {
+        name,
+        system_prompt: prompt,
+        voice_id: voice,
+        forwarding_number: forwardingNumber.trim() || null,
+        human_transfer_enabled: transferEnabled,
+        human_transfer_timezone: transferTz,
+        human_transfer_hours: transferHours,
+      });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch (e) { console.error(e); }
     setSaving(false);
+  };
+
+  // Helpers for the day-windows editor
+  const dayLabel = (d: DayKey) => ({ mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }[d]);
+  const updateWindow = (d: DayKey, idx: number, value: string) => {
+    setTransferHours(prev => ({
+      ...prev,
+      [d]: prev[d].map((w, i) => (i === idx ? value : w)),
+    }));
+  };
+  const addWindow = (d: DayKey) => {
+    setTransferHours(prev => ({ ...prev, [d]: [...prev[d], "09:00-17:00"] }));
+  };
+  const removeWindow = (d: DayKey, idx: number) => {
+    setTransferHours(prev => ({ ...prev, [d]: prev[d].filter((_, i) => i !== idx) }));
+  };
+  const applyPreset = (preset: "default" | "weekdays" | "always") => {
+    if (preset === "default") setTransferHours(DEFAULT_HOURS);
+    else if (preset === "weekdays") setTransferHours({
+      mon: ["09:00-18:00"], tue: ["09:00-18:00"], wed: ["09:00-18:00"],
+      thu: ["09:00-18:00"], fri: ["09:00-18:00"], sat: [], sun: [],
+    });
+    else setTransferHours({
+      mon: ["00:00-23:59"], tue: ["00:00-23:59"], wed: ["00:00-23:59"],
+      thu: ["00:00-23:59"], fri: ["00:00-23:59"], sat: ["00:00-23:59"], sun: ["00:00-23:59"],
+    });
   };
 
   const ingestText = async () => {
@@ -278,11 +331,150 @@ export default function AgentDetailsPage() {
                 </div>
                 <audio ref={audioRef} style={{ display: "none" }} />
               </div>
-              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.25rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "0.85rem", color: "#064E3B", marginBottom: 10 }}>📞 Call Forwarding</h3>
-                <label style={lbl}>Transfer Number</label>
-                <input type="tel" value={forwardingNumber} onChange={e => setForwardingNumber(e.target.value)}
-                  placeholder="+12125550199" style={inp} />
+              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.5rem" }}>
+                {/* Heading + master toggle */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
+                  <div>
+                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "#064E3B", margin: 0 }}>
+                      🙋 Human Transfer to Live Agent
+                    </h3>
+                    <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: "4px 0 0", lineHeight: 1.5, maxWidth: 480 }}>
+                      Optionally allow the AI to hand off the call to a real person on your team — only when they're available.
+                    </p>
+                  </div>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <input
+                      type="checkbox"
+                      checked={transferEnabled}
+                      onChange={e => setTransferEnabled(e.target.checked)}
+                      style={{ width: 18, height: 18, cursor: "pointer" }}
+                    />
+                    <span style={{ fontWeight: 700, fontSize: "0.82rem", color: transferEnabled ? "#059669" : "#9CA3AF" }}>
+                      {transferEnabled ? "ENABLED" : "DISABLED"}
+                    </span>
+                  </label>
+                </div>
+
+                {!transferEnabled && (
+                  <div style={{ background: "#F9FAFB", border: "1px dashed #E5E7EB", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "#6B7280", marginTop: 8 }}>
+                    Human transfer is <strong>off</strong>. The AI will politely decline if a caller asks to speak to a person.
+                    Enable this if you want callers to be transferred to a real team member during your available hours.
+                  </div>
+                )}
+
+                {transferEnabled && (
+                  <>
+                    {/* Transfer number */}
+                    <div style={{ marginTop: 14 }}>
+                      <label style={lbl}>Transfer Number (where to forward the caller)</label>
+                      <input
+                        type="tel"
+                        value={forwardingNumber}
+                        onChange={e => setForwardingNumber(e.target.value)}
+                        placeholder="+12125550199"
+                        style={inp}
+                      />
+                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 5, marginBottom: 0 }}>
+                        E.164 format: <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>+12125550199</code> (with country code).
+                      </p>
+                    </div>
+
+                    {/* Timezone */}
+                    <div style={{ marginTop: 16 }}>
+                      <label style={lbl}>Timezone</label>
+                      <select value={transferTz} onChange={e => setTransferTz(e.target.value)} style={inp}>
+                        {[
+                          "UTC",
+                          "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+                          "Europe/London", "Europe/Berlin", "Europe/Paris",
+                          "Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Asia/Tokyo",
+                          "Australia/Sydney",
+                        ].map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                      </select>
+                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 5, marginBottom: 0 }}>
+                        All hour windows below are interpreted in this timezone.
+                      </p>
+                    </div>
+
+                    {/* Presets */}
+                    <div style={{ marginTop: 16 }}>
+                      <label style={lbl}>Quick Presets (you can customize below)</label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {([
+                          ["default",  "Standard (Mon–Fri 9 AM–6 PM, Sat 10 AM–2 PM)"],
+                          ["weekdays", "Weekdays Only (Mon–Fri 9 AM–6 PM)"],
+                          ["always",   "Always Open (24/7)"],
+                        ] as const).map(([key, label]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => applyPreset(key as any)}
+                            style={{
+                              padding: "8px 14px", borderRadius: 8, border: "1.5px solid #D1FAE5",
+                              background: "#F6FEFA", color: "#059669", fontWeight: 700, fontSize: "0.78rem",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Per-day editor */}
+                    <div style={{ marginTop: 16 }}>
+                      <label style={lbl}>Available Hours (when humans can take transfers)</label>
+                      <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 10, padding: "0.75rem 1rem" }}>
+                        {DAYS.map(d => (
+                          <div key={d} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: d === "sun" ? "none" : "1px solid #F3F4F6" }}>
+                            <div style={{ width: 44, fontWeight: 700, fontSize: "0.82rem", color: "#374151" }}>
+                              {dayLabel(d)}
+                            </div>
+                            <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                              {transferHours[d].length === 0 ? (
+                                <span style={{ fontSize: "0.78rem", color: "#9CA3AF", fontStyle: "italic" }}>
+                                  Closed
+                                </span>
+                              ) : (
+                                transferHours[d].map((win, idx) => (
+                                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #D1FAE5", borderRadius: 7, padding: "2px 8px" }}>
+                                    <input
+                                      type="text"
+                                      value={win}
+                                      onChange={e => updateWindow(d, idx, e.target.value)}
+                                      placeholder="09:00-18:00"
+                                      style={{ width: 110, border: "none", outline: "none", fontSize: "0.82rem", color: "#064E3B", fontFamily: "monospace", background: "transparent" }}
+                                    />
+                                    <button type="button" onClick={() => removeWindow(d, idx)}
+                                      style={{ background: "none", border: "none", color: "#EF4444", cursor: "pointer", fontSize: "1rem", padding: 0, lineHeight: 1 }}>
+                                      ×
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                              <button type="button" onClick={() => addWindow(d)}
+                                style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", color: "#059669", borderRadius: 7, padding: "2px 10px", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+                                + Add
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 6, marginBottom: 0, lineHeight: 1.5 }}>
+                        Standard format: <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>HH:MM-HH:MM</code> (24-hour).
+                        Add multiple windows per day for lunch breaks (e.g. <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>09:00-12:00</code> + <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>13:00-18:00</code>).
+                        Remove all windows to mark a day as closed.
+                      </p>
+                    </div>
+
+                    <div style={{ marginTop: 14, background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "#064E3B" }}>
+                      💡 <strong>How it works:</strong> When a caller asks for a human <em>and</em> the current
+                      time is inside one of these windows, the AI will say a brief "transferring you now" and
+                      forward the call to your transfer number. Outside these hours, the AI politely says your
+                      team isn't available and offers to help directly.
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -343,25 +535,55 @@ export default function AgentDetailsPage() {
           <div style={card()}>
             <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: "1.25rem" }}>Add Knowledge</h2>
 
-            {/* Sub-tabs */}
+            {/* Sub-tabs — URL sync hidden for now, coming back soon */}
             <div style={{ display: "flex", gap: 6, marginBottom: "1.25rem" }}>
-              {(["text", "file", "url"] as const).map(t => (
+              {(["text", "file"] as const).map(t => (
                 <button key={t} onClick={() => setKbTab(t)} style={{
                   padding: "6px 14px", borderRadius: 7, fontWeight: 700, fontSize: "0.8rem",
                   cursor: "pointer", border: "1.5px solid #D1FAE5",
                   background: kbTab === t ? "#064E3B" : "#F6FEFA",
                   color: kbTab === t ? "#fff" : "#059669",
                 }}>
-                  {t === "text" ? "✏️ Text" : t === "file" ? "📄 File" : "🌐 URL"}
+                  {t === "text" ? "✏️ Text" : "📄 File"}
                 </button>
               ))}
+              <span style={{
+                padding: "6px 12px", borderRadius: 7, fontWeight: 600, fontSize: "0.75rem",
+                background: "#F3F4F6", color: "#9CA3AF",
+                border: "1px dashed #E5E7EB", display: "inline-flex", alignItems: "center", gap: 6,
+              }}>
+                🌐 Website Sync — coming soon
+              </span>
+            </div>
+
+            {/* Guide: what to upload */}
+            <div style={{
+              background: "linear-gradient(135deg,#F6FEFA,#ECFDF5)",
+              border: "1px solid #D1FAE5", borderRadius: 10,
+              padding: "0.9rem 1rem", marginBottom: "1rem",
+            }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#059669", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
+                💡 What to upload for the best agent answers
+              </div>
+              <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "#374151", fontSize: "0.82rem", lineHeight: 1.7 }}>
+                <li><strong>Business basics</strong> — name, address, phone, hours, location, parking</li>
+                <li><strong>Products / services</strong> — what you offer, key features, who it's for</li>
+                <li><strong>Pricing</strong> — plan names, prices, what's included, discounts</li>
+                <li><strong>FAQs</strong> — common customer questions and your answers</li>
+                <li><strong>Policies</strong> — returns, refunds, shipping, cancellation, privacy</li>
+                <li><strong>Process flows</strong> — how to book, order, sign up, get support</li>
+                <li><strong>Team / expertise</strong> — doctors, agents, specialties, languages spoken</li>
+              </ul>
+              <div style={{ fontSize: "0.74rem", color: "#6B7280", marginTop: 8, fontStyle: "italic" }}>
+                Tip: Write in plain Q&amp;A or short bullets. Avoid PDFs of scanned forms — text only works best.
+              </div>
             </div>
 
             {kbTab === "text" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <label style={lbl}>Paste your business content</label>
                 <textarea rows={10} value={kbText} onChange={e => setKbText(e.target.value)}
-                  placeholder="Paste FAQs, product descriptions, policies, pricing..."
+                  placeholder={"Example:\n\nQ: What are your hours?\nA: We're open Monday to Saturday, 9 AM to 7 PM.\n\nQ: Where are you located?\nA: 123 Main Street, Jaipur, India.\n\nQ: What services do you offer?\nA: We provide AI customer support, voice agents, and automation tools."}
                   style={{ ...inp, resize: "vertical", lineHeight: 1.6 }} />
                 <button onClick={ingestText} disabled={kbBusy || !kbText.trim()} style={btn("#064E3B", { opacity: kbBusy ? 0.6 : 1 })}>
                   {kbBusy ? "Uploading..." : "Upload Text"}
@@ -376,25 +598,16 @@ export default function AgentDetailsPage() {
                   onClick={() => document.getElementById("kb-file-input")?.click()}>
                   <div style={{ fontSize: "2rem", marginBottom: 8 }}>📄</div>
                   <div style={{ color: "#6B7280", fontSize: "0.85rem" }}>
-                    {kbFile ? kbFile.name : "Click to select a file (.txt, .md)"}
+                    {kbFile ? kbFile.name : "Click to select a file (.txt or .md)"}
+                  </div>
+                  <div style={{ color: "#9CA3AF", fontSize: "0.72rem", marginTop: 4 }}>
+                    Max 2MB. Use plain-text files — not PDFs.
                   </div>
                   <input id="kb-file-input" type="file" accept=".txt,.md" style={{ display: "none" }}
                     onChange={e => setKbFile(e.target.files?.[0] || null)} />
                 </div>
                 <button onClick={ingestFile} disabled={kbBusy || !kbFile} style={btn("#064E3B", { opacity: kbBusy || !kbFile ? 0.6 : 1 })}>
                   {kbBusy ? "Uploading..." : "Upload File"}
-                </button>
-              </div>
-            )}
-
-            {kbTab === "url" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <label style={lbl}>Website URL to scrape</label>
-                <input value={kbUrl} onChange={e => setKbUrl(e.target.value)}
-                  placeholder="https://yoursite.com/faq" style={inp} />
-                <p style={{ fontSize: "0.75rem", color: "#9CA3AF", margin: 0 }}>We'll scrape up to 5 pages and extract the text.</p>
-                <button onClick={ingestUrl} disabled={kbBusy || !kbUrl.trim()} style={btn("#064E3B", { opacity: kbBusy || !kbUrl.trim() ? 0.6 : 1 })}>
-                  {kbBusy ? "Syncing..." : "Sync URL"}
                 </button>
               </div>
             )}

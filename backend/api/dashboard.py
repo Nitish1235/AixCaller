@@ -199,6 +199,23 @@ async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
     return new_agent
 
 
+@router.get("/agents/{agent_id}/transfer-availability")
+async def get_transfer_availability(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Returns whether human-transfer is currently available for this agent
+    (enabled + forwarding number set + inside staffed hours)."""
+    from shared.transfer_hours import is_human_transfer_available
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    available, reason = is_human_transfer_available(
+        enabled=getattr(agent, "human_transfer_enabled", False),
+        forwarding_number=agent.forwarding_number,
+        timezone=getattr(agent, "human_transfer_timezone", "UTC"),
+        hours=getattr(agent, "human_transfer_hours", {}) or {},
+    )
+    return {"available": available, "reason": reason}
+
+
 @router.get("/agents/limits")
 async def get_agent_limits(tenant_id: str, db: Session = Depends(get_db)):
     """Returns current active agent count + plan limit for the UI to show usage."""

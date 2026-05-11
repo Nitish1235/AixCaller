@@ -44,14 +44,14 @@ export default function KnowledgePage() {
       <div>
         <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "#064E3B", margin: 0 }}>Knowledge Base</h1>
         <p style={{ color: "#9CA3AF", marginTop: 4, fontSize: "0.88rem" }}>
-          Train each agent with your business data — FAQs, docs, website content.
+          Train each agent with your business data — FAQs, services, pricing, policies.
         </p>
       </div>
 
       {/* How it works banner */}
       <div style={{ ...card, background: "linear-gradient(135deg,#064E3B,#059669)", color: "#fff", display: "flex", gap: "2rem", alignItems: "center" }}>
         {[
-          ["📝", "Add Content", "Paste text, upload .txt/.md files, or sync a website URL"],
+          ["📝", "Add Content", "Paste text or upload .txt / .md files (website sync coming soon)"],
           ["🔍", "Semantic Search", "Queries are matched by meaning — not just keywords"],
           ["🤖", "Auto Injection", "Relevant chunks are injected into the AI context on each call"],
         ].map(([icon, title, desc]) => (

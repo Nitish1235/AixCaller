@@ -346,9 +346,32 @@ export default function CreateAgentPage() {
           </div>
 
           <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B", marginBottom: "0.4rem" }}>Knowledge Base</h2>
-          <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>
+          <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
             Add FAQs, product info, pricing, and policies. Your agent uses this to answer caller questions accurately.
           </p>
+
+          {/* Guide: what to upload */}
+          <div style={{
+            background: "linear-gradient(135deg,#F6FEFA,#ECFDF5)",
+            border: "1px solid #D1FAE5", borderRadius: 12,
+            padding: "1rem 1.25rem", marginBottom: "1.5rem",
+          }}>
+            <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#059669", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+              💡 What to upload for the best agent answers
+            </div>
+            <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "#374151", fontSize: "0.82rem", lineHeight: 1.75 }}>
+              <li><strong>Business basics</strong> — name, address, phone, hours, location, parking</li>
+              <li><strong>Products / services</strong> — what you offer, key features, who it's for</li>
+              <li><strong>Pricing</strong> — plan names, prices, what's included, discounts</li>
+              <li><strong>FAQs</strong> — common customer questions with clear answers</li>
+              <li><strong>Policies</strong> — returns, refunds, shipping, cancellation, privacy</li>
+              <li><strong>Process flows</strong> — how to book, order, sign up, get support</li>
+              <li><strong>Team / expertise</strong> — doctors, agents, specialties, languages spoken</li>
+            </ul>
+            <div style={{ fontSize: "0.74rem", color: "#6B7280", marginTop: 10, fontStyle: "italic" }}>
+              Tip: Write in plain Q&amp;A or short bullets. Avoid scanned PDFs — text-only works best.
+            </div>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
 
@@ -358,10 +381,10 @@ export default function CreateAgentPage() {
                 📝 Paste Text
               </div>
               <div style={{ padding: "1.25rem" }}>
-                <textarea rows={6} value={kbText} onChange={e => setKbText(e.target.value)}
-                  placeholder={"FAQ, pricing, product descriptions, policies...\n\nExample:\nQ: What are your hours?\nA: We are open Monday to Friday, 9am–6pm EST."}
+                <textarea rows={7} value={kbText} onChange={e => setKbText(e.target.value)}
+                  placeholder={"Example format:\n\nQ: What are your hours?\nA: We're open Monday to Saturday, 9 AM to 7 PM.\n\nQ: What services do you offer?\nA: AI customer support, voice agents, automation tools.\n\nQ: How can I book a demo?\nA: Visit our website or reply to this call to schedule one."}
                   style={{ ...inp, resize: "vertical", lineHeight: 1.6 }} />
-                <p style={hint}>Paste any text content — FAQs, SOPs, product sheets, etc.</p>
+                <p style={hint}>Paste any text content — FAQs, SOPs, product sheets, policies.</p>
               </div>
             </div>
 
@@ -390,22 +413,25 @@ export default function CreateAgentPage() {
                     <div>
                       <div style={{ fontSize: "1.5rem", marginBottom: 4 }}>⬆️</div>
                       <div style={{ fontWeight: 600, color: "#374151", fontSize: "0.88rem" }}>Click to upload .txt or .md file</div>
-                      <div style={{ color: "#9CA3AF", fontSize: "0.75rem", marginTop: 4 }}>Max 2MB</div>
+                      <div style={{ color: "#9CA3AF", fontSize: "0.75rem", marginTop: 4 }}>Max 2MB · plain text only</div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Tab: Website URL */}
-            <div style={{ border: "1.5px solid #D1FAE5", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ background: "#F6FEFA", padding: "10px 16px", borderBottom: "1px solid #D1FAE5", fontWeight: 700, fontSize: "0.82rem", color: "#064E3B", display: "flex", alignItems: "center", gap: 8 }}>
-                🌐 Sync Website
+            {/* Website URL sync — coming soon */}
+            <div style={{
+              border: "1px dashed #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7,
+            }}>
+              <div style={{ background: "#F9FAFB", padding: "10px 16px", borderBottom: "1px dashed #E5E7EB", fontWeight: 600, fontSize: "0.82rem", color: "#9CA3AF", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span>🌐 Sync Website URL</span>
+                <span style={{ fontSize: "0.7rem", padding: "2px 8px", background: "#F3F4F6", borderRadius: 99, fontWeight: 700, color: "#6B7280", letterSpacing: 0.5 }}>
+                  COMING SOON
+                </span>
               </div>
-              <div style={{ padding: "1.25rem" }}>
-                <input type="url" value={kbUrl} onChange={e => setKbUrl(e.target.value)}
-                  placeholder="https://yourcompany.com" style={inp} />
-                <p style={hint}>We'll scrape up to 5 pages automatically. Runs in the background.</p>
+              <div style={{ padding: "0.85rem 1.25rem", fontSize: "0.78rem", color: "#9CA3AF" }}>
+                Automated website scraping is coming soon. For now, please copy the relevant content from your site and paste it as text above.
               </div>
             </div>
 

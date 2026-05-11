@@ -60,7 +60,21 @@ class Agent(SQLModel, table=True):
     llm_temperature: float = 0.7
     language: str = "en"
     kb_namespace: Optional[str] = None
+    # ── Human Transfer (live-agent handoff) ──────────────────────────────
+    # forwarding_number: the human's phone the AI transfers to (E.164 format).
+    # human_transfer_enabled: master switch — even if a number is saved, the AI
+    #   won't offer transfers unless this is True. Lets a business turn off
+    #   transfers entirely (AI handles all calls).
+    # human_transfer_timezone: IANA tz name (e.g. "America/New_York"). Used to
+    #   evaluate whether "now" is within the staffed-hours windows.
+    # human_transfer_hours: JSON mapping day → list of "HH:MM-HH:MM" windows.
+    #   Empty list = closed that day. Example:
+    #     {"mon": ["09:00-18:00"], "tue": ["09:00-18:00"], ...,
+    #      "sat": ["10:00-14:00"], "sun": []}
     forwarding_number: Optional[str] = None
+    human_transfer_enabled: bool = Field(default=False)
+    human_transfer_timezone: str = Field(default="UTC")
+    human_transfer_hours: dict = Field(default_factory=dict, sa_column=Column(JSON))
     template_id: Optional[str] = None      # Marketplace template used (clinic, ecommerce, etc.)
     tools_config: dict = Field(default_factory=dict, sa_column=Column(JSON))
     

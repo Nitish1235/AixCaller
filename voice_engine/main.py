@@ -163,7 +163,13 @@ async def websocket_endpoint(websocket: WebSocket):
                             "llm_temperature": agent.llm_temperature or 0.7,
                             "language": agent.language or "en",
                             "is_recovery": decoded.get("is_recovery", False),
-                            "forwarding_number": agent.forwarding_number,
+                            # Human Transfer settings
+                            "forwarding_number":        agent.forwarding_number,
+                            "agent_phone_number":       agent.phone_number,  # Telnyx number — "from" on transfer
+                            "human_transfer_enabled":   getattr(agent, "human_transfer_enabled", False),
+                            "human_transfer_timezone":  getattr(agent, "human_transfer_timezone", "UTC"),
+                            "human_transfer_hours":     getattr(agent, "human_transfer_hours", {}) or {},
+                            # Telephony
                             "call_control_id": call_control_id,
                             "call_session_id": call_session_id,
                             "tools_config": agent.tools_config or {}

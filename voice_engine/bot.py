@@ -3,6 +3,7 @@ import time
 import random
 import httpx
 import json
+from typing import Optional
 from loguru import logger
 
 # ── Pipecat: Audio ──────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ class VoiceAgent:
         self.agent_config = agent_config
         self.task = None  # Pipeline task ref — set in start() so tools can push frames
         self._last_filler_time = 0.0  # for filler debounce
+        self._transfer_off_hours_reason: Optional[str] = None  # set in start()
 
     # ── Hot KB Pre-warm (background task) ────────────────────────────────────
     async def _prewarm_hot_kb_safe(self):
@@ -199,10 +201,76 @@ class VoiceAgent:
 
         asyncio.create_task(_delayed_hangup())
 
-    # ── Tool: Transfer to Human ──────────────────────────────────────────────
+    # ── Tool: Transfer to Human (Telnyx blind transfer) ──────────────────────
     async def transfer_to_human(self, params):
-        logger.info(f"AI requested transfer for tenant {self.tenant_id}")
-        await params.result_callback("Please hold while I transfer you to a human representative.")
+        """Forward the live call to the agent's configured forwarding_number.
+
+        Flow:
+          1. Verify forwarding_number + Telnyx credentials are present
+          2. Acknowledge the LLM tool call (LLM has already said its farewell)
+          3. Wait ~2 seconds for the farewell TTS to play
+          4. POST to Telnyx /actions/transfer — Telnyx will:
+             - Hang up the current AI media-stream leg
+             - Dial the forwarding_number from our Telnyx number
+             - Bridge the original caller to that destination
+          5. The on_client_disconnected handler will fire automatically when
+             Telnyx tears down the WebSocket
+        """
+        import asyncio
+
+        forwarding_number = self.agent_config.get("forwarding_number")
+        agent_phone_number = self.agent_config.get("agent_phone_number")
+        call_control_id = self.agent_config.get("call_control_id")
+        telnyx_api_key = os.environ.get("TELNYX_API_KEY")
+
+        # Pre-flight validation
+        if not forwarding_number:
+            logger.warning("transfer_to_human invoked but no forwarding_number configured")
+            await params.result_callback(
+                "I don't have a transfer number set up. Let me try to help you here instead."
+            )
+            return
+        if not call_control_id or not telnyx_api_key:
+            logger.error("Cannot transfer — missing call_control_id or TELNYX_API_KEY")
+            await params.result_callback(
+                "I'm having trouble transferring right now. Could I help you another way?"
+            )
+            return
+
+        logger.info(f"🔀 Initiating transfer to {forwarding_number} for tenant {self.tenant_id}")
+        # Tell the LLM the transfer is in motion. The LLM has already spoken a
+        # farewell like "Transferring you now, please hold." in its turn.
+        await params.result_callback(
+            f"Transfer initiated to {forwarding_number}. The caller will be bridged shortly."
+        )
+
+        async def _do_transfer():
+            # Give the LLM's "transferring you now" TTS a moment to finish playing
+            await asyncio.sleep(2.5)
+            try:
+                payload = {"to": forwarding_number}
+                # Telnyx requires "from" to be a number you own. We use the agent's
+                # Telnyx number — the caller-ID the human will see when their phone rings.
+                if agent_phone_number:
+                    payload["from"] = agent_phone_number
+
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(
+                        f"https://api.telnyx.com/v2/calls/{call_control_id}/actions/transfer",
+                        headers={
+                            "Authorization": f"Bearer {telnyx_api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=payload,
+                    )
+                    if resp.status_code in (200, 201, 202, 204):
+                        logger.info(f"✅ Telnyx transfer accepted: {resp.status_code}")
+                    else:
+                        logger.error(f"Telnyx transfer failed {resp.status_code}: {resp.text}")
+            except Exception as e:
+                logger.error(f"Telnyx transfer exception: {e}")
+
+        asyncio.create_task(_do_transfer())
 
     # ── Main Entry Point ─────────────────────────────────────────────────────
     async def start(self, websocket, stream_id: str, call_id: str):
@@ -327,7 +395,33 @@ class VoiceAgent:
                 "   - Has no more questions after you ask if they need anything else\n"
                 "Before calling end_call, say ONE short farewell like: 'You're welcome, have a "
                 "great day!' or 'Glad I could help. Take care!' or 'Thanks for calling. Bye!' — "
-                "then immediately call end_call. Don't drag it out."
+                "then immediately call end_call. Don't drag it out.\n"
+                "10. HUMAN TRANSFER POLICY:\n"
+                + (
+                    # AVAILABLE NOW — tool registered with LLM
+                    "   Human transfer IS available right now. If the caller asks for a human, "
+                    "or you can't help (refund disputes, account-specific issues, complex "
+                    "complaints, frustrated after 2 failed KB tries), say one brief reassurance "
+                    "like 'Sure, let me transfer you to a team member now — one moment please.' "
+                    "and IMMEDIATELY call `transfer_to_human`. The transfer takes ~2 seconds. "
+                    "Don't call it for routine questions you can answer from the KB."
+                    if (self._transfer_off_hours_reason is None
+                        and self.agent_config.get("human_transfer_enabled")
+                        and self.agent_config.get("forwarding_number"))
+                    else
+                    # OFF-HOURS — tool NOT registered, AI must politely decline + offer alternative
+                    f"   Human transfer is NOT available right now. Reason: "
+                    f"{self._transfer_off_hours_reason or 'transfer is disabled for this agent'}. "
+                    "DO NOT promise to transfer the caller — you literally cannot. If they ask "
+                    "for a human, respond warmly with something like:\n"
+                    "   - 'Our team isn't available to take calls at the moment. I'd be happy "
+                    "to help you here, or I can take a message and have someone reach out.'\n"
+                    "   - 'Right now I'm the one staffing the line, but I can help with most "
+                    "questions. What do you need?'\n"
+                    "   - 'Our team is offline at the moment. Let me see if I can help — what's "
+                    "your question?'\n"
+                    "Never say 'I'll transfer you' or 'please hold' when transfer is unavailable."
+                )
             )}
         ]
 
@@ -360,11 +454,34 @@ class VoiceAgent:
             )
         ]
 
-        if self.agent_config.get("forwarding_number"):
+        # ── Human Transfer: only expose the tool if the business has opted in
+        #    AND the current time is within their staffed-hours window ──────
+        from shared.transfer_hours import is_human_transfer_available
+        transfer_available, transfer_reason = is_human_transfer_available(
+            enabled=self.agent_config.get("human_transfer_enabled", False),
+            forwarding_number=self.agent_config.get("forwarding_number"),
+            timezone=self.agent_config.get("human_transfer_timezone", "UTC"),
+            hours=self.agent_config.get("human_transfer_hours", {}),
+        )
+        # Stash the off-hours reason so the system prompt can echo it if asked
+        self._transfer_off_hours_reason = transfer_reason if not transfer_available else None
+        logger.info(f"Human transfer available: {transfer_available} — {transfer_reason}")
+
+        if transfer_available:
             standard_tools.append(
                 FunctionSchema(
                     name="transfer_to_human",
-                    description="Transfers the call to a human representative. Use this when the user specifically asks to speak to a human or manager, or if you cannot help them.",
+                    description=(
+                        "Forwards the caller to a human team member at the business. "
+                        "Only available right now because the business has enabled human "
+                        "transfer AND the current time is within their staffed hours. "
+                        "Use this ONLY when: (1) the caller explicitly asks for a human/"
+                        "manager/owner; (2) the request needs human judgment you cannot "
+                        "provide (refund disputes, account-specific issues, complex complaints); "
+                        "or (3) the caller is clearly frustrated after KB lookups failed twice. "
+                        "Before calling, say one short reassurance like 'Sure, let me transfer "
+                        "you now — one moment please.' Don't call it for routine questions."
+                    ),
                     properties={},
                     required=[]
                 )
@@ -426,7 +543,9 @@ class VoiceAgent:
         llm.register_function("search_knowledge_base", self.search_kb)
         llm.register_function("end_call", self.end_call)
 
-        if self.agent_config.get("forwarding_number"):
+        # Register transfer_to_human only when transfer is currently available
+        # (enabled + within staffed hours). When unavailable, the AI cannot call it.
+        if transfer_available:
             llm.register_function("transfer_to_human", self.transfer_to_human)
 
         tools_config = self.agent_config.get("tools_config", {})
