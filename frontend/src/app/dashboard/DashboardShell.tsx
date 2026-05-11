@@ -15,7 +15,6 @@ const navItems = [
   { href: "/dashboard/calls",        icon: "📞", label: "Call History" },
   { href: "/dashboard/knowledge",    icon: "📚", label: "Knowledge Base" },
   { href: "/dashboard/integrations", icon: "🔌", label: "Integrations" },
-  { href: "/dashboard/live",         icon: "🔴", label: "Live Monitor" },
   { href: "/dashboard/billing",      icon: "💳", label: "Billing" },
 ];
 
@@ -40,8 +39,20 @@ function NavItem({ href, icon, label, active }: { href: string; icon: string; la
   );
 }
 
+import { useEffect, useState } from "react";
+import { apiGet } from "@/lib/api";
+
 export default function DashboardShell({ user, children }: { user: User; children: React.ReactNode }) {
   const path = usePathname();
+  const [billing, setBilling] = useState<{ minutes_left: number; minutes_included: number } | null>(null);
+
+  useEffect(() => {
+    if (user?.tenant_id) {
+      apiGet(`/billing/subscription?tenant_id=${user.tenant_id}`)
+        .then(data => setBilling(data))
+        .catch(err => console.error("Failed to load billing status", err));
+    }
+  }, [user?.tenant_id]);
 
   // Avatar initials fallback
   const initials = user.name
@@ -76,11 +87,16 @@ export default function DashboardShell({ user, children }: { user: User; childre
         {/* Credits */}
         <div style={{ padding: "1rem", margin: "0 0.75rem 0.75rem", background: "rgba(16,185,129,0.12)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)" }}>
           <div style={{ fontSize: "0.72rem", color: "#6EE7B7", fontWeight: 600, marginBottom: 6 }}>CREDITS REMAINING</div>
-          <div style={{ fontWeight: 900, fontSize: "1.3rem", color: "#fff" }}>500 <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#6EE7B7" }}>min</span></div>
-          <div style={{ marginTop: 8, height: 5, background: "rgba(255,255,255,0.1)", borderRadius: 999 }}>
-            <div style={{ width: "65%", height: "100%", background: "linear-gradient(90deg,#10B981,#6EE7B7)", borderRadius: 999 }} />
+          <div style={{ fontWeight: 900, fontSize: "1.3rem", color: "#fff" }}>
+            {billing ? Math.floor(billing.minutes_left) : "..."} <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#6EE7B7" }}>min</span>
           </div>
-          <Link href="/dashboard/billing" style={{ display: "block", textAlign: "center", marginTop: 10, fontSize: "0.72rem", color: "#6EE7B7", fontWeight: 700, textDecoration: "none" }}>Top Up Credits →</Link>
+          <div style={{ marginTop: 8, height: 5, background: "rgba(255,255,255,0.1)", borderRadius: 999 }}>
+            <div style={{ 
+              width: billing && billing.minutes_included > 0 ? `${Math.min(100, Math.max(0, (billing.minutes_left / billing.minutes_included) * 100))}%` : "0%", 
+              height: "100%", background: "linear-gradient(90deg,#10B981,#6EE7B7)", borderRadius: 999, transition: "width 0.5s ease" 
+            }} />
+          </div>
+          <Link href="/dashboard/billing" style={{ display: "block", textAlign: "center", marginTop: 10, fontSize: "0.72rem", color: "#6EE7B7", fontWeight: 700, textDecoration: "none" }}>Manage Plan →</Link>
         </div>
 
         {/* User — real data */}

@@ -9,13 +9,12 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy shared models and logic
-COPY shared /app/shared
-
-# Copy voice engine code
+# 1. Copy only requirements first to leverage Docker layer caching
 COPY voice_engine/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 2. Copy source code ONLY after dependencies are installed
+COPY shared /app/shared
 COPY voice_engine/ /app/voice_engine
 
 EXPOSE 8080

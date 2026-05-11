@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "next/link";import { apiGet, apiPost } from "@/lib/api";
 
 interface Template {
   id: string;
@@ -32,11 +32,8 @@ export default function MarketplacePage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
   useEffect(() => {
-    fetch(`${apiUrl}/api/v1/agent-templates`)
-      .then(r => r.json())
+    apiGet("/agent-templates")
       .then(d => setTemplates(d.templates || []))
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
@@ -55,21 +52,12 @@ export default function MarketplacePage() {
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch(`${apiUrl}/api/v1/agents/from-template`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          template_id:    selected.id,
-          tenant_id:      tenantId,
-          business_name:  businessName.trim(),
-          agent_name:     agentName.trim() || selected.default_name,
-        }),
+      const agent = await apiPost("/agents/from-template", {
+        template_id:    selected.id,
+        tenant_id:      tenantId,
+        business_name:  businessName.trim(),
+        agent_name:     agentName.trim() || selected.default_name,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Failed to create agent");
-      }
-      const agent = await res.json();
       router.push(`/dashboard/agents/${agent.id}`);
     } catch (e: any) {
       setError(e.message || "Something went wrong");
