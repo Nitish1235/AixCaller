@@ -172,6 +172,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             # Telephony
                             "call_control_id": call_control_id,
                             "call_session_id": call_session_id,
+                            # Caller's incoming phone (for Shopify caller-ID verification)
+                            "from_number":     start_data.get("from"),
+                            "to_number":       start_data.get("to"),
                             "tools_config": agent.tools_config or {}
                         }
                     logger.info(f"Verified token for tenant {tenant_id}")

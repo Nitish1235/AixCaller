@@ -58,6 +58,12 @@ export default function AgentDetailsPage() {
   };
   const [transferHours, setTransferHours] = useState<Record<DayKey, string[]>>(DEFAULT_HOURS);
 
+  // Shopify connection state
+  const [shopifyStatus, setShopifyStatus] = useState<{ connected: boolean; store_url?: string | null } | null>(null);
+  const [shopInput, setShopInput] = useState("");
+  const [shopifyBusy, setShopifyBusy] = useState(false);
+  const [shopifyMsg, setShopifyMsg] = useState<string>("");
+
   // Telephony
   const [provisioning, setProvisioning] = useState(false);
   const [areaCode, setAreaCode] = useState("");
@@ -245,6 +251,60 @@ export default function AgentDetailsPage() {
       setProvisioning(false);
     } catch { setProvError("Failed to purchase number."); }
     setProvLoading(false);
+  };
+
+  // ── Shopify ────────────────────────────────────────────────────────────
+  const loadShopifyStatus = async () => {
+    if (!agentId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/shopify/status?agent_id=${agentId}`);
+      if (res.ok) setShopifyStatus(await res.json());
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => { loadShopifyStatus(); }, [agentId]);
+
+  // Handle return-from-OAuth params (?shopify_connected=1 or ?shopify_error=...)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("shopify_connected") === "1") {
+      setShopifyMsg("✓ Shopify connected successfully!");
+      loadShopifyStatus();
+      // Clean the URL
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (p.get("shopify_error")) {
+      setShopifyMsg(`✗ Shopify connection failed: ${p.get("shopify_error")}`);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  const connectShopify = () => {
+    if (!shopInput.trim()) { setShopifyMsg("Please enter your Shopify store URL first."); return; }
+    // 302 redirect to backend which redirects to Shopify
+    const url = `${API_BASE_URL}/shopify/install?agent_id=${agentId}&shop=${encodeURIComponent(shopInput.trim())}`;
+    window.location.href = url;
+  };
+
+  const disconnectShopify = async () => {
+    if (!confirm("Disconnect Shopify from this agent? The AI will no longer be able to look up orders.")) return;
+    setShopifyBusy(true);
+    try {
+      await fetch(`${API_BASE_URL}/shopify/disconnect?agent_id=${agentId}`, { method: "DELETE" });
+      setShopifyMsg("Shopify disconnected.");
+      setShopifyStatus({ connected: false });
+    } catch { setShopifyMsg("✗ Failed to disconnect."); }
+    setShopifyBusy(false);
+  };
+
+  const testShopify = async () => {
+    setShopifyBusy(true); setShopifyMsg("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/shopify/test-connection?agent_id=${agentId}`, { method: "POST" });
+      const data = await res.json();
+      setShopifyMsg(data.ok ? `✓ ${data.message}` : `✗ ${data.message}`);
+    } catch { setShopifyMsg("✗ Test failed."); }
+    setShopifyBusy(false);
   };
 
   if (loading) return <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Loading...</div>;
@@ -475,6 +535,106 @@ export default function AgentDetailsPage() {
                     </div>
                   </>
                 )}
+              </div>
+
+              {/* ── Shopify Integration ─────────────────────────────────── */}
+              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
+                  <div>
+                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "#064E3B", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                      🛍️ Shopify Integration
+                      {shopifyStatus?.connected && (
+                        <span style={{ fontSize: "0.65rem", padding: "2px 8px", background: "#D1FAE5", color: "#059669", borderRadius: 99, fontWeight: 700, letterSpacing: 0.5 }}>
+                          CONNECTED
+                        </span>
+                      )}
+                    </h3>
+                    <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: "4px 0 0", lineHeight: 1.5 }}>
+                      Connect your Shopify store so the AI can answer caller questions about their orders — status, tracking, items, totals, refunds — in real-time.
+                    </p>
+                  </div>
+                </div>
+
+                {!shopifyStatus?.connected ? (
+                  <>
+                    <label style={lbl}>Your Shopify Store URL</label>
+                    <input
+                      type="text"
+                      value={shopInput}
+                      onChange={e => setShopInput(e.target.value)}
+                      placeholder="mystore.myshopify.com"
+                      style={inp}
+                    />
+                    <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "5px 0 14px" }}>
+                      Enter <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>yourstore.myshopify.com</code> (or just the handle).
+                      You'll be redirected to Shopify to approve access.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={connectShopify}
+                      disabled={!shopInput.trim() || shopifyBusy}
+                      style={{
+                        background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
+                        padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem", cursor: shopInput.trim() ? "pointer" : "not-allowed",
+                        opacity: shopInput.trim() ? 1 : 0.6,
+                        display: "inline-flex", alignItems: "center", gap: 8,
+                      }}
+                    >
+                      🛍️ Connect with Shopify
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 16px", marginBottom: 12 }}>
+                      <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#9CA3AF", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
+                        Connected Store
+                      </div>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#064E3B", fontFamily: "monospace" }}>
+                        {shopifyStatus.store_url}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={testShopify}
+                        disabled={shopifyBusy}
+                        style={{ background: "#fff", border: "1.5px solid #D1FAE5", color: "#059669", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
+                      >
+                        🔍 Test Connection
+                      </button>
+                      <button
+                        type="button"
+                        onClick={disconnectShopify}
+                        disabled={shopifyBusy}
+                        style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {shopifyMsg && (
+                  <div style={{
+                    marginTop: 10,
+                    padding: "8px 12px",
+                    background: shopifyMsg.startsWith("✓") ? "#ECFDF5" : "#FEF2F2",
+                    color: shopifyMsg.startsWith("✓") ? "#059669" : "#DC2626",
+                    borderRadius: 8, fontSize: "0.82rem", fontWeight: 600,
+                  }}>
+                    {shopifyMsg}
+                  </div>
+                )}
+
+                <div style={{ marginTop: 14, background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 9, padding: "10px 14px", fontSize: "0.76rem", color: "#064E3B", lineHeight: 1.6 }}>
+                  💡 <strong>What callers can ask:</strong>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: "1.1rem" }}>
+                    <li>"What's the status of order #1042?"</li>
+                    <li>"Where's my order? When will it arrive?"</li>
+                    <li>"What did I order? How much did I pay?"</li>
+                    <li>"Has my refund been processed?"</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

@@ -385,6 +385,19 @@ class VoiceAgent:
                 "8. NAME RECOGNITION: Your name (the agent's name) might be misheard by speech "
                 "recognition (e.g. 'Sarah' → 'Sheila', 'Cita'). If the user calls you by a similar-"
                 "sounding name, just continue naturally — assume they meant you.\n"
+                + (
+                    "8b. SHOPIFY ORDER QUESTIONS: When the caller asks about an order (status, "
+                    "shipping, items, total, refund), ALWAYS use the Shopify tools — never guess. "
+                    "If you don't have an order number yet, ask: 'Sure, what's your order number? "
+                    "It's in your order confirmation email, usually starts with #'. Once you have "
+                    "it, call the right tool: lookup_order for status, get_order_tracking for "
+                    "shipping/ETA, get_order_items for what's in it, get_order_total for cost, "
+                    "get_shipping_address for delivery address, get_refund_status for refunds. "
+                    "Don't read tracking numbers digit-by-digit unless asked — just say them once.\n"
+                    if "shopify" in (self.agent_config.get("tools_config") or {})
+                    and (self.agent_config.get("tools_config") or {}).get("shopify", {}).get("access_token")
+                    else ""
+                )
                 "9. END THE CALL when the conversation is clearly over. Call `end_call` "
                 "immediately (no warning, no asking 'is there anything else?') when the user:\n"
                 "   - Says goodbye: 'bye', 'goodbye', 'see you', 'talk to you later', 'have a good day'\n"
@@ -488,20 +501,66 @@ class VoiceAgent:
             )
 
         tools_config = self.agent_config.get("tools_config", {})
-        if "shopify" in tools_config:
-            standard_tools.append(
+        if "shopify" in tools_config and tools_config["shopify"].get("access_token"):
+            # Rich Shopify tools — one per query type so the LLM picks the right one.
+            _order_arg = {
+                "order_number": {
+                    "type": "string",
+                    "description": "The order number the caller provides, e.g. '1042' or '#1042'.",
+                }
+            }
+            standard_tools += [
                 FunctionSchema(
-                    name="check_shopify_order",
-                    description="Checks the status of a Shopify order given the order number.",
-                    properties={
-                        "order_number": {
-                            "type": "string",
-                            "description": "The order number provided by the user (e.g. 1001)."
-                        }
-                    },
-                    required=["order_number"]
-                )
-            )
+                    name="lookup_order",
+                    description=(
+                        "Look up the headline status of a Shopify order: payment, "
+                        "fulfillment, item count, and total. Use this FIRST when the "
+                        "caller asks anything about their order (status, paid, shipped, etc)."
+                    ),
+                    properties=_order_arg, required=["order_number"],
+                ),
+                FunctionSchema(
+                    name="get_order_tracking",
+                    description=(
+                        "Get the tracking number, carrier, and estimated delivery date "
+                        "for a Shopify order. Use when caller asks 'where is my order', "
+                        "'when will it arrive', 'tracking number', or 'has it shipped'."
+                    ),
+                    properties=_order_arg, required=["order_number"],
+                ),
+                FunctionSchema(
+                    name="get_order_items",
+                    description=(
+                        "List what items are in a Shopify order. Use when caller asks "
+                        "'what did I order', 'what's in my order', 'list my items'."
+                    ),
+                    properties=_order_arg, required=["order_number"],
+                ),
+                FunctionSchema(
+                    name="get_order_total",
+                    description=(
+                        "Get the total cost of an order including subtotal, shipping, and tax. "
+                        "Use when caller asks 'how much did I pay', 'what's the total', 'price'."
+                    ),
+                    properties=_order_arg, required=["order_number"],
+                ),
+                FunctionSchema(
+                    name="get_shipping_address",
+                    description=(
+                        "Get the shipping address for an order. Use when caller asks "
+                        "'where is it being shipped', 'confirm my address', 'delivery address'."
+                    ),
+                    properties=_order_arg, required=["order_number"],
+                ),
+                FunctionSchema(
+                    name="get_refund_status",
+                    description=(
+                        "Check if a refund has been processed for an order. Use when caller "
+                        "asks 'has my refund gone through', 'where is my money', 'refund status'."
+                    ),
+                    properties=_order_arg, required=["order_number"],
+                ),
+            ]
 
         if "custom_api" in tools_config:
             standard_tools.append(
@@ -549,12 +608,27 @@ class VoiceAgent:
             llm.register_function("transfer_to_human", self.transfer_to_human)
 
         tools_config = self.agent_config.get("tools_config", {})
-        if "shopify" in tools_config:
-            async def shopify_wrapper(params):
-                order_number = params.arguments.get("order_number", "")
-                result = await shopify.check_order_status(order_number, tools_config["shopify"])
-                await params.result_callback(result)
-            llm.register_function("check_shopify_order", shopify_wrapper)
+        if "shopify" in tools_config and tools_config["shopify"].get("access_token"):
+            shopify_cfg = tools_config["shopify"]
+            caller_phone = self.agent_config.get("from_number")  # for caller-ID verification
+
+            def _make_shopify_wrapper(fn):
+                async def _wrapper(params):
+                    order_number = params.arguments.get("order_number", "")
+                    try:
+                        result = await fn(order_number, shopify_cfg, caller_phone=caller_phone)
+                    except Exception as e:
+                        logger.error(f"Shopify tool '{fn.__name__}' failed: {e}")
+                        result = "I'm having trouble reaching the store system right now."
+                    await params.result_callback(result)
+                return _wrapper
+
+            llm.register_function("lookup_order",          _make_shopify_wrapper(shopify.lookup_order))
+            llm.register_function("get_order_tracking",    _make_shopify_wrapper(shopify.get_order_tracking))
+            llm.register_function("get_order_items",       _make_shopify_wrapper(shopify.get_order_items))
+            llm.register_function("get_order_total",       _make_shopify_wrapper(shopify.get_order_total))
+            llm.register_function("get_shipping_address",  _make_shopify_wrapper(shopify.get_shipping_address))
+            llm.register_function("get_refund_status",     _make_shopify_wrapper(shopify.get_refund_status))
 
         if "custom_api" in tools_config:
             async def custom_api_wrapper(params):
