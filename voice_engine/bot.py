@@ -398,7 +398,7 @@ class VoiceAgent:
                     and (self.agent_config.get("tools_config") or {}).get("shopify", {}).get("access_token")
                     else ""
                 )
-                "9. END THE CALL when the conversation is clearly over. Call `end_call` "
+                + "9. END THE CALL when the conversation is clearly over. Call `end_call` "
                 "immediately (no warning, no asking 'is there anything else?') when the user:\n"
                 "   - Says goodbye: 'bye', 'goodbye', 'see you', 'talk to you later', 'have a good day'\n"
                 "   - Says thanks and signals they're done: 'thanks, that's all', 'okay thanks bye', "
