@@ -38,12 +38,17 @@ class Tenant(SQLModel, table=True):
     cycle_start: Optional[datetime] = None      # current billing cycle start
     cycle_end: Optional[datetime] = None        # current billing cycle end
     # ── Integrations ─────────────────────────────────────────────────────
+    # Zoho CRM (full OAuth — see backend/services/zoho_oauth.py)
     zoho_access_token: Optional[str] = None
     zoho_refresh_token: Optional[str] = None
+    zoho_domain: Optional[str] = None              # zohoapis.com | zohoapis.eu | zohoapis.in | ...
+    zoho_token_expires_at: Optional[int] = None    # unix-ts; we refresh ~5 min before
     zoho_org_id: Optional[str] = None
+    # Other CRMs (kept as opaque tokens; OAuth flows not yet built)
     hubspot_api_key: Optional[str] = None
     salesforce_access_token: Optional[str] = None
-    webhook_url: Optional[str] = None
+    # NOTE: webhook_url (Zapier/Make.com) was removed — was unmaintained and a
+    # security risk (arbitrary outbound POSTs). Re-add only behind an allowlist.
     email_summary_enabled: bool = Field(default=True)
     password_hash: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

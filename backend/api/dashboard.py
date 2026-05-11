@@ -59,12 +59,11 @@ async def create_agent_from_template(req: CreateFromTemplateRequest, db: Session
 
 
 # ── Integration models ───────────────────────────────────────────────────────
+# Shopify is per-agent (see backend/api/shopify.py for OAuth).
+# Zoho is per-tenant (see backend/api/zoho.py for OAuth — uses zoho_org_id only).
+# Webhooks (Zapier/Make.com) removed — were unauthenticated outbound POSTs.
 class IntegrationSettings(BaseModel):
-    shopify_store_url:  Optional[str] = None
-    shopify_api_key:    Optional[str] = None
-    zoho_access_token:  Optional[str] = None
-    zoho_org_id:        Optional[str] = None
-    webhook_url:        Optional[str] = None
+    zoho_org_id:           Optional[str] = None
     email_summary_enabled: Optional[bool] = None
 
 class AgentConfig(BaseModel):
@@ -82,13 +81,11 @@ async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     return {
-        "shopify_store_url":  tenant.tools_config.get("shopify", {}).get("store_url") if hasattr(tenant, "tools_config") else None,
-        "shopify_api_key":    tenant.tools_config.get("shopify", {}).get("api_key")   if hasattr(tenant, "tools_config") else None,
-        "zoho_access_token":  tenant.zoho_access_token,
-        "zoho_org_id":        tenant.zoho_org_id,
-        "webhook_url":        tenant.webhook_url,
+        "zoho_connected":        bool(tenant.zoho_refresh_token),
+        "zoho_org_id":           tenant.zoho_org_id,
+        "zoho_domain":           tenant.zoho_domain,
         "email_summary_enabled": tenant.email_summary_enabled,
-        "contact_email":      tenant.contact_email, # For UI info
+        "contact_email":         tenant.contact_email,
     }
 
 
@@ -103,9 +100,7 @@ async def save_integrations(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    if settings.zoho_access_token  is not None: tenant.zoho_access_token  = settings.zoho_access_token
     if settings.zoho_org_id         is not None: tenant.zoho_org_id         = settings.zoho_org_id
-    if settings.webhook_url         is not None: tenant.webhook_url         = settings.webhook_url
     if settings.email_summary_enabled is not None: tenant.email_summary_enabled = settings.email_summary_enabled
 
     db.add(tenant); db.commit()
@@ -119,9 +114,15 @@ async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
+    def _disconnect_zoho(t):
+        t.zoho_access_token = None
+        t.zoho_refresh_token = None
+        t.zoho_domain = None
+        t.zoho_token_expires_at = None
+        t.zoho_org_id = None
+
     field_map = {
-        "zoho":     lambda t: setattr(t, "zoho_access_token", None) or setattr(t, "zoho_org_id", None),
-        "webhook":  lambda t: setattr(t, "webhook_url", None),
+        "zoho": _disconnect_zoho,
     }
     if key in field_map:
         field_map[key](tenant)
@@ -330,28 +331,28 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
         "sentiment": new_call.sentiment
     }
 
-    # Zoho Sync
-    if tenant.zoho_access_token:
+    # ── Zoho CRM Sync (OAuth, auto-refresh) ───────────────────────────────
+    if tenant.zoho_refresh_token:
         try:
-            crm_service = ZohoCRMService(tenant.zoho_access_token)
-            await crm_service.create_lead(
-                last_name=f"Call_{new_call.id.hex[:6]}",
-                company="AIxcaller Lead",
-                phone=new_call.from_number
+            crm_service = ZohoCRMService(tenant, db_session=db)
+            await crm_service.upsert_lead_from_call(
+                phone=new_call.from_number,
+                summary=new_call.summary or "",
+                sentiment=new_call.sentiment or "neutral",
+                call_id=str(new_call.id),
             )
-        except Exception: pass
+        except Exception as e:
+            logger.warning(f"Zoho sync failed for tenant {tenant.id}: {e}")
 
-    # HubSpot Sync
+    # HubSpot Sync (legacy — no OAuth yet, kept off by default)
     if tenant.hubspot_api_key:
         try:
             await IntegrationService.push_to_hubspot(tenant.hubspot_api_key, payload)
-        except Exception: pass
+        except Exception:
+            pass
 
-    # Custom Webhook (Zapier/Make.com)
-    if tenant.webhook_url:
-        try:
-            await IntegrationService.push_to_webhook(tenant.webhook_url, payload)
-        except Exception: pass
+    # NOTE: Zapier/Make.com webhook integration was removed in v2 — it was
+    # an unauthenticated arbitrary outbound POST with no allowlist.
 
     # Resend — Call Summary Email (Default ON, tied to contact_email)
     if tenant.email_summary_enabled and tenant.contact_email:

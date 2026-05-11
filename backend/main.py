@@ -14,6 +14,7 @@ try:
     from backend.services.outbound_dialer import process_missed_call
     from backend.api import admin, dashboard, kb, billing, live, telegram, numbers
     from backend.api import shopify as shopify_api
+    from backend.api import zoho as zoho_api
     from backend.api.auth import router as auth_router
     from backend.services.email import send_call_summary_email
 except Exception as e:
@@ -39,6 +40,7 @@ app.include_router(live.router)
 app.include_router(telegram.router)
 app.include_router(numbers.router)
 app.include_router(shopify_api.router)
+app.include_router(zoho_api.router)
 kb_service = IngestionService()
 
 @app.post("/incoming-call")

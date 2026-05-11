@@ -8,7 +8,7 @@ const features = [
   { icon: "🧠", title: "Zero Hallucinations", desc: "Your agent answers only from your approved business documents. Accurate, consistent, and on-brand every single call." },
   { icon: "🗣️", title: "Natural Conversations", desc: "Human-like voice with full interruption support, dynamic follow-ups, and long-term context memory across the call." },
   { icon: "📊", title: "Analytics Dashboard", desc: "Full call transcripts, AI-powered sentiment analysis, lead scoring, and real-time performance metrics — all in one view." },
-  { icon: "🔗", title: "Deep Integrations", desc: "Connect to Shopify, HubSpot, Calendly, Slack, Zoho, and 50+ platforms via native integrations and webhooks." },
+  { icon: "🔗", title: "Native Integrations", desc: "Built-in OAuth connections to Shopify, Zoho CRM, Telegram, and more — secure, one-click setup." },
 ];
 
 const steps = [
@@ -230,7 +230,7 @@ export default function Home() {
                 "Everything in Starter, plus:",
                 "Marketplace agent templates",
                 "Shopify & CRM integrations",
-                "Webhook + Zapier support",
+                "Shopify + Zoho CRM OAuth",
                 "Telegram alerts",
                 "Priority email support",
               ].map(f => (
