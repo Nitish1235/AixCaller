@@ -106,6 +106,8 @@ export default function AgentDetailsPage() {
   const [provLoading, setProvLoading] = useState(false);
   const [provError, setProvError] = useState("");
 
+  const [autoCallbackEnabled, setAutoCallbackEnabled] = useState(false);
+
   // Tab
   const [tab, setTab] = useState<"settings" | "kb">("settings");
 
@@ -136,6 +138,7 @@ export default function AgentDetailsPage() {
           setVoice(found.voice_id || "aura-2-thalia-en");
           setForwardingNumber(found.forwarding_number || "");
           setTransferEnabled(!!found.human_transfer_enabled);
+          setAutoCallbackEnabled(!!found.auto_callback_enabled);
           // Detect browser timezone for first-time users
           const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
           setTransferTz(found.human_transfer_timezone || browserTz);
@@ -172,6 +175,7 @@ export default function AgentDetailsPage() {
         human_transfer_enabled: transferEnabled,
         human_transfer_timezone: transferTz,
         human_transfer_hours: transferHours,
+        auto_callback_enabled: autoCallbackEnabled,
       });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch (e) { console.error(e); }
@@ -568,6 +572,36 @@ export default function AgentDetailsPage() {
                       team isn't available and offers to help directly.
                     </div>
                   </>
+                )}
+              </div>
+
+              {/* ── Auto Callback ───────────────────────────────────────── */}
+              <div style={{ borderTop: "2px solid var(--text)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
+                  <div>
+                    <h3 style={{ fontWeight: 900, fontSize: "1rem", color: "var(--text)", margin: 0, textTransform: "uppercase" }}>
+                      📞 Auto-Recovery Dialing
+                    </h3>
+                    <p style={{ fontSize: "0.85rem", color: "#64748b", margin: "4px 0 0", lineHeight: 1.5, maxWidth: 480, fontWeight: 600 }}>
+                      If a caller disconnects prematurely or the call is missed, the AI agent will automatically dial them back after 60 seconds.
+                    </p>
+                  </div>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <input
+                      type="checkbox"
+                      checked={autoCallbackEnabled}
+                      onChange={e => setAutoCallbackEnabled(e.target.checked)}
+                      style={{ width: 22, height: 22, cursor: "pointer", accentColor: "var(--text)" }}
+                    />
+                    <span style={{ fontWeight: 900, fontSize: "0.85rem", color: autoCallbackEnabled ? "var(--accent-green)" : "#94a3b8", border: "2px solid", padding: "2px 8px", borderRadius: 8, borderColor: autoCallbackEnabled ? "var(--text)" : "#cbd5e1" }}>
+                      {autoCallbackEnabled ? "ENABLED" : "DISABLED"}
+                    </span>
+                  </label>
+                </div>
+                {!autoCallbackEnabled && (
+                  <div style={{ background: "var(--bg)", border: "2px dashed var(--text)", borderRadius: 12, padding: "12px 16px", fontSize: "0.85rem", color: "var(--text)", marginTop: 8, fontWeight: 700 }}>
+                    Auto-callback is <strong>off</strong>. If a caller hangs up midway through a booking, the AI will <strong>not</strong> attempt to call them back.
+                  </div>
                 )}
               </div>
 

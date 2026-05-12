@@ -45,8 +45,8 @@ async def run_demo_session(websocket: WebSocket):
         resp = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=history,
-            max_tokens=100,
-            temperature=0.7
+            max_tokens=80,
+            temperature=0.5
         )
         return resp.choices[0].message.content.strip()
 
@@ -78,13 +78,9 @@ async def run_demo_session(websocket: WebSocket):
             conversation_history.append({"role": "user", "content": text})
             response = await call_llm(conversation_history)
             conversation_history.append({"role": "assistant", "content": response})
-
-            await send({"type": "transcript", "role": "assistant", "text": response, "final": True})
             await speak(response)
         except asyncio.CancelledError:
             logger.info("Demo LLM/TTS generation interrupted")
-            # If interrupted, remove the last user message to avoid context corruption
-            # or keep it and let the user append to it. Usually we just drop it.
             if conversation_history and conversation_history[-1]["role"] == "user":
                 conversation_history.pop()
         except Exception as e:
@@ -99,7 +95,7 @@ async def run_demo_session(websocket: WebSocket):
     
     stt_url = (
         "wss://api.deepgram.com/v1/listen?"
-        "model=nova-3&language=en-US&smart_format=true&endpointing=300&interim_results=true"
+        "model=nova-2&language=en-US&smart_format=false&endpointing=150&interim_results=true"
     )
     headers = {"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"}
     
@@ -123,7 +119,7 @@ async def run_demo_session(websocket: WebSocket):
                     is_final = data.get("is_final", False)
                     
                     if not is_final:
-                        # User is speaking - Interrupt if we are generating/speaking
+                        # User is speaking — interrupt any active AI audio
                         if state["is_generating"] or state["is_speaking"]:
                             await send({"type": "interrupt"})
                             if state["llm_task"] and not state["llm_task"].done():
@@ -131,12 +127,9 @@ async def run_demo_session(websocket: WebSocket):
                                 state["llm_task"] = None
                             state["is_speaking"] = False
                             state["is_generating"] = False
-
-                        await send({"type": "transcript", "role": "user", "text": text, "final": False})
                         continue
 
-                    # Final transcript
-                    await send({"type": "transcript", "role": "user", "text": text, "final": True})
+                    # Final transcript — fire LLM immediately
 
                     # Cancel any existing task just in case
                     if state["llm_task"] and not state["llm_task"].done():

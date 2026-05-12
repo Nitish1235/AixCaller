@@ -131,15 +131,18 @@ async def handle_call_status(request: Request, background_tasks: BackgroundTasks
                 to_number=to_number,
                 direction="inbound",
                 status="missed",
-                requires_callback=True
+                requires_callback=agent.auto_callback_enabled
             )
             db.add(new_call)
             db.commit()
             db.refresh(new_call)
             
-            # Trigger background callback in 60 seconds
-            background_tasks.add_task(process_missed_call, new_call.id, 60)
-            logger.info(f"Missed call detected from {from_number}. Recovery scheduled.")
+            # Trigger background callback in 60 seconds ONLY if enabled
+            if agent.auto_callback_enabled:
+                background_tasks.add_task(process_missed_call, new_call.id, 60)
+                logger.info(f"Missed call detected from {from_number}. Recovery scheduled.")
+            else:
+                logger.info(f"Missed call from {from_number}. Auto-callback is disabled.")
 
     return {"status": "received"}
 

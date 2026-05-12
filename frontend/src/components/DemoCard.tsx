@@ -188,20 +188,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
           ))}
         </div>
 
-        {/* Transcript */}
-        {lines.length > 0 && (
-          <div style={{ width: "100%", maxHeight: 110, overflowY: "auto", background: "var(--bg)", borderRadius: 12, padding: "10px 14px", border: "var(--border)", fontSize: "0.78rem", lineHeight: 1.6, display: "flex", flexDirection: "column", gap: 4 }}>
-            {lines.map((l, i) => (
-              <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                <span style={{ fontWeight: 900, color: l.role === "assistant" ? "var(--accent-green)" : "var(--text)", flexShrink: 0, fontSize: "0.72rem" }}>
-                  {l.role === "assistant" ? "ARIA" : "YOU"}
-                </span>
-                <span style={{ color: l.role === "assistant" ? "#064E3B" : "#6B7280" }}>{l.text}</span>
-              </div>
-            ))}
-            <div ref={endRef} />
-          </div>
-        )}
+
 
         {/* Error */}
         {error && <div style={{ fontSize: "0.78rem", color: "#EF4444", textAlign: "center", background: "#FEF2F2", padding: "8px 12px", borderRadius: 8, width: "100%" }}>{error}</div>}

@@ -19,10 +19,10 @@ export default function Home() {
         </div>
         
         <h1 style={{ fontSize: "clamp(3rem, 7vw, 6.5rem)", fontWeight: 900, lineHeight: 1, margin: "0 0 2rem", letterSpacing: -2, textTransform: "uppercase" }}>
-          Your business, <br />voiced perfectly.
+          AI Voice Agents <br />for your business.
         </h1>
         <p style={{ fontSize: "clamp(1.1rem, 2vw, 1.5rem)", fontWeight: 600, maxWidth: 800, margin: "0 auto 4rem", lineHeight: 1.5 }}>
-          Provision global numbers, connect your custom knowledge base, and deploy conversational AI agents that capture revenue 24/7 without ever putting a customer on hold.
+          We provide real phone numbers powered by conversational AI. Train the agent on your documents, let it answer your calls 24/7, and get instant summaries sent to your email.
         </p>
         
         <Link href="/signup">
@@ -66,15 +66,15 @@ export default function Home() {
 
       {/* ── PLATFORM ── */}
       <section id="platform" style={{ padding: "8rem 5%", maxWidth: 1300, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>The Complete Stack.</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Exactly what we do.</h2>
         
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "3rem" }}>
           
           {/* Telephony */}
           <div className="card" style={{ background: "var(--accent-pink)", gridRow: "span 2" }}>
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Global Telephony</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Get a Real Phone Number</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
-              Powered by native Telnyx integrations. Instantly provision numbers across 31+ countries. Search by country code and local area code directly in the dashboard.
+              We instantly provide real local and toll-free phone numbers. No telecom setup required—just pick a country and area code, and your AI is ready to answer calls.
             </p>
             <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "1.5rem", fontWeight: 700 }}>
               <div style={{ display: "flex", gap: "1rem" }}>
@@ -91,9 +91,9 @@ export default function Home() {
           
           {/* Knowledge Base */}
           <div className="card" style={{ background: "var(--accent-yellow)" }}>
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Vector Knowledge Base</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Train AI on your Data</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
-              Upload your PDFs or paste URLs. We use Supabase pgvector to semantically search your documents in milliseconds during a live call.
+              Upload your business policies, menus, or FAQs as PDFs. When a customer asks a question, the AI reads your documents and answers them accurately.
             </p>
             <div style={{ background: "rgba(255,255,255,0.5)", border: "2px dashed var(--text)", borderRadius: 12, padding: "2rem", textAlign: "center", fontWeight: 700 }}>
               <div style={{ fontSize: "2rem", marginBottom: 10 }}>📄</div>
@@ -104,9 +104,9 @@ export default function Home() {
           
           {/* Marketplace */}
           <div className="card">
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Agent Marketplace</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Pre-built AI Personas</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
-              Don't want to write system prompts from scratch? One-click install pre-configured personas like 'Real Estate Lead Gen' or 'Dental Receptionist'.
+              Don't want to start from scratch? Use our pre-trained AI templates. Whether you need a Real Estate Lead Qualifier or a Dental Receptionist, it's a one-click setup.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div style={{ background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, textAlign: "center", fontWeight: 700 }}>🦷 Dental Desk</div>
@@ -117,9 +117,9 @@ export default function Home() {
           {/* Email Summaries */}
           <div className="card" style={{ background: "var(--text)", color: "#fff", gridColumn: "1 / -1", display: "flex", flexWrap: "wrap", gap: "2rem", alignItems: "center" }}>
             <div style={{ flex: "1 1 400px" }}>
-              <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900, color: "var(--accent-green)" }}>Instant Email Summaries</h3>
+              <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900, color: "var(--accent-green)" }}>Get Call Summaries via Email</h3>
               <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#cbd5e1", lineHeight: 1.5, margin: "0 0 2rem" }}>
-                Don't want to log in? Every time a call ends, our AI instantly extracts key action items, sentiment, and a structured summary, then emails it directly to your inbox along with the full transcript.
+                You don't even need to log into our dashboard. The second a call finishes, the AI emails you the customer's intent, a brief summary of the conversation, and the full transcript.
               </p>
             </div>
             <div className="mono" style={{ flex: "1 1 350px", background: "#1e293b", border: "2px solid #334155", borderRadius: 12, padding: "1.5rem", fontWeight: 700, boxShadow: "8px 8px 0 var(--accent-pink)", transform: "rotate(1deg)" }}>

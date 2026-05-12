@@ -82,6 +82,7 @@ class Agent(SQLModel, table=True):
     human_transfer_hours: dict = Field(default_factory=dict, sa_column=Column(JSON))
     template_id: Optional[str] = None      # Marketplace template used (clinic, ecommerce, etc.)
     tools_config: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    auto_callback_enabled: bool = Field(default=False)
     
 class CallRecord(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
