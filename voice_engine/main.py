@@ -182,6 +182,8 @@ async def websocket_endpoint(websocket: WebSocket):
                             "to_number":       start_data.get("to"),
                             "tools_config": agent.tools_config or {}
                         }
+                        # Inject tenant-level integration status
+                        agent_config["tools_config"]["google_connected"] = getattr(tenant, "google_connected", False)
                     logger.info(f"Verified token for tenant {tenant_id}")
                     break
                 except jwt.ExpiredSignatureError:

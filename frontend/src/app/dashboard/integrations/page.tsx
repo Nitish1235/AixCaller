@@ -101,7 +101,7 @@ export default function IntegrationsPage() {
   const [cfg, setCfg]     = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [modal, setModal] = useState<"zoho" | "email" | "shopify" | null>(null);
+  const [modal, setModal] = useState<"zoho" | "email" | "shopify" | "google" | null>(null);
 
   // Zoho connect form
   const [zohoDC, setZohoDC] = useState("us");
@@ -114,6 +114,11 @@ export default function IntegrationsPage() {
   const [shopifyDomain, setShopifyDomain] = useState("");
   const [shopifyToken, setShopifyToken] = useState("");
 
+  // Google
+  const [googleCalendarId, setGoogleCalendarId] = useState("primary");
+  const [googleSheetId, setGoogleSheetId] = useState("");
+  const [googleSheetName, setGoogleSheetName] = useState("Leads");
+
   const load = useCallback(async () => {
     try {
       const data = await fetchIntegrations(TENANT_ID);
@@ -123,6 +128,9 @@ export default function IntegrationsPage() {
         setContactEmail(data.contact_email || "");
         setShopifyDomain(data.shopify_domain || "");
         setShopifyToken(data.shopify_token || "");
+        setGoogleCalendarId(data.google_calendar_id || "primary");
+        setGoogleSheetId(data.google_sheet_id || "");
+        setGoogleSheetName(data.google_sheet_name || "Leads");
       }
     } catch {}
   }, []);
@@ -139,6 +147,13 @@ export default function IntegrationsPage() {
       window.history.replaceState({}, "", window.location.pathname);
     } else if (p.get("zoho_error")) {
       setToast(`⚠️ Zoho connection failed: ${p.get("zoho_error")}`);
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (p.get("google_connected") === "1") {
+      setToast("✅ Google Workspace connected!");
+      load();
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (p.get("google_error")) {
+      setToast(`⚠️ Google connection failed: ${p.get("google_error")}`);
       window.history.replaceState({}, "", window.location.pathname);
     }
     setTimeout(() => setToast(""), 4000);
@@ -162,6 +177,8 @@ export default function IntegrationsPage() {
         await fetch(`${API_BASE_URL}/zoho/disconnect?tenant_id=${TENANT_ID}`, { method: "DELETE" });
       } else if (key === "shopify") {
         await apiPatch(`/integrations?tenant_id=${TENANT_ID}`, { shopify_domain: null, shopify_token: null });
+      } else if (key === "google") {
+        await fetch(`${API_BASE_URL}/google/disconnect?tenant_id=${TENANT_ID}`, { method: "DELETE" });
       } else {
         await apiDelete(`/integrations/${key}?tenant_id=${TENANT_ID}`);
       }
@@ -184,9 +201,32 @@ export default function IntegrationsPage() {
     setSaving(false);
   };
 
+  const connectGoogle = () => {
+    window.location.href = `${API_BASE_URL}/google/install?tenant_id=${TENANT_ID}`;
+  };
+
+  const saveGoogleSettings = async () => {
+    setSaving(true);
+    try {
+      await fetch(`${API_BASE_URL}/google/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: TENANT_ID,
+          calendar_id: googleCalendarId,
+          sheet_id: googleSheetId,
+          sheet_name: googleSheetName,
+        })
+      });
+      await load(); setModal(null); showToast("✅ Google settings saved!");
+    } catch { showToast("⚠️ Failed to save Google settings."); }
+    setSaving(false);
+  };
+
   const zohoConnected  = !!(cfg.zoho_connected);
   const emailConnected = !!(cfg.email_summary_enabled);
   const shopifyConnected = !!(cfg.shopify_domain && cfg.shopify_token);
+  const googleConnected = !!(cfg.google_connected);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 1200 }}>
@@ -230,6 +270,13 @@ export default function IntegrationsPage() {
           description="Receive a beautiful call summary by email after every conversation, sent to your account address."
           onConnect={() => setModal("email")}
           onDisconnect={() => save({ email_summary_enabled: false })}
+        />
+
+        <IntCard
+          icon="🗓️" title="Google Workspace" connected={googleConnected}
+          description="Book appointments on Google Calendar and log lead records directly into Google Sheets in real-time."
+          onConnect={() => setModal("google")}
+          onDisconnect={() => disconnect("google")}
         />
       </div>
 
@@ -348,6 +395,54 @@ export default function IntegrationsPage() {
             className="btn-brutal" style={{ width: "100%" }}>
             {saving ? "Updating..." : "Save Preferences"}
           </button>
+        </div>
+      </Modal>
+
+      {/* Google Modal */}
+      <Modal open={modal === "google"} onClose={() => setModal(null)} title="🗓️ Google Workspace">
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {!googleConnected ? (
+            <>
+              <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", fontSize: "0.9rem", color: "var(--text)", lineHeight: 1.6, fontWeight: 600 }}>
+                <strong>Automate Appointments:</strong> Connect your Google account to allow your AI agents to check your availability, book meetings on your Calendar, and record lead info in Sheets.
+              </div>
+              <button onClick={connectGoogle} disabled={saving} className="btn-brutal" style={{ width: "100%", background: "var(--accent-pink)" }}>
+                🗓️ Connect Google Account
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ background: "var(--accent-green)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", boxShadow: "4px 4px 0 var(--text)", fontWeight: 900, textTransform: "uppercase" }}>
+                ✓ Google Account Connected
+              </div>
+              
+              <div>
+                <label style={lbl}>Google Calendar ID</label>
+                <input type="text" style={inp} value={googleCalendarId} onChange={e => setGoogleCalendarId(e.target.value)} placeholder="primary" />
+                <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 4, fontWeight: 600 }}>Use 'primary' or a specific calendar email.</p>
+              </div>
+
+              <div>
+                <label style={lbl}>Google Sheet ID</label>
+                <input type="text" style={inp} value={googleSheetId} onChange={e => setGoogleSheetId(e.target.value)} placeholder="Spreadsheet ID from URL" />
+                <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 4, fontWeight: 600 }}>The long ID in your sheet's browser URL.</p>
+              </div>
+
+              <div>
+                <label style={lbl}>Leads Tab Name</label>
+                <input type="text" style={inp} value={googleSheetName} onChange={e => setGoogleSheetName(e.target.value)} placeholder="Leads" />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: "1rem" }}>
+                <button onClick={saveGoogleSettings} disabled={saving} className="btn-brutal" style={{ flex: 2 }}>
+                  {saving ? "Saving..." : "Save Settings"}
+                </button>
+                <button onClick={() => disconnect("google")} disabled={saving} style={{ flex: 1, background: "var(--accent-pink)", border: "2px solid var(--text)", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>
+                  Disconnect
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

@@ -13,6 +13,7 @@ const navItems = [
   { href: "/dashboard",              icon: "📊", label: "Overview" },
   { href: "/dashboard/agents",       icon: "🤖", label: "Agents" },
   { href: "/dashboard/calls",        icon: "📞", label: "Call History" },
+  { href: "/dashboard/leads",        icon: "📋", label: "Leads" },
   { href: "/dashboard/knowledge",    icon: "📚", label: "Knowledge Base" },
   { href: "/dashboard/integrations", icon: "🔌", label: "Integrations" },
   { href: "/dashboard/billing",      icon: "💳", label: "Billing" },

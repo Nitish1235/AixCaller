@@ -62,7 +62,7 @@ from pipecat.transports.websocket.fastapi import (
 # ── Internal ─────────────────────────────────────────────────────────────────
 import uuid
 from shared.kb import search_knowledge_base
-from voice_engine.tools import shopify, custom_api
+from voice_engine.tools import shopify, custom_api, google_calendar as gcal_tools
 
 
 class VoiceAgent:
@@ -577,6 +577,59 @@ class VoiceAgent:
                 )
             )
 
+        # Google Calendar + Sheets tools
+        google_connected = tools_config.get("google_connected", False)
+        if google_connected:
+            standard_tools += [
+                FunctionSchema(
+                    name="check_availability",
+                    description=(
+                        "Check what appointment slots are available on a specific date. "
+                        "Call this FIRST before offering or booking any appointment. "
+                        "Use it when the caller asks 'when can I come in', 'what slots do you have', "
+                        "'are you free on Tuesday', or any availability question."
+                    ),
+                    properties={
+                        "date": {"type": "string", "description": "The date to check in YYYY-MM-DD format. Convert spoken dates like 'next Monday' to this format."}
+                    },
+                    required=["date"]
+                ),
+                FunctionSchema(
+                    name="book_appointment",
+                    description=(
+                        "Book a confirmed appointment on Google Calendar and save the lead. "
+                        "Only call this after you have: caller's name, phone number, preferred date, and preferred time. "
+                        "If you're missing any of these, ask for them first."
+                    ),
+                    properties={
+                        "caller_name":  {"type": "string", "description": "Full name of the caller"},
+                        "caller_phone": {"type": "string", "description": "Caller's phone number (use the incoming call number if they don't provide one)"},
+                        "date":         {"type": "string", "description": "Appointment date in YYYY-MM-DD format"},
+                        "time_str":     {"type": "string", "description": "Appointment time in HH:MM 24-hour format, e.g. '14:00'"},
+                        "purpose":      {"type": "string", "description": "Brief reason for the appointment e.g. 'Dental checkup', 'Property viewing'"},
+                        "caller_email": {"type": "string", "description": "Caller's email for calendar invite (optional, ask if relevant)"},
+                    },
+                    required=["caller_name", "caller_phone", "date", "time_str"]
+                ),
+                FunctionSchema(
+                    name="record_lead",
+                    description=(
+                        "Save a qualified lead's contact details to the CRM (database + Google Sheets). "
+                        "Use this when: the caller is interested but not booking right now, "
+                        "they want to be called back, or they've shared contact details worth saving. "
+                        "Gather name and phone at minimum before calling."
+                    ),
+                    properties={
+                        "caller_name":  {"type": "string", "description": "Full name of the caller"},
+                        "caller_phone": {"type": "string", "description": "Caller's phone number"},
+                        "intent":       {"type": "string", "description": "What they are interested in, e.g. 'Pricing inquiry', 'Product demo', 'Follow-up call'"},
+                        "notes":        {"type": "string", "description": "Any extra context worth noting for the sales team"},
+                        "caller_email": {"type": "string", "description": "Email address if provided"},
+                    },
+                    required=["caller_name", "caller_phone", "intent"]
+                ),
+            ]
+
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
         # VAD with PHONE-tuned params (defaults are too strict for 8kHz PCMU phone audio).
         # NOTE: We instantiate fresh per call because Silero has per-call internal state
@@ -636,6 +689,51 @@ class VoiceAgent:
                 result = await custom_api.fetch_custom_data(query, tools_config["custom_api"])
                 await params.result_callback(result)
             llm.register_function("search_internal_database", custom_api_wrapper)
+
+        # Google Calendar + Sheets tools
+        if tools_config.get("google_connected", False):
+            _tenant_id   = self.tenant_id
+            _agent_id    = self.agent_config.get("agent_id", "")
+            _agent_name  = self.agent_config.get("name", "AI Agent")
+            _caller_phone = self.agent_config.get("from_number", "")
+
+            async def _check_availability_wrapper(params):
+                date   = params.arguments.get("date", "")
+                result = await gcal_tools.check_availability(_tenant_id, date)
+                await params.result_callback(result)
+
+            async def _book_appointment_wrapper(params):
+                args = params.arguments
+                result = await gcal_tools.book_appointment(
+                    tenant_id=_tenant_id,
+                    agent_id=_agent_id,
+                    agent_name=_agent_name,
+                    caller_name=args.get("caller_name", "Unknown"),
+                    caller_phone=args.get("caller_phone") or _caller_phone,
+                    date=args.get("date", ""),
+                    time_str=args.get("time_str", ""),
+                    purpose=args.get("purpose", ""),
+                    caller_email=args.get("caller_email", ""),
+                )
+                await params.result_callback(result)
+
+            async def _record_lead_wrapper(params):
+                args = params.arguments
+                result = await gcal_tools.record_lead(
+                    tenant_id=_tenant_id,
+                    agent_id=_agent_id,
+                    agent_name=_agent_name,
+                    caller_name=args.get("caller_name", "Unknown"),
+                    caller_phone=args.get("caller_phone") or _caller_phone,
+                    intent=args.get("intent", ""),
+                    notes=args.get("notes", ""),
+                    caller_email=args.get("caller_email", ""),
+                )
+                await params.result_callback(result)
+
+            llm.register_function("check_availability",  _check_availability_wrapper)
+            llm.register_function("book_appointment",    _book_appointment_wrapper)
+            llm.register_function("record_lead",         _record_lead_wrapper)
 
         # 8. Assemble Pipeline
         # NOTE: VAD is NOT a separate processor in the pipeline.

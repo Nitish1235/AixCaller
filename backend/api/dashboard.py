@@ -86,6 +86,10 @@ async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
         "zoho_domain":           tenant.zoho_domain,
         "email_summary_enabled": tenant.email_summary_enabled,
         "contact_email":         tenant.contact_email,
+        "google_connected":      getattr(tenant, "google_connected", False),
+        "google_calendar_id":    getattr(tenant, "google_calendar_id", "primary"),
+        "google_sheet_id":       getattr(tenant, "google_sheet_id", None),
+        "google_sheet_name":     getattr(tenant, "google_sheet_name", "Leads"),
     }
 
 
@@ -154,8 +158,8 @@ class CreateAgentRequest(BaseModel):
 PLAN_AGENT_LIMITS = {
     "free":     1,
     "starter":  2,   # $50 plan
-    "pro":      2,   # $119 plan
-    "premium":  4,   # $250 plan
+    "pro":      10,  # $119 plan
+    "premium":  100, # $250 plan
 }
 
 

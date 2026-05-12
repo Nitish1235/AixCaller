@@ -50,6 +50,17 @@ class Tenant(SQLModel, table=True):
     # NOTE: webhook_url (Zapier/Make.com) was removed — was unmaintained and a
     # security risk (arbitrary outbound POSTs). Re-add only behind an allowlist.
     email_summary_enabled: bool = Field(default=True)
+    # Shopify (token-based, per-tenant)
+    shopify_domain: Optional[str] = None
+    shopify_token: Optional[str] = None
+    # Google (OAuth2 — Calendar + Sheets)
+    google_access_token: Optional[str] = None
+    google_refresh_token: Optional[str] = None
+    google_token_expires_at: Optional[int] = None   # unix timestamp
+    google_calendar_id: Optional[str] = Field(default="primary")  # which calendar to use
+    google_sheet_id: Optional[str] = None           # spreadsheet ID for leads
+    google_sheet_name: Optional[str] = Field(default="Leads")  # tab name
+    google_connected: bool = Field(default=False)
     password_hash: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -108,3 +119,26 @@ class VoiceOption(SQLModel, table=True):
     voice_id: str = Field(unique=True) # e.g., "aura-asteria-en"
     preview_url: Optional[str] = None # GCS public URL
     language: str = "en"
+
+class Lead(SQLModel, table=True):
+    """Structured lead captured by the AI during a call."""
+    __tablename__ = "lead"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", index=True)
+    agent_id: uuid.UUID = Field(foreign_key="agent.id", index=True)
+    call_record_id: Optional[uuid.UUID] = Field(default=None, foreign_key="callrecord.id")
+    # Contact info
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    # Lead metadata
+    intent: Optional[str] = None           # e.g. "Book appointment", "Product inquiry"
+    notes: Optional[str] = None            # free-text summary from AI
+    status: str = Field(default="new")     # new | contacted | booked | closed
+    # Appointment (if booked)
+    appointment_date: Optional[str] = None  # ISO date string e.g. "2026-05-20"
+    appointment_time: Optional[str] = None  # e.g. "14:00"
+    appointment_notes: Optional[str] = None
+    google_event_id: Optional[str] = None   # Calendar event ID after booking
+    google_sheet_row: Optional[int] = None  # Row number in Sheets after logging
+    created_at: datetime = Field(default_factory=datetime.utcnow)

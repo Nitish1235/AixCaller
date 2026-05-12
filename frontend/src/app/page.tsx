@@ -202,15 +202,15 @@ export default function Home() {
       <section id="pricing" style={{ padding: "4rem 5%", maxWidth: 1100, margin: "0 auto" }}>
         <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Honest Pricing.</h2>
         
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "4rem" }}>
+        <div style={{ display: "flex", gap: "2rem", justifyContent: "center", alignItems: "stretch", flexWrap: "nowrap", width: "100%", overflowX: "auto", padding: "1rem" }}>
           
-          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center" }}>
+          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center", flex: 1, minWidth: "300px" }}>
             <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>Starter</div>
             <div style={{ fontSize: "4.5rem", fontWeight: 900, marginBottom: "1rem", lineHeight: 1 }}>$50<span style={{ fontSize: "1.5rem", color: "#64748b" }}>/mo</span></div>
             <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#64748b", marginBottom: "2rem" }}>Includes 200 Minutes</div>
             
             <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
-              {["2 Active Agents", "Basic Knowledge Base", "US/Canada Numbers", "Standard Voices"].map(item => (
+              {["2 Active Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Marketplace Access"].map(item => (
                 <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
                   <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
                 </li>
@@ -221,13 +221,13 @@ export default function Home() {
             </Link>
           </div>
           
-          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center", background: "var(--text)", color: "#fff", borderColor: "#fff", boxShadow: "12px 12px 0 var(--accent-green)", transform: "scale(1.05)", zIndex: 10 }}>
+          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center", background: "var(--text)", color: "#fff", borderColor: "#fff", boxShadow: "12px 12px 0 var(--accent-green)", transform: "scale(1.05)", zIndex: 10, flex: 1, minWidth: "300px" }}>
             <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem", color: "var(--accent-green)" }}>Pro Business</div>
             <div style={{ fontSize: "4.5rem", fontWeight: 900, marginBottom: "1rem", lineHeight: 1 }}>$119<span style={{ fontSize: "1.5rem", color: "#94a3b8" }}>/mo</span></div>
             <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#94a3b8", marginBottom: "2rem" }}>Includes 500 Minutes</div>
             
             <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
-              {["Unlimited Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Marketplace Access"].map(item => (
+              {["10 Active Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Marketplace Access"].map(item => (
                 <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
                   <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
                 </li>
@@ -238,13 +238,13 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center" }}>
+          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center", flex: 1, minWidth: "300px" }}>
             <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>Premium</div>
             <div style={{ fontSize: "4.5rem", fontWeight: 900, marginBottom: "1rem", lineHeight: 1 }}>$250<span style={{ fontSize: "1.5rem", color: "#64748b" }}>/mo</span></div>
             <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#64748b", marginBottom: "2rem" }}>Includes 1100 Minutes</div>
             
             <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
-              {["Up to 4 Active Agents", "Custom Agent Voices", "Outbound Dialer", "Dedicated Manager"].map(item => (
+              {["Unlimited Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Missed Call Recovery"].map(item => (
                 <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
                   <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
                 </li>
