@@ -10,7 +10,8 @@ from shared.models import Tenant, Agent
 router = APIRouter(prefix="/api/v1/numbers", tags=["Numbers"])
 
 class SearchRequest(BaseModel):
-    area_code: str
+    country_code: str = "US"
+    area_code: str = ""
     limit: int = 5
 
 class PurchaseRequest(BaseModel):
@@ -32,12 +33,14 @@ async def search_numbers(req: SearchRequest):
         response = await client.get(
             "https://api.telnyx.com/v2/available_phone_numbers",
             headers={"Authorization": f"Bearer {api_key}"},
-            params={
-                "filter[national_destination_code]": req.area_code,
-                "filter[features][]": "voice",
-                "filter[limit]": req.limit,
-                "filter[best_effort]": "true"
-            }
+        params={
+            "filter[country_code]": req.country_code,
+            "filter[features][]": "voice",
+            "filter[limit]": req.limit,
+            "filter[best_effort]": "true"
+        }
+        if req.area_code:
+            params["filter[national_destination_code]"] = req.area_code
         )
         
         if response.status_code != 200:

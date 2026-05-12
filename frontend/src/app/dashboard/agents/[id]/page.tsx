@@ -30,6 +30,40 @@ const btn = (c = "#064E3B", extra?: React.CSSProperties): React.CSSProperties =>
   padding: "10px 20px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", ...extra,
 });
 
+const SUPPORTED_COUNTRIES = [
+  { code: "US", name: "United States (+1)" },
+  { code: "GB", name: "United Kingdom (+44)" },
+  { code: "CA", name: "Canada (+1)" },
+  { code: "AU", name: "Australia (+61)" },
+  { code: "AR", name: "Argentina (+54)" },
+  { code: "AT", name: "Austria (+43)" },
+  { code: "BE", name: "Belgium (+32)" },
+  { code: "BR", name: "Brazil (+55)" },
+  { code: "CL", name: "Chile (+56)" },
+  { code: "CO", name: "Colombia (+57)" },
+  { code: "DK", name: "Denmark (+45)" },
+  { code: "FI", name: "Finland (+358)" },
+  { code: "FR", name: "France (+33)" },
+  { code: "DE", name: "Germany (+49)" },
+  { code: "HK", name: "Hong Kong (+852)" },
+  { code: "IE", name: "Ireland (+353)" },
+  { code: "IL", name: "Israel (+972)" },
+  { code: "IT", name: "Italy (+39)" },
+  { code: "JP", name: "Japan (+81)" },
+  { code: "MX", name: "Mexico (+52)" },
+  { code: "NL", name: "Netherlands (+31)" },
+  { code: "NZ", name: "New Zealand (+64)" },
+  { code: "NO", name: "Norway (+47)" },
+  { code: "PE", name: "Peru (+51)" },
+  { code: "PL", name: "Poland (+48)" },
+  { code: "PT", name: "Portugal (+351)" },
+  { code: "SG", name: "Singapore (+65)" },
+  { code: "ZA", name: "South Africa (+27)" },
+  { code: "ES", name: "Spain (+34)" },
+  { code: "SE", name: "Sweden (+46)" },
+  { code: "CH", name: "Switzerland (+41)" }
+];
+
 export default function AgentDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -66,6 +100,7 @@ export default function AgentDetailsPage() {
 
   // Telephony
   const [provisioning, setProvisioning] = useState(false);
+  const [countryCode, setCountryCode] = useState("US");
   const [areaCode, setAreaCode] = useState("");
   const [availableNumbers, setAvailableNumbers] = useState<any[]>([]);
   const [provLoading, setProvLoading] = useState(false);
@@ -231,12 +266,11 @@ export default function AgentDetailsPage() {
   };
 
   const searchNumbers = async () => {
-    if (!areaCode) return;
     setProvLoading(true); setProvError(""); setAvailableNumbers([]);
     try {
-      const data = await apiPost("/numbers/search", { area_code: areaCode, limit: 5 });
+      const data = await apiPost("/numbers/search", { country_code: countryCode, area_code: areaCode, limit: 5 });
       if (data.numbers?.length > 0) setAvailableNumbers(data.numbers);
-      else setProvError(`No numbers for area code ${areaCode}.`);
+      else setProvError(`No numbers found for ${countryCode} ${areaCode ? `(area ${areaCode})` : ""}.`);
     } catch { setProvError("Failed to search numbers."); }
     setProvLoading(false);
   };
@@ -665,7 +699,12 @@ export default function AgentDetailsPage() {
             ) : provisioning ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <input value={areaCode} onChange={e => setAreaCode(e.target.value)} placeholder="Area code (e.g. 212)" style={{ ...inp, flex: 1 }} />
+                  <select value={countryCode} onChange={e => setCountryCode(e.target.value)} style={{ ...inp, width: 200 }}>
+                    {SUPPORTED_COUNTRIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.name}</option>
+                    ))}
+                  </select>
+                  <input value={areaCode} onChange={e => setAreaCode(e.target.value)} placeholder="Area code (optional)" style={{ ...inp, flex: 1 }} />
                   <button onClick={searchNumbers} disabled={provLoading} style={btn()}>{provLoading ? "..." : "Search"}</button>
                 </div>
                 {provError && <div style={{ color: "#DC2626", fontSize: "0.75rem" }}>{provError}</div>}

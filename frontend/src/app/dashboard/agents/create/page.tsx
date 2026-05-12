@@ -47,6 +47,40 @@ const ghost: React.CSSProperties = {
 };
 const hint: React.CSSProperties = { fontSize: "0.75rem", color: "#9CA3AF", marginTop: 5 };
 
+const SUPPORTED_COUNTRIES = [
+  { code: "US", name: "United States (+1)" },
+  { code: "GB", name: "United Kingdom (+44)" },
+  { code: "CA", name: "Canada (+1)" },
+  { code: "AU", name: "Australia (+61)" },
+  { code: "AR", name: "Argentina (+54)" },
+  { code: "AT", name: "Austria (+43)" },
+  { code: "BE", name: "Belgium (+32)" },
+  { code: "BR", name: "Brazil (+55)" },
+  { code: "CL", name: "Chile (+56)" },
+  { code: "CO", name: "Colombia (+57)" },
+  { code: "DK", name: "Denmark (+45)" },
+  { code: "FI", name: "Finland (+358)" },
+  { code: "FR", name: "France (+33)" },
+  { code: "DE", name: "Germany (+49)" },
+  { code: "HK", name: "Hong Kong (+852)" },
+  { code: "IE", name: "Ireland (+353)" },
+  { code: "IL", name: "Israel (+972)" },
+  { code: "IT", name: "Italy (+39)" },
+  { code: "JP", name: "Japan (+81)" },
+  { code: "MX", name: "Mexico (+52)" },
+  { code: "NL", name: "Netherlands (+31)" },
+  { code: "NZ", name: "New Zealand (+64)" },
+  { code: "NO", name: "Norway (+47)" },
+  { code: "PE", name: "Peru (+51)" },
+  { code: "PL", name: "Poland (+48)" },
+  { code: "PT", name: "Portugal (+351)" },
+  { code: "SG", name: "Singapore (+65)" },
+  { code: "ZA", name: "South Africa (+27)" },
+  { code: "ES", name: "Spain (+34)" },
+  { code: "SE", name: "Sweden (+46)" },
+  { code: "CH", name: "Switzerland (+41)" }
+];
+
 /* ── Step indicator ─────────────────────────────────────────────── */
 const STEPS = ["Agent Setup", "Knowledge Base", "Phone Number"];
 
@@ -108,6 +142,7 @@ export default function CreateAgentPage() {
   const [kbStatus, setKbStatus] = useState<string[]>([]);
 
   // Step 3
+  const [countryCode, setCountryCode] = useState("US");
   const [areaCode, setAreaCode] = useState("");
   const [numbers, setNumbers]   = useState<any[]>([]);
 
@@ -175,11 +210,11 @@ export default function CreateAgentPage() {
   const searchNumbers = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError(""); setNumbers([]);
     try {
-      const data = await apiPost("/numbers/search", { area_code: areaCode, limit: 5 });
+      const data = await apiPost("/numbers/search", { country_code: countryCode, area_code: areaCode, limit: 5 });
       if (data.numbers && data.numbers.length > 0) {
         setNumbers(data.numbers);
       } else {
-        throw new Error(`No numbers available for area code ${areaCode}. Please try another one.`);
+        throw new Error(`No numbers available for ${countryCode} ${areaCode ? `area code ${areaCode}` : ""}. Please try another one.`);
       }
     } catch (err: any) { setError(err.message); }
     setLoading(false);
@@ -467,8 +502,13 @@ export default function CreateAgentPage() {
           <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Search by area code to get a local number for your AI agent.</p>
 
           <form onSubmit={searchNumbers} style={{ display: "flex", gap: 10, marginBottom: "1.5rem" }}>
+            <select value={countryCode} onChange={e => setCountryCode(e.target.value)} style={{ ...inp, width: 200 }}>
+              {SUPPORTED_COUNTRIES.map(c => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
             <input type="text" value={areaCode} onChange={e => setAreaCode(e.target.value)}
-              placeholder="Area code, e.g. 212" maxLength={3} required style={{ ...inp, flex: 1 }} />
+              placeholder="Area code (optional)" style={{ ...inp, flex: 1 }} />
             <button type="submit" disabled={loading}
               style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "10px 20px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
               {loading ? "Searching..." : "Search"}
