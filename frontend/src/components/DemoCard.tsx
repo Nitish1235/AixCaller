@@ -120,16 +120,16 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
       width: "100%", maxWidth: 400,
       background: "#fff",
       borderRadius: 24,
-      border: "1.5px solid #D1FAE5",
-      boxShadow: "0 20px 60px rgba(16,185,129,0.12), 0 4px 20px rgba(0,0,0,0.06)",
+      border: "var(--border)",
+      boxShadow: "8px 8px 0 var(--accent-pink)",
       overflow: "hidden",
       position: "relative",
     }}>
       {/* Top gradient bar */}
-      <div style={{ height: 4, background: "linear-gradient(90deg, #10B981, #059669, #064E3B)" }} />
+      <div style={{ height: 6, background: "var(--accent-green)", borderBottom: "var(--border)" }} />
 
       {/* Header strip */}
-      <div style={{ background: "#F6FEFA", borderBottom: "1px solid #D1FAE5", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ background: "#fff", borderBottom: "var(--border)", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: state === "active" ? "#10B981" : state === "connecting" ? "#F59E0B" : "#D1D5DB", boxShadow: state === "active" ? "0 0 0 3px #D1FAE5" : "none" }} />
           <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#064E3B", letterSpacing: 0.3 }}>
@@ -153,10 +153,11 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
           </>}
           <div style={{
             width: 88, height: 88, borderRadius: "50%",
-            background: "linear-gradient(135deg, #064E3B, #10B981)",
+            background: "var(--accent-green)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "2.2rem", position: "relative", zIndex: 1,
-            boxShadow: state === "active" ? "0 0 0 6px #D1FAE5, 0 8px 30px rgba(16,185,129,0.35)" : "0 4px 16px rgba(16,185,129,0.2)",
+            border: "var(--border)",
+            boxShadow: state === "active" ? "0 0 0 6px var(--accent-pink), 8px 8px 0 var(--text)" : "4px 4px 0 var(--text)",
             transition: "box-shadow 0.4s ease",
           }}>🤖</div>
         </div>
@@ -168,7 +169,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
         </div>
 
         {/* Duration */}
-        <div style={{ fontFamily: "monospace", fontSize: "1.6rem", fontWeight: 900, color: "#064E3B", letterSpacing: 3, background: "#F6FEFA", padding: "8px 24px", borderRadius: 999, border: "1px solid #D1FAE5" }}>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "1.6rem", fontWeight: 900, color: "var(--text)", letterSpacing: 3, background: "var(--accent-yellow)", padding: "8px 24px", borderRadius: 999, border: "var(--border)", boxShadow: "4px 4px 0 var(--text)" }}>
           {state === "ended" ? "ENDED" : state === "idle" ? "02:00" : duration}
         </div>
 
@@ -189,10 +190,10 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
 
         {/* Transcript */}
         {lines.length > 0 && (
-          <div style={{ width: "100%", maxHeight: 110, overflowY: "auto", background: "#F6FEFA", borderRadius: 12, padding: "10px 14px", border: "1px solid #D1FAE5", fontSize: "0.78rem", lineHeight: 1.6, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ width: "100%", maxHeight: 110, overflowY: "auto", background: "var(--bg)", borderRadius: 12, padding: "10px 14px", border: "var(--border)", fontSize: "0.78rem", lineHeight: 1.6, display: "flex", flexDirection: "column", gap: 4 }}>
             {lines.map((l, i) => (
               <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                <span style={{ fontWeight: 800, color: l.role === "assistant" ? "#059669" : "#374151", flexShrink: 0, fontSize: "0.72rem" }}>
+                <span style={{ fontWeight: 900, color: l.role === "assistant" ? "var(--accent-green)" : "var(--text)", flexShrink: 0, fontSize: "0.72rem" }}>
                   {l.role === "assistant" ? "ARIA" : "YOU"}
                 </span>
                 <span style={{ color: l.role === "assistant" ? "#064E3B" : "#6B7280" }}>{l.text}</span>
@@ -211,10 +212,10 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
             <>
               <button id="demo-start-btn" onClick={start} style={{
                 width: 72, height: 72, borderRadius: "50%",
-                background: "linear-gradient(135deg, #10B981, #064E3B)",
-                border: "none", fontSize: "1.8rem", cursor: "pointer",
-                boxShadow: "0 6px 30px rgba(16,185,129,0.5)",
-                transition: "all 0.2s",
+                background: "var(--accent-green)",
+                border: "var(--border)", fontSize: "1.8rem", cursor: "pointer",
+                boxShadow: "4px 4px 0 var(--text)",
+                transition: "all 0.1s",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>🎤</button>
               <p style={{ fontSize: "0.76rem", color: "#9CA3AF", textAlign: "center", margin: 0 }}>
@@ -229,8 +230,9 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
             <>
               <button id="demo-end-btn" onClick={end} style={{
                 width: 72, height: 72, borderRadius: "50%",
-                background: "#FEF2F2", border: "2px solid #FCA5A5",
-                fontSize: "1.6rem", cursor: "pointer", transition: "all 0.2s",
+                background: "var(--accent-pink)", border: "var(--border)",
+                fontSize: "1.6rem", cursor: "pointer", transition: "all 0.1s",
+                boxShadow: "4px 4px 0 var(--text)",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>⏹</button>
               <p style={{ fontSize: "0.76rem", color: "#9CA3AF", margin: 0 }}>Tap to end call</p>
@@ -238,7 +240,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
           )}
           {state === "ended" && (
             <Link href="/signup" style={{ width: "100%" }}>
-              <button style={{ width: "100%", background: "linear-gradient(135deg, #10B981, #064E3B)", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer" }}>
+              <button className="btn-brutal" style={{ width: "100%", padding: "14px", fontSize: "0.95rem" }}>
                 Deploy Your Own Agent →
               </button>
             </Link>
@@ -247,7 +249,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
       </div>
 
       {/* Bottom trust bar */}
-      <div style={{ background: "#F6FEFA", borderTop: "1px solid #D1FAE5", padding: "10px 20px", display: "flex", justifyContent: "space-around" }}>
+      <div style={{ background: "var(--bg)", borderTop: "var(--border)", padding: "10px 20px", display: "flex", justifyContent: "space-around" }}>
         {[["🔒", "Secure"], ["⚡", "<1s latency"], ["🌍", "30+ langs"]].map(([icon, label]) => (
           <div key={label as string} style={{ textAlign: "center" }}>
             <div style={{ fontSize: "0.85rem" }}>{icon}</div>

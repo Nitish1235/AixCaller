@@ -22,17 +22,19 @@ function NavItem({ href, icon, label, active }: { href: string; icon: string; la
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10,
-        background: active ? "rgba(16,185,129,0.18)" : "transparent",
-        color: active ? "#6EE7B7" : "rgba(255,255,255,0.6)",
-        fontWeight: active ? 700 : 500, fontSize: "0.88rem",
-        transition: "all 0.15s", cursor: "pointer",
-        borderLeft: active ? "3px solid #10B981" : "3px solid transparent",
+        display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12,
+        background: active ? "var(--accent-yellow)" : "transparent",
+        color: active ? "var(--text)" : "#cbd5e1",
+        fontWeight: active ? 900 : 600, fontSize: "0.9rem",
+        transition: "transform 0.1s", cursor: "pointer",
+        border: active ? "2px solid #fff" : "2px solid transparent",
+        boxShadow: active ? "4px 4px 0 #fff" : "none",
+        textTransform: "uppercase"
       }}>
-        <span style={{ fontSize: "1rem", width: 20, textAlign: "center" }}>{icon}</span>
+        <span style={{ fontSize: "1.1rem", width: 20, textAlign: "center", filter: active ? "none" : "grayscale(100%) brightness(200%)" }}>{icon}</span>
         {label}
         {label === "Live Monitor" && (
-          <div style={{ marginLeft: "auto", width: 7, height: 7, borderRadius: "50%", background: "#10B981", boxShadow: "0 0 0 2px rgba(16,185,129,0.3)", animation: "pulse 2s infinite" }} />
+          <div style={{ marginLeft: "auto", width: 8, height: 8, borderRadius: "50%", background: "var(--accent-pink)", border: "2px solid var(--text)" }} />
         )}
       </div>
     </Link>
@@ -60,85 +62,84 @@ export default function DashboardShell({ user, children }: { user: User; childre
     : user.email[0].toUpperCase();
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#F6FEFA" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", backgroundImage: "linear-gradient(#e5e5df 1px, transparent 1px), linear-gradient(90deg, #e5e5df 1px, transparent 1px)", backgroundSize: "40px 40px" }}>
       {/* Sidebar */}
       <aside style={{
-        width: 240, flexShrink: 0, background: "#064E3B",
+        width: 250, flexShrink: 0, background: "var(--text)", borderRight: "var(--border)",
         display: "flex", flexDirection: "column",
         position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50,
       }}>
         {/* Brand */}
-        <div style={{ padding: "1.5rem 1.25rem 1.25rem", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>🎙️</div>
+        <div style={{ padding: "1.5rem 1.25rem 1.25rem", display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #334155" }}>
+          <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--accent-green)", border: "2px solid #fff", boxShadow: "2px 2px 0 #fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>🎙️</div>
           <div>
-            <div style={{ fontWeight: 900, fontSize: "1rem", color: "#fff", letterSpacing: -0.3 }}>AIxCaller</div>
-            <div style={{ fontSize: "0.65rem", color: "#6EE7B7", fontWeight: 500 }}>Dashboard</div>
+            <div style={{ fontWeight: 900, fontSize: "1.1rem", color: "#fff", textTransform: "uppercase" }}>AIxCaller</div>
+            <div style={{ fontSize: "0.7rem", color: "var(--accent-pink)", fontWeight: 800, textTransform: "uppercase" }}>Platform</div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: "1rem 0.75rem", display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: 1, textTransform: "uppercase", padding: "0.5rem 12px 0.25rem" }}>Main</div>
+        <nav style={{ flex: 1, padding: "1.5rem 1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div style={{ fontSize: "0.7rem", fontWeight: 900, color: "#64748b", textTransform: "uppercase", padding: "0 12px", marginBottom: "0.5rem" }}>Main</div>
           {navItems.slice(0, 2).map(n => <NavItem key={n.href} {...n} active={path === n.href} />)}
-          <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: 1, textTransform: "uppercase", padding: "1rem 12px 0.25rem" }}>Tools</div>
+          <div style={{ fontSize: "0.7rem", fontWeight: 900, color: "#64748b", textTransform: "uppercase", padding: "0 12px", margin: "1rem 0 0.5rem" }}>Tools</div>
           {navItems.slice(2).map(n => <NavItem key={n.href} {...n} active={path === n.href} />)}
         </nav>
 
         {/* Credits */}
-        <div style={{ padding: "1rem", margin: "0 0.75rem 0.75rem", background: "rgba(16,185,129,0.12)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)" }}>
-          <div style={{ fontSize: "0.72rem", color: "#6EE7B7", fontWeight: 600, marginBottom: 6 }}>CREDITS REMAINING</div>
-          <div style={{ fontWeight: 900, fontSize: "1.3rem", color: "#fff" }}>
-            {billing ? Math.floor(billing.minutes_left) : "..."} <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#6EE7B7" }}>min</span>
+        <div style={{ padding: "1rem", margin: "0 1rem 1rem", background: "var(--accent-pink)", borderRadius: 16, border: "2px solid #fff", boxShadow: "4px 4px 0 #fff" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text)", fontWeight: 900, marginBottom: 4, textTransform: "uppercase" }}>Credits Left</div>
+          <div className="mono" style={{ fontWeight: 900, fontSize: "1.5rem", color: "var(--text)", lineHeight: 1 }}>
+            {billing ? Math.floor(billing.minutes_left) : "..."} <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>min</span>
           </div>
-          <div style={{ marginTop: 8, height: 5, background: "rgba(255,255,255,0.1)", borderRadius: 999 }}>
+          <div style={{ marginTop: 12, height: 8, background: "rgba(0,0,0,0.1)", borderRadius: 999, border: "2px solid var(--text)" }}>
             <div style={{ 
               width: billing && billing.minutes_included > 0 ? `${Math.min(100, Math.max(0, (billing.minutes_left / billing.minutes_included) * 100))}%` : "0%", 
-              height: "100%", background: "linear-gradient(90deg,#10B981,#6EE7B7)", borderRadius: 999, transition: "width 0.5s ease" 
+              height: "100%", background: "var(--accent-green)", borderRadius: 999, borderRight: "2px solid var(--text)", transition: "width 0.5s ease" 
             }} />
           </div>
-          <Link href="/dashboard/billing" style={{ display: "block", textAlign: "center", marginTop: 10, fontSize: "0.72rem", color: "#6EE7B7", fontWeight: 700, textDecoration: "none" }}>Manage Plan →</Link>
+          <Link href="/dashboard/billing" style={{ display: "block", textAlign: "center", marginTop: 12, fontSize: "0.85rem", color: "var(--text)", fontWeight: 900, textDecoration: "underline" }}>Manage Plan</Link>
         </div>
 
         {/* User — real data */}
-        <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ padding: "1rem", borderTop: "2px solid #334155", display: "flex", alignItems: "center", gap: 10, background: "#020617" }}>
           {user.picture ? (
-            <img src={user.picture} alt={user.name} width={34} height={34}
-              style={{ borderRadius: "50%", flexShrink: 0, border: "2px solid #10B981" }} />
+            <img src={user.picture} alt={user.name} width={36} height={36}
+              style={{ borderRadius: "50%", flexShrink: 0, border: "2px solid var(--accent-yellow)" }} />
           ) : (
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#10B981,#064E3B)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "#fff", fontSize: "0.9rem", flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--accent-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, color: "var(--text)", fontSize: "1rem", flexShrink: 0, border: "2px solid #fff" }}>
               {initials}
             </div>
           )}
           <div style={{ flex: 1, overflow: "hidden" }}>
-            <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name || "My Workspace"}</div>
-            <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
+            <div style={{ fontWeight: 900, fontSize: "0.85rem", color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name || "My Workspace"}</div>
+            <div className="mono" style={{ fontSize: "0.7rem", color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
           </div>
           <a 
             href="/api/auth/logout" 
             onClick={() => { if (typeof window !== "undefined") localStorage.removeItem("tenant_id"); }}
             title="Sign out" 
-            style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.3)", textDecoration: "none", flexShrink: 0 }}
+            style={{ fontSize: "1.2rem", color: "#64748b", textDecoration: "none", flexShrink: 0, fontWeight: 900 }}
           >
-            ↩
+            ×
           </a>
         </div>
-        <style>{`@keyframes pulse { 0%,100%{opacity:0.5}50%{opacity:1} }`}</style>
       </aside>
 
       {/* Main area */}
-      <div style={{ marginLeft: 240, flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <div style={{ marginLeft: 250, flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
         {/* Top bar */}
-        <div style={{ height: 60, background: "#fff", borderBottom: "1px solid #D1FAE5", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2rem", position: "sticky", top: 0, zIndex: 40 }}>
-          <span style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B" }}>
+        <div style={{ height: 72, background: "#fff", borderBottom: "var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2rem", position: "sticky", top: 0, zIndex: 40 }}>
+          <span style={{ fontWeight: 900, fontSize: "1.2rem", color: "var(--text)", textTransform: "uppercase" }}>
             {navItems.find(n => n.href === path)?.label ?? "Dashboard"}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 999, padding: "5px 14px", fontSize: "0.78rem", fontWeight: 700, color: "#059669" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
-              All systems operational
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--accent-green)", border: "2px solid var(--text)", borderRadius: 999, padding: "6px 16px", fontSize: "0.85rem", fontWeight: 900, color: "var(--text)", boxShadow: "2px 2px 0 var(--text)", textTransform: "uppercase" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--text)", display: "inline-block" }} />
+              Operational
             </div>
             <Link href="/dashboard/agents/create" style={{ textDecoration: "none" }}>
-              <button style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "8px 18px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}>
+              <button className="btn-brutal" style={{ padding: "8px 24px", fontSize: "0.95rem" }}>
                 + New Agent
               </button>
             </Link>

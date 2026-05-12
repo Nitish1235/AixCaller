@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const inp: React.CSSProperties = {
-  width: "100%", padding: "11px 14px", borderRadius: 10, boxSizing: "border-box",
-  border: "1.5px solid #D1FAE5", fontSize: "0.9rem", color: "#064E3B",
+  width: "100%", padding: "12px 16px", borderRadius: 12, boxSizing: "border-box",
+  border: "2px solid var(--text)", fontSize: "1rem", color: "var(--text)",
   outline: "none", fontFamily: "inherit", background: "#fff",
+  transition: "all 0.2s"
 };
 
 export default function SignupPage() {
@@ -44,49 +45,48 @@ export default function SignupPage() {
 
   return (
     <main style={{
-      minHeight: "100vh", background: "linear-gradient(135deg,#F0FDF4 0%,#ECFDF5 50%,#F6FEFA 100%)",
+      minHeight: "100vh", background: "var(--bg)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem",
-      fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      backgroundImage: "linear-gradient(#e5e5df 1px, transparent 1px), linear-gradient(90deg, #e5e5df 1px, transparent 1px)",
+      backgroundSize: "40px 40px",
     }}>
-      <div style={{ width: "100%", maxWidth: 420 }}>
+      <div style={{ width: "100%", maxWidth: 440 }}>
 
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 16, margin: "0 auto 14px",
-            background: "linear-gradient(135deg,#064E3B,#10B981)",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem",
+            width: 64, height: 64, borderRadius: 16, margin: "0 auto 16px",
+            background: "var(--accent-green)", border: "var(--border)", boxShadow: "4px 4px 0 var(--text)",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem",
           }}>🎙️</div>
-          <h1 style={{ margin: 0, fontWeight: 900, fontSize: "1.5rem", color: "#064E3B", letterSpacing: -0.5 }}>
+          <h1 style={{ margin: 0, fontWeight: 900, fontSize: "2rem", textTransform: "uppercase", letterSpacing: -1 }}>
             Start for free
           </h1>
-          <p style={{ margin: "6px 0 0", color: "#9CA3AF", fontSize: "0.9rem" }}>
+          <p style={{ margin: "8px 0 0", color: "var(--text)", fontWeight: 600, fontSize: "1rem" }}>
             Deploy your first AI voice agent in 5 minutes
           </p>
         </div>
 
         {/* Card */}
-        <div style={{
-          background: "#fff", borderRadius: 20, padding: "2rem",
-          border: "1.5px solid #D1FAE5", boxShadow: "0 8px 40px rgba(16,185,129,0.12)",
-        }}>
+        <div className="card" style={{ padding: "3rem 2.5rem" }}>
 
           {/* Error */}
           {formError && (
             <div style={{
-              background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10,
-              padding: "12px 14px", fontSize: "0.85rem", color: "#DC2626", marginBottom: "1.5rem",
+              background: "var(--accent-pink)", border: "2px solid var(--text)", borderRadius: 12,
+              padding: "12px 14px", fontSize: "0.9rem", color: "var(--text)", fontWeight: 700, marginBottom: "1.5rem",
+              boxShadow: "3px 3px 0 var(--text)"
             }}>
               ⚠️ {formError}
             </div>
           )}
 
           {/* Feature chips */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "1.5rem" }}>
-            {["✅ Free 500 min", "🤖 AI Voice Agents", "📞 Real Phone Numbers", "📊 Analytics"].map(f => (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "2rem", justifyContent: "center" }}>
+            {["✅ Free 500 min", "🤖 AI Voice Agents", "📞 Global Numbers", "📊 Analytics"].map(f => (
               <span key={f} style={{
-                fontSize: "0.72rem", fontWeight: 700, padding: "4px 10px", borderRadius: 999,
-                background: "#ECFDF5", color: "#059669", border: "1px solid #D1FAE5",
+                fontSize: "0.75rem", fontWeight: 800, padding: "6px 12px", borderRadius: 999,
+                background: "#fff", color: "var(--text)", border: "2px solid var(--text)", boxShadow: "2px 2px 0 var(--text)"
               }}>{f}</span>
             ))}
           </div>
@@ -95,9 +95,9 @@ export default function SignupPage() {
           <a href="/api/auth/google" style={{ textDecoration: "none" }}>
             <button style={{
               width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
-              gap: 12, padding: "13px", borderRadius: 12, border: "1.5px solid #E5E7EB",
-              background: "#fff", cursor: "pointer", fontWeight: 700, fontSize: "0.95rem",
-              color: "#374151", transition: "all 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              gap: 12, padding: "14px", borderRadius: 99, border: "2px solid var(--text)",
+              background: "#fff", cursor: "pointer", fontWeight: 800, fontSize: "1rem",
+              color: "var(--text)", transition: "all 0.1s", boxShadow: "4px 4px 0 var(--text)",
             }}>
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -110,51 +110,51 @@ export default function SignupPage() {
           </a>
 
           {/* Divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1.5rem 0" }}>
-            <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-            <span style={{ fontSize: "0.78rem", color: "#9CA3AF", fontWeight: 600 }}>OR</span>
-            <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2rem 0" }}>
+            <div style={{ flex: 1, height: 2, background: "var(--text)" }} />
+            <span style={{ fontSize: "0.85rem", color: "var(--text)", fontWeight: 800 }}>OR</span>
+            <div style={{ flex: 1, height: 2, background: "var(--text)" }} />
           </div>
 
           {/* Email form */}
-          <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
             <div>
-              <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>Full Name</label>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: 900, fontSize: "0.85rem", color: "var(--text)", textTransform: "uppercase" }}>Full Name</label>
               <input type="text" placeholder="Jane Doe" style={inp} required
                 value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>Email Address</label>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: 900, fontSize: "0.85rem", color: "var(--text)", textTransform: "uppercase" }}>Email Address</label>
               <input type="email" placeholder="you@company.com" style={inp} required
                 value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 6, fontWeight: 700, fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 }}>Password</label>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: 900, fontSize: "0.85rem", color: "var(--text)", textTransform: "uppercase" }}>Password</label>
               <input type="password" placeholder="••••••••" style={inp} required minLength={6}
                 value={password} onChange={e => setPassword(e.target.value)} />
             </div>
             <button type="submit" disabled={loading} style={{
-              width: "100%", background: "#064E3B", color: "#fff", border: "none",
-              borderRadius: 10, padding: "13px", fontWeight: 700, fontSize: "0.95rem",
-              cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1,
+              width: "100%", background: "var(--accent-yellow)", color: "var(--text)", border: "2px solid var(--text)",
+              borderRadius: 99, padding: "14px", fontWeight: 900, fontSize: "1.1rem", textTransform: "uppercase",
+              cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, boxShadow: "4px 4px 0 var(--text)", marginTop: "1rem"
             }}>
               {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
-          <p style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.82rem", color: "#9CA3AF" }}>
+          <p style={{ textAlign: "center", marginTop: "2rem", fontSize: "0.9rem", color: "var(--text)", fontWeight: 600 }}>
             Already have an account?{" "}
-            <Link href="/login" style={{ color: "#10B981", fontWeight: 700, textDecoration: "none" }}>
+            <Link href="/login" style={{ color: "var(--accent-green)", fontWeight: 900, textDecoration: "underline", textUnderlineOffset: 4 }}>
               Sign in
             </Link>
           </p>
         </div>
 
-        <p style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.75rem", color: "#9CA3AF" }}>
+        <p style={{ textAlign: "center", marginTop: "2rem", fontSize: "0.85rem", color: "var(--text)", fontWeight: 600 }}>
           By signing up, you agree to our{" "}
-          <Link href="/terms" style={{ color: "#10B981", textDecoration: "none" }}>Terms</Link>
+          <Link href="/terms" style={{ textDecoration: "underline" }}>Terms</Link>
           {" & "}
-          <Link href="/privacy" style={{ color: "#10B981", textDecoration: "none" }}>Privacy Policy</Link>
+          <Link href="/privacy" style={{ textDecoration: "underline" }}>Privacy Policy</Link>
         </p>
       </div>
     </main>

@@ -2,333 +2,255 @@ import Link from "next/link";
 import { DemoCard } from "@/components/DemoCard";
 
 export const dynamic = "force-dynamic";
-const features = [
-  { icon: "⚡", title: "Instant Agent Setup", desc: "Upload your PDFs, website URLs, or plain text. Your AI agent is trained and fully live in under 5 minutes. Zero engineering required." },
-  { icon: "📞", title: "Real Phone Numbers", desc: "Buy new local or toll-free numbers in 1 click, or instantly forward your existing business line to your AI agent." },
-  { icon: "🧠", title: "Zero Hallucinations", desc: "Your agent answers only from your approved business documents. Accurate, consistent, and on-brand every single call." },
-  { icon: "🗣️", title: "Natural Conversations", desc: "Human-like voice with full interruption support, dynamic follow-ups, and long-term context memory across the call." },
-  { icon: "📊", title: "Analytics Dashboard", desc: "Full call transcripts, AI-powered sentiment analysis, lead scoring, and real-time performance metrics — all in one view." },
-  { icon: "🔗", title: "Native Integrations", desc: "Built-in OAuth connections to Shopify, Zoho CRM, Telegram, and more — secure, one-click setup." },
-];
-
-const steps = [
-  { n: "01", title: "Sign Up Free", desc: "Create your account in 30 seconds. No credit card required. Instant dashboard access." },
-  { n: "02", title: "Train Your Agent", desc: "Upload PDFs, paste your website URL, or type plain text. Aria learns your business instantly." },
-  { n: "03", title: "Connect & Go Live", desc: "Buy a new number or forward your existing line. Your AI answers calls within minutes." },
-];
-
-const useCases = [
-  { icon: "🍽️", label: "Restaurants & Cafes", desc: "Handle reservations, menu inquiries, and takeout orders automatically." },
-  { icon: "🩺", label: "Clinics & Doctors", desc: "Book appointments, answer FAQs, and handle after-hours inquiries." },
-  { icon: "🏠", label: "Real Estate Agents", desc: "Qualify leads, schedule viewings, and answer property questions 24/7." },
-  { icon: "🛒", label: "E-commerce Stores", desc: "Handle order tracking, returns, and product queries at scale." },
-  { icon: "💼", label: "Service Businesses", desc: "Capture every inbound lead and book jobs automatically." },
-  { icon: "📈", label: "Agencies", desc: "White-label AI agents for your clients in minutes." },
-];
 
 export default function Home() {
   return (
-    <main style={{ paddingTop: 68 }}>
-
+    <main style={{ paddingBottom: "0rem", overflowX: "hidden" }}>
       {/* ── HERO ── */}
-      <section style={{ background: "linear-gradient(180deg, #ECFDF5 0%, #FFFFFF 100%)", borderBottom: "1px solid #D1FAE5" }}>
-        <div className="container" style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "5rem", alignItems: "center", padding: "6rem 2rem 5rem" }}>
-          <div>
-            <div className="badge" style={{ marginBottom: "1.5rem" }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
-              Powered by GPT-4o + Deepgram Nova-3
+      <section style={{ textAlign: "center", paddingTop: "6rem", position: "relative", maxWidth: 1300, margin: "0 auto", padding: "6rem 5% 0" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 15, background: "#fff", border: "var(--border)", padding: "1rem 2rem", borderRadius: 99, boxShadow: "var(--shadow)", marginBottom: "3rem", transform: "rotate(-2deg)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, height: 30 }}>
+            <div style={{ width: 5, background: "var(--text)", borderRadius: 99, animation: "eq 0.8s infinite alternate ease-in-out", animationDelay: "0.1s" }} />
+            <div style={{ width: 5, background: "var(--accent-green)", borderRadius: 99, animation: "eq 0.8s infinite alternate ease-in-out" }} />
+            <div style={{ width: 5, background: "var(--text)", borderRadius: 99, animation: "eq 0.8s infinite alternate ease-in-out", animationDelay: "0.3s" }} />
+            <div style={{ width: 5, background: "var(--accent-green)", borderRadius: 99, animation: "eq 0.8s infinite alternate ease-in-out" }} />
+          </div>
+          <span style={{ fontWeight: 900, textTransform: "uppercase", fontSize: "1.1rem" }}>Live Telephony Engine</span>
+        </div>
+        
+        <h1 style={{ fontSize: "clamp(3rem, 7vw, 6.5rem)", fontWeight: 900, lineHeight: 1, margin: "0 0 2rem", letterSpacing: -2, textTransform: "uppercase" }}>
+          Your business, <br />voiced perfectly.
+        </h1>
+        <p style={{ fontSize: "clamp(1.1rem, 2vw, 1.5rem)", fontWeight: 600, maxWidth: 800, margin: "0 auto 4rem", lineHeight: 1.5 }}>
+          Provision global numbers, connect your custom knowledge base, and deploy conversational AI agents that capture revenue 24/7 without ever putting a customer on hold.
+        </p>
+        
+        <Link href="/signup">
+          <button className="btn-brutal" style={{ fontSize: "1.4rem", padding: "1.4rem 4rem" }}>Start Building Free</button>
+        </Link>
+
+        {/* ── MEGA DEMO ── */}
+        <div style={{ background: "var(--text)", color: "#fff", border: "var(--border)", borderColor: "#fff", borderRadius: 32, padding: "clamp(2rem, 5vw, 4rem)", boxShadow: "15px 15px 0 var(--accent-yellow)", display: "flex", gap: "4rem", alignItems: "center", marginTop: "4rem", transform: "rotate(1deg)", flexWrap: "wrap" }}>
+          
+          <div style={{ flex: "1 1 400px", textAlign: "left" }}>
+            <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)", lineHeight: 1, margin: "0 0 1.5rem", textTransform: "uppercase", color: "var(--accent-yellow)", fontWeight: 900 }}>
+              Talk to our <br />Agent live.
+            </h2>
+            <div style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "2rem", color: "#cbd5e1" }}>
+              Test the sub-second latency for yourself. Choose a persona and dial the number or test via browser.
             </div>
-            <h1 style={{ fontSize: "clamp(2.6rem, 4.5vw, 4rem)", fontWeight: 900, lineHeight: 1.06, letterSpacing: -2, color: "#064E3B", margin: "0 0 1.5rem" }}>
-              Hire a 24/7 AI Voice Agent That Answers Calls{" "}
-              <span className="text-gradient">Like a Human.</span>
-            </h1>
-            <p style={{ fontSize: "1.1rem", color: "#374151", lineHeight: 1.7, maxWidth: 500, marginBottom: "2.5rem" }}>
-              AIxCaller.live provides ready-to-use intelligent voice agents that handle inbound & outbound calls, understand your business, and never take a day off.
-            </p>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: "2rem" }}>
-              <Link href="/signup"><button className="btn-emerald" style={{ fontSize: "1rem", padding: "14px 32px" }}>Get Your AI Agent — Free</button></Link>
-              <Link href="/#how-it-works"><button className="btn-outline" style={{ fontSize: "1rem", padding: "14px 24px" }}>See How It Works ↓</button></Link>
+            
+            <div className="mono" style={{ display: "flex", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+              <div style={{ background: "var(--accent-pink)", color: "var(--text)", border: "2px solid var(--accent-pink)", padding: "0.8rem 1.5rem", borderRadius: 99, fontWeight: 800, fontSize: "1rem", cursor: "pointer", textTransform: "uppercase", boxShadow: "4px 4px 0 #fff" }}>
+                🛍️ E-Com Support
+              </div>
+              <div style={{ background: "transparent", color: "#fff", border: "2px solid #fff", padding: "0.8rem 1.5rem", borderRadius: 99, fontWeight: 800, fontSize: "1rem", cursor: "pointer", textTransform: "uppercase" }}>
+                💼 Aggressive Sales
+              </div>
             </div>
-            <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-              {["✓ No credit card required", "✓ 5-minute setup", "✓ 99.9% uptime SLA"].map(t => (
-                <span key={t} style={{ fontSize: "0.82rem", color: "#6B7280", fontWeight: 500 }}>{t}</span>
-              ))}
+            
+            <div className="mono" style={{ background: "#1e293b", border: "2px solid #334155", padding: "1.5rem", borderRadius: 16, fontSize: "1rem", color: "#94a3b8", lineHeight: 1.6 }}>
+              <span style={{ color: "#fbcfe8", fontWeight: 700 }}>SYSTEM_PROMPT:</span><br />
+              "You are an empathetic customer support agent for Shopify. Your goal is to lookup order status and process refunds. <span style={{ color: "#fff", fontWeight: 700 }}>Never break character. Keep responses under 2 sentences.</span>"
             </div>
           </div>
-
-          {/* Live Demo Card */}
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <DemoCard wsUrl={process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL || process.env.VOICE_ENGINE_URL} />
+          
+          <div style={{ flex: "1 1 350px", display: "flex", justifyContent: "center", position: "relative", transform: "rotate(-2deg)" }}>
+             {/* Actual Functional WebRTC Demo Component */}
+             <div style={{ width: "100%", maxWidth: 400 }}>
+               <DemoCard wsUrl={process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL || process.env.VOICE_ENGINE_URL} />
+             </div>
           </div>
         </div>
       </section>
 
-      {/* ── STATS ── */}
-      <section style={{ background: "#064E3B", padding: "3rem 2rem" }}>
-        <div className="container" style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "2rem" }}>
-          {[["500+", "Businesses"], ["100%", "Calls Answered"], ["<1s", "Response Time"], ["English", "Available Now"], ["99.9%", "Uptime SLA"]].map(([n, l]) => (
-            <div key={l} style={{ textAlign: "center", color: "#fff" }}>
-              <div style={{ fontWeight: 900, fontSize: "2rem", color: "#6EE7B7", letterSpacing: -1 }}>{n}</div>
-              <div style={{ fontSize: "0.8rem", opacity: 0.7, marginTop: 2, fontWeight: 500 }}>{l}</div>
+      {/* ── PLATFORM ── */}
+      <section id="platform" style={{ padding: "8rem 5%", maxWidth: 1300, margin: "0 auto" }}>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>The Complete Stack.</h2>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "3rem" }}>
+          
+          {/* Telephony */}
+          <div className="card" style={{ background: "var(--accent-pink)", gridRow: "span 2" }}>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Global Telephony</h3>
+            <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
+              Powered by native Telnyx integrations. Instantly provision numbers across 31+ countries. Search by country code and local area code directly in the dashboard.
+            </p>
+            <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "1.5rem", fontWeight: 700 }}>
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <div style={{ flex: 1, background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  🇺🇸 United States (US) <span style={{ fontSize: "0.8rem" }}>▼</span>
+                </div>
+                <div className="mono" style={{ flex: 0.5, background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8 }}>Area: 415</div>
+              </div>
+              <div style={{ background: "#fff", marginTop: "1rem", textAlign: "center", padding: "1rem", border: "2px solid var(--text)", borderRadius: 8 }}>
+                Number: <span className="mono">+1 (415) 882-9910</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Knowledge Base */}
+          <div className="card" style={{ background: "var(--accent-yellow)" }}>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Vector Knowledge Base</h3>
+            <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
+              Upload your PDFs or paste URLs. We use Supabase pgvector to semantically search your documents in milliseconds during a live call.
+            </p>
+            <div style={{ background: "rgba(255,255,255,0.5)", border: "2px dashed var(--text)", borderRadius: 12, padding: "2rem", textAlign: "center", fontWeight: 700 }}>
+              <div style={{ fontSize: "2rem", marginBottom: 10 }}>📄</div>
+              Drop PDF files here or paste URL<br />
+              <div className="mono" style={{ display: "inline-block", background: "var(--text)", color: "#fff", padding: "0.4rem 1rem", borderRadius: 99, fontSize: "0.8rem", marginTop: 10 }}>pgvector indexing...</div>
+            </div>
+          </div>
+          
+          {/* Marketplace */}
+          <div className="card">
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Agent Marketplace</h3>
+            <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
+              Don't want to write system prompts from scratch? One-click install pre-configured personas like 'Real Estate Lead Gen' or 'Dental Receptionist'.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div style={{ background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, textAlign: "center", fontWeight: 700 }}>🦷 Dental Desk</div>
+              <div style={{ background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, textAlign: "center", fontWeight: 700 }}>🏠 Realtor Bot</div>
+            </div>
+          </div>
+          
+          {/* Transcripts */}
+          <div className="card" style={{ background: "var(--text)", color: "#fff", gridColumn: "1 / -1" }}>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900, color: "var(--accent-green)" }}>Live Call Transcripts & Billing</h3>
+            <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#cbd5e1", lineHeight: 1.5, margin: "0 0 2rem" }}>
+              Review every single conversation. We track call duration down to the second for precise, transparent billing via our Stripe integration.
+            </p>
+            <div className="mono" style={{ background: "#1e293b", border: "2px solid #334155", borderRadius: 12, padding: "1.5rem", fontWeight: 700, display: "flex", justifyContent: "space-between" }}>
+              <div>SESSION_9482 [142s]</div>
+              <div style={{ color: "var(--accent-green)" }}>SUCCESS</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── STEPS ── */}
+      <section style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Live in 3 steps.</h2>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          <div className="card" style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-1deg)", flexWrap: "wrap" }}>
+            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>1</div>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Build the Brain</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Write a system prompt, select an ElevenLabs voice ID, and upload your knowledge base.</p>
+            </div>
+          </div>
+          
+          <div className="card" style={{ background: "var(--accent-pink)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(1deg)", flexDirection: "row-reverse", flexWrap: "wrap-reverse" }}>
+            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>2</div>
+            <div style={{ flex: 1, textAlign: "right" }}>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Claim a Number</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Select your country code and area code to instantly provision a global SIP trunk.</p>
+            </div>
+          </div>
+          
+          <div className="card" style={{ background: "var(--accent-yellow)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-0.5deg)", flexWrap: "wrap" }}>
+            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>3</div>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Answer Calls</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Your agent is live 24/7. Monitor transcripts and track your per-second billing directly in the dashboard.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── REVIEWS MARQUEE ── */}
+      <div style={{ borderTop: "var(--border)", borderBottom: "var(--border)", background: "var(--text)", padding: "3rem 0", overflow: "hidden", margin: "8rem 0" }}>
+        <div style={{ display: "flex", gap: "3rem", animation: "scroll 30s linear infinite", width: "max-content" }}>
+          {[1,2,3].map(k => (
+            <div key={k} style={{ display: "flex", gap: "3rem" }}>
+              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-green)" }}>
+                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"The Telnyx integration is seamless. We provisioned 5 UK numbers and 3 US numbers in about two minutes."</p>
+                <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— David Chen, CTO</div>
+              </div>
+              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-pink)" }}>
+                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Vector search is incredibly fast. The agent reads from our 50-page PDF policy manual in under a second while on the phone."</p>
+                <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— Sarah J., Support Lead</div>
+              </div>
+              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-yellow)" }}>
+                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Per-second billing via Stripe makes this a no-brainer. We only pay exactly for what we use."</p>
+                <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— Marcus T., Operations</div>
+              </div>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* ── LANGUAGE NOTICE ── */}
-      <section style={{ background: "#FFFBEB", borderTop: "1px solid #FDE68A", borderBottom: "1px solid #FDE68A", padding: "1rem 2rem" }}>
-        <div className="container" style={{ textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: "1.2rem" }}>🌍</span>
-          <span style={{ color: "#92400E", fontSize: "0.92rem", fontWeight: 500 }}>
-            <strong>English voice support available today.</strong> Our STT can transcribe many languages,
-            but the AI currently responds in English only. <strong>Hindi, Spanish, French & more coming in a few days.</strong>
-          </span>
-        </div>
-      </section>
-
-      {/* ── PROBLEM / SOLUTION ── */}
-      <section className="section" id="problem">
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
-            <h2 className="section-title">Why traditional call handling is <span className="text-gradient">failing businesses</span></h2>
-            <p className="section-sub" style={{ maxWidth: 520, margin: "0.5rem auto 0" }}>Missing calls means missing revenue. See why 500+ businesses switched to AIxCaller.</p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
-            <div className="card" style={{ padding: "2.5rem", borderLeft: "4px solid #FCA5A5" }}>
-              <h3 style={{ fontWeight: 800, color: "#DC2626", marginBottom: "1.5rem", fontSize: "1rem" }}>❌ The Old Way</h3>
-              {["Calls go unanswered after business hours", "Expensive human receptionists eating margin", "Inconsistent answers from different staff", "No call transcripts or performance tracking"].map(t => (
-                <div key={t} style={{ display: "flex", gap: 10, marginBottom: 12, color: "#6B7280", fontSize: "0.9rem" }}>
-                  <span style={{ color: "#FCA5A5", marginTop: 2 }}>✖</span>{t}
-                </div>
+      {/* ── PRICING ── */}
+      <section id="pricing" style={{ padding: "4rem 5%", maxWidth: 1100, margin: "0 auto" }}>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Honest Pricing.</h2>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "4rem" }}>
+          
+          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center" }}>
+            <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>Starter</div>
+            <div style={{ fontSize: "4.5rem", fontWeight: 900, marginBottom: "1rem", lineHeight: 1 }}>$50<span style={{ fontSize: "1.5rem", color: "#64748b" }}>/mo</span></div>
+            <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#64748b", marginBottom: "2rem" }}>Includes 200 Minutes</div>
+            
+            <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
+              {["2 Active Agents", "Basic Knowledge Base", "US/Canada Numbers", "Standard Voices"].map(item => (
+                <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
+                  <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
+                </li>
               ))}
-            </div>
-            <div className="card" style={{ padding: "2.5rem", borderLeft: "4px solid #10B981" }}>
-              <h3 style={{ fontWeight: 800, color: "#059669", marginBottom: "1.5rem", fontSize: "1rem" }}>✅ The AIxCaller Way</h3>
-              {[["Answers 100% of calls 24/7 — no missed opportunities", true], ["Costs a fraction of a human receptionist", true], ["Always on-brand, trained on your exact knowledge", true], ["Full transcripts, sentiment analysis, and insights", true]].map(([t, b]) => (
-                <div key={t as string} style={{ display: "flex", gap: 10, marginBottom: 12, fontSize: "0.9rem" }}>
-                  <span style={{ color: "#10B981", marginTop: 2 }}>✔</span>
-                  <span style={{ color: "#374151" }}><strong>{(t as string).split(" — ")[0]}</strong>{(t as string).includes(" — ") ? ` — ${(t as string).split(" — ")[1]}` : ""}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURES ── */}
-      <section className="section" id="features" style={{ background: "#F6FEFA", borderTop: "1px solid #D1FAE5", borderBottom: "1px solid #D1FAE5" }}>
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
-            <h2 className="section-title">Everything you need to <span className="text-gradient">automate voice</span></h2>
-            <p className="section-sub">Powered by Pipecat, Deepgram Nova-3, and GPT-4o for unmatched performance.</p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-            {features.map(f => (
-              <div key={f.title} className="feature-card">
-                <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>{f.icon}</div>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: 8 }}>{f.title}</h3>
-                <p style={{ color: "#6B7280", fontSize: "0.88rem", lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ── */}
-      <section className="section" id="how-it-works">
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
-            <h2 className="section-title">Deploy in <span className="text-gradient">3 Simple Steps</span></h2>
-            <p className="section-sub">No technical skills required. Your AI agent can be live in under 5 minutes.</p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "2rem", position: "relative" }}>
-            <div style={{ position: "absolute", top: "3.5rem", left: "calc(16% + 24px)", right: "calc(16% + 24px)", height: 2, background: "linear-gradient(90deg, #10B981, #064E3B)", display: "grid", gridTemplateColumns: "1fr 1fr" }} />
-            {steps.map((s, i) => (
-              <div key={s.n} style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg, #10B981, #064E3B)", color: "#fff", fontWeight: 900, fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", boxShadow: "0 4px 16px rgba(16,185,129,0.4)", border: "3px solid #fff" }}>{s.n}</div>
-                <h3 style={{ fontWeight: 800, fontSize: "1.05rem", color: "#064E3B", marginBottom: 8 }}>{s.title}</h3>
-                <p style={{ color: "#6B7280", fontSize: "0.88rem", lineHeight: 1.6, maxWidth: 220, margin: "0 auto" }}>{s.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div style={{ textAlign: "center", marginTop: "3rem" }}>
-            <Link href="/signup"><button className="btn-emerald" style={{ fontSize: "1rem", padding: "14px 36px" }}>Start For Free →</button></Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── USE CASES ── */}
-      <section className="section" id="use-cases" style={{ background: "#F6FEFA", borderTop: "1px solid #D1FAE5" }}>
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: "4rem" }}>
-            <h2 className="section-title">Built for <span className="text-gradient">Every Business</span></h2>
-            <p className="section-sub">Whether you need 24/7 support or automated lead qualification, AIxCaller adapts to you.</p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem" }}>
-            {useCases.map(u => (
-              <div key={u.label} className="card" style={{ padding: "1.5rem", display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-                <div style={{ fontSize: "1.8rem", flexShrink: 0 }}>{u.icon}</div>
-                <div>
-                  <div style={{ fontWeight: 700, color: "#064E3B", marginBottom: 4, fontSize: "0.95rem" }}>{u.label}</div>
-                  <div style={{ color: "#6B7280", fontSize: "0.85rem", lineHeight: 1.5 }}>{u.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── PRICING CARDS ── */}
-      <section className="section" id="pricing">
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
-            <h2 className="section-title">Simple, transparent <span className="text-gradient">pricing</span></h2>
-            <p className="section-sub" style={{ marginTop: "1rem" }}>Pick a plan that fits your call volume. Upgrade or cancel anytime.</p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", maxWidth: 1100, margin: "0 auto" }}>
-
-            {/* Starter */}
-            <div className="card" style={{ padding: "2.5rem 2rem", display: "flex", flexDirection: "column", border: "1px solid #D1FAE5" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6B7280", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Starter</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
-                <span style={{ fontSize: "2.5rem", fontWeight: 900, color: "#064E3B", letterSpacing: -1 }}>$50</span>
-                <span style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>/month</span>
-              </div>
-              <div style={{ color: "#6B7280", fontSize: "0.85rem", marginBottom: "1.5rem" }}>Perfect for small businesses just getting started</div>
-              {[
-                "200 call minutes / month",
-                "Up to 2 active AI agents",
-                "1 phone number included",
-                "Knowledge base (PDFs, URLs, text)",
-                "Call transcripts & analytics",
-                "Email summary notifications",
-                "English voice support",
-              ].map(f => (
-                <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10, fontSize: "0.88rem", color: "#374151" }}>
-                  <span style={{ color: "#10B981", flexShrink: 0, marginTop: 2 }}>✓</span>{f}
-                </div>
-              ))}
-              <div style={{ flex: 1 }} />
-              <Link href="/signup?plan=starter" style={{ marginTop: "2rem" }}>
-                <button className="btn-outline" style={{ width: "100%", padding: "12px", fontSize: "0.95rem" }}>Start with Starter</button>
-              </Link>
-            </div>
-
-            {/* Pro - HIGHLIGHTED */}
-            <div className="card" style={{ padding: "2.5rem 2rem", display: "flex", flexDirection: "column", border: "2px solid #10B981", position: "relative", transform: "scale(1.03)", boxShadow: "0 10px 40px rgba(16,185,129,0.18)" }}>
-              <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #10B981, #064E3B)", color: "#fff", padding: "4px 14px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 700, letterSpacing: 0.5 }}>MOST POPULAR</div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#059669", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Pro</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
-                <span style={{ fontSize: "2.5rem", fontWeight: 900, color: "#064E3B", letterSpacing: -1 }}>$119</span>
-                <span style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>/month</span>
-              </div>
-              <div style={{ color: "#6B7280", fontSize: "0.85rem", marginBottom: "1.5rem" }}>For growing teams handling more calls daily</div>
-              {[
-                "500 call minutes / month",
-                "Up to 2 active AI agents",
-                "Includes phone numbers",
-                "Everything in Starter, plus:",
-                "Marketplace agent templates",
-                "Shopify & CRM integrations",
-                "Shopify + Zoho CRM OAuth",
-                "Telegram alerts",
-                "Priority email support",
-              ].map(f => (
-                <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10, fontSize: "0.88rem", color: "#374151" }}>
-                  <span style={{ color: "#10B981", flexShrink: 0, marginTop: 2 }}>✓</span>{f}
-                </div>
-              ))}
-              <div style={{ flex: 1 }} />
-              <Link href="/signup?plan=pro" style={{ marginTop: "2rem" }}>
-                <button className="btn-emerald" style={{ width: "100%", padding: "12px", fontSize: "0.95rem" }}>Get Started with Pro</button>
-              </Link>
-            </div>
-
-            {/* Premium */}
-            <div className="card" style={{ padding: "2.5rem 2rem", display: "flex", flexDirection: "column", border: "1px solid #D1FAE5" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6B7280", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Premium</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
-                <span style={{ fontSize: "2.5rem", fontWeight: 900, color: "#064E3B", letterSpacing: -1 }}>$250</span>
-                <span style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>/month</span>
-              </div>
-              <div style={{ color: "#6B7280", fontSize: "0.85rem", marginBottom: "1.5rem" }}>For high-volume agencies and enterprises</div>
-              {[
-                "1100 call minutes / month",
-                "Up to 4 active AI agents",
-                "Multiple phone numbers",
-                "Everything in Pro, plus:",
-                "Custom agent voices",
-                "Advanced analytics & sentiment",
-                "Outbound recovery dialer",
-                "Live call monitoring",
-                "Dedicated success manager",
-                "99.9% SLA",
-              ].map(f => (
-                <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10, fontSize: "0.88rem", color: "#374151" }}>
-                  <span style={{ color: "#10B981", flexShrink: 0, marginTop: 2 }}>✓</span>{f}
-                </div>
-              ))}
-              <div style={{ flex: 1 }} />
-              <Link href="/signup?plan=premium" style={{ marginTop: "2rem" }}>
-                <button className="btn-outline" style={{ width: "100%", padding: "12px", fontSize: "0.95rem" }}>Go Premium</button>
-              </Link>
-            </div>
-
-          </div>
-          <p style={{ textAlign: "center", color: "#9CA3AF", fontSize: "0.85rem", marginTop: "2rem" }}>
-            All plans include English voice support. Multi-language support (Hindi, Spanish, French) launching in a few days.<br />
-            Need more? <Link href="/contact" style={{ color: "#10B981", fontWeight: 600 }}>Contact sales</Link> for custom volume pricing.
-          </p>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIAL ── */}
-      <section className="section" id="testimonials" style={{ background: "#F6FEFA", borderTop: "1px solid #D1FAE5" }}>
-        <div className="container" style={{ maxWidth: 720 }}>
-          <div className="card" style={{ padding: "3.5rem", textAlign: "center", borderTop: "4px solid #10B981" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "1.5rem" }}>⭐⭐⭐⭐⭐</div>
-            <p style={{ fontSize: "1.2rem", fontStyle: "italic", color: "#374151", lineHeight: 1.7, fontWeight: 500, marginBottom: "2rem" }}>
-              "AIxCaller handled 400+ inbound calls last month with zero misses. Our team is finally free to focus on growth instead of picking up the phone."
-            </p>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg, #10B981, #064E3B)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800 }}>Q</div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontWeight: 700, color: "#064E3B" }}>James R.</div>
-                <div style={{ fontSize: "0.8rem", color: "#9CA3AF" }}>Founder, QuickFix Services</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FINAL CTA ── */}
-      <section style={{ background: "linear-gradient(135deg, #064E3B, #065F46)", padding: "7rem 2rem", textAlign: "center" }}>
-        <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <div className="badge" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#6EE7B7", marginBottom: "2rem" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6EE7B7", display: "inline-block" }} />
-            Join 500+ businesses already live
-          </div>
-          <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 900, color: "#fff", letterSpacing: -1.5, marginBottom: "1rem" }}>
-            Ready to hire your ultimate AI receptionist?
-          </h2>
-          <p style={{ color: "#6EE7B7", fontSize: "1.05rem", marginBottom: "2.5rem", lineHeight: 1.6 }}>
-            Start free. No credit card required. Your agent answers its first call in under 5 minutes.
-          </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/signup">
-              <button style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 12, padding: "16px 40px", fontWeight: 800, fontSize: "1.05rem", cursor: "pointer", boxShadow: "0 6px 24px rgba(16,185,129,0.4)" }}>
-                Hire Your Agent Free 🚀
-              </button>
-            </Link>
-            <Link href="/contact">
-              <button style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: 12, padding: "16px 28px", fontWeight: 600, fontSize: "1.05rem", cursor: "pointer" }}>
-                Book a Demo
-              </button>
+            </ul>
+            <Link href="/signup?plan=starter">
+               <button className="btn-brutal white" style={{ width: "100%" }}>Choose Starter</button>
             </Link>
           </div>
+          
+          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center", background: "var(--text)", color: "#fff", borderColor: "#fff", boxShadow: "12px 12px 0 var(--accent-green)", transform: "scale(1.05)", zIndex: 10 }}>
+            <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem", color: "var(--accent-green)" }}>Pro Business</div>
+            <div style={{ fontSize: "4.5rem", fontWeight: 900, marginBottom: "1rem", lineHeight: 1 }}>$119<span style={{ fontSize: "1.5rem", color: "#94a3b8" }}>/mo</span></div>
+            <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#94a3b8", marginBottom: "2rem" }}>Includes 500 Minutes</div>
+            
+            <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
+              {["Unlimited Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Marketplace Access"].map(item => (
+                <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
+                  <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
+                </li>
+              ))}
+            </ul>
+            <Link href="/signup?plan=pro">
+               <button className="btn-brutal" style={{ width: "100%", boxShadow: "4px 4px 0 #fff" }}>Choose Pro</button>
+            </Link>
+          </div>
+
+          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center" }}>
+            <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>Premium</div>
+            <div style={{ fontSize: "4.5rem", fontWeight: 900, marginBottom: "1rem", lineHeight: 1 }}>$250<span style={{ fontSize: "1.5rem", color: "#64748b" }}>/mo</span></div>
+            <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#64748b", marginBottom: "2rem" }}>Includes 1100 Minutes</div>
+            
+            <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
+              {["Up to 4 Active Agents", "Custom Agent Voices", "Outbound Dialer", "Dedicated Manager"].map(item => (
+                <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
+                  <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
+                </li>
+              ))}
+            </ul>
+            <Link href="/signup?plan=premium">
+               <button className="btn-brutal white" style={{ width: "100%" }}>Go Premium</button>
+            </Link>
+          </div>
+
         </div>
       </section>
-
+      
+      {/* ── FOOTER CTA ── */}
+      <footer style={{ background: "var(--accent-green)", borderTop: "var(--border)", textAlign: "center", padding: "8rem 5%", marginTop: "6rem" }}>
+        <h2 style={{ fontSize: "clamp(3.5rem, 6vw, 6rem)", fontWeight: 900, textTransform: "uppercase", margin: "0 0 3rem", lineHeight: 1, letterSpacing: -2 }}>
+          Ready to clone <br />your top performer?
+        </h2>
+        <Link href="/signup">
+          <button className="btn-brutal white" style={{ fontSize: "1.5rem", padding: "1.5rem 4rem" }}>Deploy Your First Agent</button>
+        </Link>
+      </footer>
     </main>
   );
 }
