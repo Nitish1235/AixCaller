@@ -114,15 +114,31 @@ export default function Home() {
             </div>
           </div>
           
-          {/* Transcripts */}
-          <div className="card" style={{ background: "var(--text)", color: "#fff", gridColumn: "1 / -1" }}>
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900, color: "var(--accent-green)" }}>Live Call Transcripts & Billing</h3>
-            <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#cbd5e1", lineHeight: 1.5, margin: "0 0 2rem" }}>
-              Review every single conversation. We track call duration down to the second for precise, transparent billing via our Stripe integration.
-            </p>
-            <div className="mono" style={{ background: "#1e293b", border: "2px solid #334155", borderRadius: 12, padding: "1.5rem", fontWeight: 700, display: "flex", justifyContent: "space-between" }}>
-              <div>SESSION_9482 [142s]</div>
-              <div style={{ color: "var(--accent-green)" }}>SUCCESS</div>
+          {/* Email Summaries */}
+          <div className="card" style={{ background: "var(--text)", color: "#fff", gridColumn: "1 / -1", display: "flex", flexWrap: "wrap", gap: "2rem", alignItems: "center" }}>
+            <div style={{ flex: "1 1 400px" }}>
+              <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900, color: "var(--accent-green)" }}>Instant Email Summaries</h3>
+              <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#cbd5e1", lineHeight: 1.5, margin: "0 0 2rem" }}>
+                Don't want to log in? Every time a call ends, our AI instantly extracts key action items, sentiment, and a structured summary, then emails it directly to your inbox along with the full transcript.
+              </p>
+            </div>
+            <div className="mono" style={{ flex: "1 1 350px", background: "#1e293b", border: "2px solid #334155", borderRadius: 12, padding: "1.5rem", fontWeight: 700, boxShadow: "8px 8px 0 var(--accent-pink)", transform: "rotate(1deg)" }}>
+              <div style={{ color: "#94a3b8", fontSize: "0.8rem", marginBottom: "0.5rem", display: "flex", justifyContent: "space-between" }}>
+                <span>FROM: agent@callerx.ai</span>
+                <span>1 min ago</span>
+              </div>
+              <div style={{ color: "#fff", fontSize: "1.1rem", marginBottom: "1rem", borderBottom: "2px solid #334155", paddingBottom: "1rem" }}>
+                SUBJECT: New Lead - Sarah Jenkins
+              </div>
+              <div style={{ color: "var(--accent-green)", marginBottom: "0.8rem", fontSize: "0.95rem" }}>
+                ✅ Goal Achieved: Appointment Booked
+              </div>
+              <div style={{ color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.6, paddingBottom: "1rem", borderBottom: "2px solid #334155", marginBottom: "1rem" }}>
+                <strong style={{ color: "#fff" }}>Summary:</strong> Sarah called asking about the Pro plan. She had questions regarding vector search latency. The agent explained our pgvector integration and successfully booked a demo for Tuesday at 2 PM.
+              </div>
+              <div style={{ color: "#94a3b8", fontSize: "0.8rem" }}>
+                Duration: 142s • <span style={{ textDecoration: "underline", cursor: "pointer" }}>View Full Transcript</span>
+              </div>
             </div>
           </div>
 
