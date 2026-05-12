@@ -12,24 +12,24 @@ const TENANT_ID = getTenantId();
 
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
-  width: "100%", padding: "10px 14px", borderRadius: 9, boxSizing: "border-box",
-  border: "1.5px solid #D1FAE5", fontSize: "0.9rem", color: "#064E3B",
+  width: "100%", padding: "12px 14px", borderRadius: 12, boxSizing: "border-box",
+  border: "2px solid var(--text)", fontSize: "0.95rem", color: "var(--text)",
   outline: "none", fontFamily: "inherit", background: "#fff",
 };
 const lbl: React.CSSProperties = {
-  display: "block", marginBottom: 6, fontWeight: 700,
-  fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5,
+  display: "block", marginBottom: 6, fontWeight: 900,
+  fontSize: "0.8rem", color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.5,
 };
 
 /* ── Modal wrapper ─────────────────────────────────────────────── */
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
   if (!open) return null;
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: 18, padding: "2rem", width: "100%", maxWidth: 480, boxShadow: "0 24px 60px rgba(0,0,0,0.18)", position: "relative" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "#9CA3AF" }}>✕</button>
-        <h3 style={{ fontWeight: 800, color: "#064E3B", margin: "0 0 1.5rem", fontSize: "1.1rem" }}>{title}</h3>
+      <div className="card" style={{ background: "#fff", padding: "2rem", width: "100%", maxWidth: 500, position: "relative", boxShadow: "12px 12px 0 var(--accent-pink)" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "var(--accent-pink)", border: "2px solid var(--text)", fontSize: "1.2rem", cursor: "pointer", color: "var(--text)", width: 32, height: 32, borderRadius: "50%", fontWeight: 900, boxShadow: "2px 2px 0 var(--text)" }}>✕</button>
+        <h3 style={{ fontWeight: 900, color: "var(--text)", margin: "0 0 1.5rem", fontSize: "1.4rem", textTransform: "uppercase" }}>{title}</h3>
         {children}
       </div>
     </div>
@@ -40,12 +40,13 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 function Badge({ connected }: { connected: boolean }) {
   return (
     <span style={{
-      fontSize: "0.7rem", fontWeight: 700, padding: "3px 10px", borderRadius: 999, letterSpacing: 0.3,
-      background: connected ? "#ECFDF5" : "#F3F4F6",
-      color: connected ? "#059669" : "#9CA3AF",
-      border: `1px solid ${connected ? "#D1FAE5" : "#E5E7EB"}`,
+      fontSize: "0.75rem", fontWeight: 900, padding: "4px 12px", borderRadius: 999,
+      background: connected ? "var(--accent-green)" : "#cbd5e1",
+      color: "var(--text)",
+      border: "2px solid var(--text)",
+      boxShadow: "2px 2px 0 var(--text)"
     }}>
-      {connected ? "● CONNECTED" : "NOT CONNECTED"}
+      {connected ? "● CONNECTED" : "OFFLINE"}
     </span>
   );
 }
@@ -56,38 +57,36 @@ function IntCard({ icon, title, description, connected, onConnect, onDisconnect 
   connected: boolean; onConnect: () => void; onDisconnect: () => void;
 }) {
   return (
-    <div style={{
-      background: "#fff", border: `1.5px solid ${connected ? "#A7F3D0" : "#D1FAE5"}`,
-      borderRadius: 16, padding: "1.75rem",
-      boxShadow: connected ? "0 4px 20px rgba(16,185,129,0.12)" : "0 2px 10px rgba(16,185,129,0.06)",
-      display: "flex", flexDirection: "column", gap: "1rem",
+    <div className="card" style={{
+      background: "#fff", padding: "2rem",
+      display: "flex", flexDirection: "column", gap: "1.5rem",
+      boxShadow: connected ? "8px 8px 0 var(--accent-green)" : "8px 8px 0 var(--text)"
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{
-          width: 52, height: 52, borderRadius: 14,
-          background: connected ? "linear-gradient(135deg,#064E3B,#10B981)" : "#F3F4F6",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem",
+          width: 56, height: 56, borderRadius: 16,
+          background: connected ? "var(--accent-yellow)" : "#f1f5f9",
+          border: "2px solid var(--text)", boxShadow: "3px 3px 0 var(--text)",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem",
         }}>{icon}</div>
         <Badge connected={connected} />
       </div>
       <div>
-        <div style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: 4 }}>{title}</div>
-        <div style={{ fontSize: "0.83rem", color: "#6B7280", lineHeight: 1.6 }}>{description}</div>
+        <div style={{ fontWeight: 900, fontSize: "1.2rem", color: "var(--text)", marginBottom: 8, textTransform: "uppercase" }}>{title}</div>
+        <div style={{ fontSize: "0.95rem", color: "#475569", lineHeight: 1.6, fontWeight: 600 }}>{description}</div>
       </div>
-      <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
-        <button onClick={onConnect} style={{
-          flex: 1, padding: "10px", borderRadius: 10, fontWeight: 700, fontSize: "0.85rem",
-          cursor: "pointer", border: "none",
-          background: connected ? "#F6FEFA" : "#064E3B",
-          color: connected ? "#059669" : "#fff",
-          boxShadow: connected ? "none" : "0 4px 12px rgba(6,78,59,0.25)",
+      <div style={{ marginTop: "auto", display: "flex", gap: 10 }}>
+        <button className="btn-brutal" onClick={onConnect} style={{
+          flex: 1, padding: "10px", fontSize: "0.9rem",
+          background: connected ? "#fff" : "var(--accent-yellow)",
         }}>
           {connected ? "⚙️ Manage" : "Connect"}
         </button>
         {connected && (
           <button onClick={onDisconnect} style={{
-            padding: "10px 14px", borderRadius: 10, fontWeight: 700, fontSize: "0.85rem",
-            cursor: "pointer", border: "1.5px solid #FECACA", background: "#FFF5F5", color: "#DC2626",
+            padding: "10px 16px", borderRadius: 12, fontWeight: 900, fontSize: "0.9rem",
+            cursor: "pointer", border: "2px solid var(--text)", background: "var(--accent-pink)", color: "var(--text)",
+            boxShadow: "2px 2px 0 var(--text)"
           }}>
             Disconnect
           </button>
@@ -102,12 +101,18 @@ export default function IntegrationsPage() {
   const [cfg, setCfg]     = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [modal, setModal] = useState<"zoho" | "email" | null>(null);
+  const [modal, setModal] = useState<"zoho" | "email" | "shopify" | null>(null);
 
   // Zoho connect form
   const [zohoDC, setZohoDC] = useState("us");
+  
+  // Email
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [contactEmail, setContactEmail] = useState("");
+
+  // Shopify
+  const [shopifyDomain, setShopifyDomain] = useState("");
+  const [shopifyToken, setShopifyToken] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -116,6 +121,8 @@ export default function IntegrationsPage() {
         setCfg(data);
         setEmailEnabled(data.email_summary_enabled ?? true);
         setContactEmail(data.contact_email || "");
+        setShopifyDomain(data.shopify_domain || "");
+        setShopifyToken(data.shopify_token || "");
       }
     } catch {}
   }, []);
@@ -153,6 +160,8 @@ export default function IntegrationsPage() {
     try {
       if (key === "zoho") {
         await fetch(`${API_BASE_URL}/zoho/disconnect?tenant_id=${TENANT_ID}`, { method: "DELETE" });
+      } else if (key === "shopify") {
+        await apiPatch(`/integrations?tenant_id=${TENANT_ID}`, { shopify_domain: null, shopify_token: null });
       } else {
         await apiDelete(`/integrations/${key}?tenant_id=${TENANT_ID}`);
       }
@@ -177,31 +186,37 @@ export default function IntegrationsPage() {
 
   const zohoConnected  = !!(cfg.zoho_connected);
   const emailConnected = !!(cfg.email_summary_enabled);
+  const shopifyConnected = !!(cfg.shopify_domain && cfg.shopify_token);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 1200 }}>
 
       {toast && (
         <div style={{
           position: "fixed", bottom: 28, right: 28, zIndex: 2000,
-          background: "#064E3B", color: "#fff", borderRadius: 12,
-          padding: "12px 20px", fontWeight: 700, fontSize: "0.9rem",
-          boxShadow: "0 8px 30px rgba(6,78,59,0.35)", maxWidth: 400,
+          background: "var(--accent-yellow)", color: "var(--text)", borderRadius: 12, border: "2px solid var(--text)",
+          padding: "16px 24px", fontWeight: 900, fontSize: "1rem", textTransform: "uppercase",
+          boxShadow: "6px 6px 0 var(--text)", maxWidth: 400,
         }}>{toast}</div>
       )}
 
       <div>
-        <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "#064E3B", margin: 0, letterSpacing: -0.5 }}>
+        <h1 style={{ fontWeight: 900, fontSize: "2rem", color: "var(--text)", margin: 0, textTransform: "uppercase", letterSpacing: -1 }}>
           Integrations Hub
         </h1>
-        <p style={{ color: "#9CA3AF", margin: "4px 0 0", fontSize: "0.9rem" }}>
+        <p style={{ color: "#475569", margin: "8px 0 0", fontSize: "1.1rem", fontWeight: 600 }}>
           Connect your AI workforce to your existing business tools.
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.25rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "2rem" }}>
 
-        {/* Shopify lives on each Agent's settings page (per-agent), so we don't list it here. */}
+        <IntCard
+          icon="🛍️" title="Shopify" connected={shopifyConnected}
+          description="Allow your AI agent to check order statuses, process refunds, and answer specific product queries securely."
+          onConnect={() => setModal("shopify")}
+          onDisconnect={() => disconnect("shopify")}
+        />
 
         <IntCard
           icon="💼" title="Zoho CRM" connected={zohoConnected}
@@ -218,36 +233,62 @@ export default function IntegrationsPage() {
         />
       </div>
 
+      {/* Shopify Modal */}
+      <Modal open={modal === "shopify"} onClose={() => setModal(null)} title="🛍️ Connect Shopify">
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", fontSize: "0.9rem", color: "var(--text)", lineHeight: 1.6, fontWeight: 600 }}>
+            <strong>Instructions:</strong> Go to Shopify Admin → Apps → Develop Apps. Create an app, assign 'read_orders' and 'write_orders' scopes, and install it to get your Admin API Access Token.
+          </div>
+
+          <div>
+            <label style={lbl}>Shopify Store Domain</label>
+            <input type="text" placeholder="your-store.myshopify.com" style={inp} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} />
+          </div>
+
+          <div>
+            <label style={lbl}>Admin API Access Token</label>
+            <input type="password" placeholder="shpat_..." style={inp} value={shopifyToken} onChange={e => setShopifyToken(e.target.value)} />
+          </div>
+
+          <button
+            disabled={saving || !shopifyDomain || !shopifyToken}
+            onClick={() => save({ shopify_domain: shopifyDomain, shopify_token: shopifyToken })}
+            className="btn-brutal" style={{ width: "100%", padding: "14px", marginTop: "1rem" }}>
+            {saving ? "Saving..." : "Save Credentials"}
+          </button>
+        </div>
+      </Modal>
+
       {/* Zoho Modal (OAuth) */}
       <Modal open={modal === "zoho"} onClose={() => setModal(null)} title="💼 Connect Zoho CRM">
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
           {zohoConnected ? (
             <>
-              <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 10, padding: "14px 16px" }}>
-                <div style={{ fontWeight: 700, color: "#059669", marginBottom: 6, fontSize: "0.85rem" }}>
+              <div style={{ background: "var(--accent-green)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", boxShadow: "4px 4px 0 var(--text)" }}>
+                <div style={{ fontWeight: 900, color: "var(--text)", marginBottom: 8, fontSize: "1rem", textTransform: "uppercase" }}>
                   ✓ Zoho CRM is connected
                 </div>
                 {cfg.zoho_domain && (
-                  <div style={{ fontSize: "0.8rem", color: "#064E3B", fontFamily: "monospace" }}>
+                  <div className="mono" style={{ fontSize: "0.85rem", color: "var(--text)" }}>
                     API domain: {cfg.zoho_domain}
                   </div>
                 )}
               </div>
-              <button onClick={testZoho} disabled={saving} style={{ width: "100%", background: "#F6FEFA", color: "#059669", border: "1.5px solid #D1FAE5", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={testZoho} disabled={saving} className="btn-brutal" style={{ width: "100%", background: "#fff", marginTop: "1rem" }}>
                 🔍 Test Connection
               </button>
               <button
                 onClick={() => { disconnect("zoho"); setModal(null); }}
                 disabled={saving}
-                style={{ width: "100%", background: "#FFF5F5", color: "#DC2626", border: "1.5px solid #FECACA", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer" }}
+                style={{ width: "100%", background: "var(--accent-pink)", color: "var(--text)", border: "2px solid var(--text)", borderRadius: 12, padding: "12px", fontWeight: 900, cursor: "pointer", boxShadow: "2px 2px 0 var(--text)", textTransform: "uppercase" }}
               >
                 Disconnect Zoho
               </button>
             </>
           ) : (
             <>
-              <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 14px", fontSize: "0.82rem", color: "#064E3B", lineHeight: 1.6 }}>
+              <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", fontSize: "0.9rem", color: "var(--text)", lineHeight: 1.6, fontWeight: 600 }}>
                 <strong>How it works:</strong> Click "Connect with Zoho" → you'll be redirected to Zoho's
                 authorization screen → approve access → you're back here, connected. No tokens to copy.
               </div>
@@ -262,15 +303,15 @@ export default function IntegrationsPage() {
                   <option value="jp">Japan (zoho.jp)</option>
                   <option value="cn">China (zoho.com.cn)</option>
                 </select>
-                <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "5px 0 0" }}>
-                  Pick the region where your Zoho account lives (visible in your Zoho admin URL).
+                <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "8px 0 0", fontWeight: 600 }}>
+                  Pick the region where your Zoho account lives (visible in your admin URL).
                 </p>
               </div>
 
               <button
                 onClick={connectZoho}
                 disabled={saving}
-                style={{ width: "100%", background: "#E42527", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                className="btn-brutal" style={{ width: "100%", marginTop: "1rem", background: "var(--accent-pink)" }}
               >
                 💼 Connect with Zoho
               </button>
@@ -280,31 +321,31 @@ export default function IntegrationsPage() {
       </Modal>
 
       {/* Email Modal */}
-      <Modal open={modal === "email"} onClose={() => setModal(null)} title="📧 Email Summary Settings">
+      <Modal open={modal === "email"} onClose={() => setModal(null)} title="📧 Email Summary">
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 14px", fontSize: "0.82rem", color: "#064E3B", lineHeight: 1.7 }}>
+          <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", fontSize: "0.9rem", color: "var(--text)", lineHeight: 1.6, fontWeight: 600 }}>
             We send a beautiful AI-generated call report to your account email after every conversation.
           </div>
 
-          <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 16px" }}>
-            <div style={{ fontWeight: 700, color: "#059669", marginBottom: 4 }}>Destination Email:</div>
-            <div style={{ fontSize: "0.88rem", color: "#064E3B", fontFamily: "monospace" }}>{contactEmail}</div>
+          <div style={{ background: "var(--accent-yellow)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", boxShadow: "4px 4px 0 var(--text)" }}>
+            <div style={{ fontWeight: 900, color: "var(--text)", marginBottom: 6, textTransform: "uppercase", fontSize: "0.85rem" }}>Destination Email:</div>
+            <div className="mono" style={{ fontSize: "1rem", color: "var(--text)", fontWeight: 700 }}>{contactEmail}</div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0" }}>
-            <span style={{ fontWeight: 700, color: "#064E3B", fontSize: "0.9rem" }}>Enable Email Summaries</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1rem 0" }}>
+            <span style={{ fontWeight: 900, color: "var(--text)", fontSize: "1rem", textTransform: "uppercase" }}>Enable Email Summaries</span>
             <input
               type="checkbox"
               checked={emailEnabled}
               onChange={e => setEmailEnabled(e.target.checked)}
-              style={{ width: 22, height: 22, accentColor: "#064E3B", cursor: "pointer" }}
+              style={{ width: 24, height: 24, accentColor: "var(--text)", cursor: "pointer" }}
             />
           </div>
 
           <button
             disabled={saving}
             onClick={() => save({ email_summary_enabled: emailEnabled })}
-            style={{ width: "100%", background: "#064E3B", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+            className="btn-brutal" style={{ width: "100%" }}>
             {saving ? "Updating..." : "Save Preferences"}
           </button>
         </div>

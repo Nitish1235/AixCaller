@@ -517,14 +517,11 @@ export default function CreateAgentPage() {
 
           {numbers.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-              <label style={lbl}>Available Numbers (Cheapest First)</label>
+              <label style={lbl}>Available Numbers</label>
               {numbers.map(n => (
                 <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 10 }}>
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#064E3B", letterSpacing: 1 }}>{n.phone_number}</span>
-                    <span style={{ fontSize: "0.7rem", color: "#6B7280", marginTop: 2 }}>
-                      ${n.monthly_cost}/mo · ${n.upfront_cost} setup
-                    </span>
                   </div>
                   <button onClick={() => claimNumber(n.phone_number)} disabled={loading}
                     style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>
