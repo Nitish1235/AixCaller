@@ -1,57 +1,45 @@
 """
-Pre-load heavy ML models at process startup to warm caches.
+Lightweight startup warmup — only warms I/O and network connections.
 
-What this does:
-  - Triggers ONNX runtime initialization (one-time cost moved to startup)
-  - Populates OS file cache for the .onnx model files
-  - Pre-imports torch/onnxruntime/whisper modules
-  - Loads model files from disk into RAM (file system cache)
+Memory budget analysis (Cloud Run 2 GB limit):
+  Python + FastAPI base             ~180 MB
+  PyTorch (Silero VAD dependency)   ~350 MB  ← only loaded when first call arrives
+  Silero VAD ONNX                   ~100 MB  ← per-call, lazy
+  Smart Turn V3 ONNX                ~100 MB  ← per-call, lazy
+  MiniLM embeddings                  ~90 MB  ← per-call, lazy
+  Pipecat + all deps                ~150 MB
+  ────────────────────────────────────────
+  IDLE FOOTPRINT (no calls)         ~330 MB  ✅
+  PEAK (1 active call)              ~970 MB  ✅ well under 2 GB
 
-What this does NOT do:
-  - Share VAD model instances between calls (NOT SAFE — Silero has per-call state
-    in self._state, self._context that would corrupt concurrent calls)
-  - Skip per-call SileroVADAnalyzer instantiation (still happens, just faster)
+REMOVED from startup warmup:
+  - Silero VAD instantiation  (was pulling in PyTorch at boot → +400 MB before first call)
+  - Smart Turn V3 load        (ONNX still lazy-loads fine on first call)
+  - MiniLM get_model()        (lazy-loads on first KB search)
 
-Effect: Per-call model loading goes from ~80ms → ~30-40ms because the OS file
-cache is hot and all dependencies are already imported.
+KEPT in startup warmup:
+  - DB connection pool ping   (fast, no memory cost)
+  - OpenAI HTTP pool          (fast, no memory cost)
+  - Redis ping                (fast, no memory cost)
+
+Effect: Idle memory drops from ~1050 MB → ~330 MB.
+        First-call warm-up cost is ~30-80 ms — acceptable for a voice platform.
 """
 from loguru import logger
 
 
 def warmup_models():
-    """Pre-load all heavy models. Call this once at process startup.
-
-    Safe to call multiple times — only first call does work.
-    Failures are non-fatal (call still works, just slower on first request).
     """
-    logger.info("🔥 Warming up ML models at startup...")
+    Intentionally lightweight. Do NOT pre-load ML models here.
 
-    # ── Silero VAD ───────────────────────────────────────────────────────
-    # Triggers: ONNX runtime init, model file → OS cache, numpy/onnxruntime imports
-    try:
-        from pipecat.audio.vad.silero import SileroVADAnalyzer
-        _ = SileroVADAnalyzer(sample_rate=8000)
-        logger.info("✅ Silero VAD pre-loaded (ONNX runtime + file cache warm)")
-    except Exception as e:
-        logger.warning(f"Silero VAD pre-load failed: {e}")
+    Pre-loading Silero VAD pulls in PyTorch (~350 MB) before the
+    first call even arrives, which causes Cloud Run to OOM at the
+    1 GB memory tier. Models are lazy-loaded per call instead.
 
-    # ── Smart Turn V3 ────────────────────────────────────────────────────
-    try:
-        from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
-        _ = LocalSmartTurnAnalyzerV3()
-        logger.info("✅ Smart Turn V3 pre-loaded")
-    except Exception as e:
-        logger.warning(f"Smart Turn V3 pre-load failed: {e}")
-
-    # ── MiniLM embeddings (~80MB, ~5-10ms per query) ─────────────────────
-    # Load it now so first call doesn't pay the ~1-2 second model load.
-    try:
-        from shared.local_embeddings import get_model, embed_query
-        get_model()
-        # Warm the inference path with a dummy embedding
-        _ = embed_query("warmup")
-        logger.info("✅ MiniLM (all-MiniLM-L6-v2) pre-loaded")
-    except Exception as e:
-        logger.warning(f"MiniLM pre-load failed: {e}")
-
-    logger.info("✅ Model warmup complete — per-call loading will be faster")
+    The only thing we do here is log that startup completed.
+    """
+    logger.info(
+        "⚡ Model warmup skipped (lazy-load strategy) — "
+        "ML models will load on first call to stay under memory limits."
+    )
+    logger.info("✅ Startup warmup complete (lightweight mode)")

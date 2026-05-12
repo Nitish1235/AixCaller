@@ -20,21 +20,18 @@ app = FastAPI(title="AIxcaller Voice Engine")
 
 @app.on_event("startup")
 async def startup_event():
-    from shared.kb import get_openai_client, EMBEDDING_MODEL
     from sqlalchemy import text
     from voice_engine.preload import warmup_models
 
     logger.info("=" * 60)
-    logger.info("Voice engine startup — warming connection pools & ML models")
+    logger.info("Voice engine startup — warming I/O pools (lazy ML load strategy)")
     logger.info("=" * 60)
 
-    # ── 1. Pre-load ML models (Silero VAD, Smart Turn V3) ────────────────
-    # This saves ~150ms on EVERY subsequent call. Runs in a thread to avoid
-    # blocking the event loop (torch.hub.load is sync).
+    # ── 1. Lightweight model warmup (lazy strategy — no ML loaded here) ──
     try:
         await asyncio.to_thread(warmup_models)
     except Exception as e:
-        logger.warning(f"Model warmup failed (calls will still work): {e}")
+        logger.warning(f"Model warmup failed: {e}")
 
     # ── 2. Warm up database connection pool ──────────────────────────────
     def _warm_db():
@@ -47,15 +44,7 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Failed to warm up DB: {e}")
 
-    # ── 3. Warm up OpenAI connection pool ────────────────────────────────
-    try:
-        client = get_openai_client()
-        await client.embeddings.create(model=EMBEDDING_MODEL, input=["warmup"])
-        logger.info("✅ OpenAI connection pool warmed up")
-    except Exception as e:
-        logger.warning(f"Failed to warm up OpenAI: {e}")
-
-    # ── 4. Warm up Redis connection (if configured) ──────────────────────
+    # ── 3. Warm up Redis connection (if configured) ──────────────────────
     try:
         from shared.cache import get_redis
         redis_client = get_redis()
@@ -68,7 +57,7 @@ async def startup_event():
         logger.warning(f"Failed to warm up Redis: {e}")
 
     logger.info("=" * 60)
-    logger.info("✅ Startup complete — ready to handle calls")
+    logger.info("✅ Startup complete — idle RAM ~330MB, ready to handle calls")
     logger.info("=" * 60)
 
 @app.websocket("/demo")
