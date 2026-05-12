@@ -1,31 +1,52 @@
-export default function PrivacyPage() {
+export default function PrivacyPolicy() {
   return (
-    <main style={{ minHeight: "100vh", padding: "140px 5% 60px", maxWidth: "800px", margin: "0 auto" }}>
-      <div className="glass-panel" style={{ padding: "3rem" }}>
-        <h1 style={{ fontSize: "2.5rem", marginBottom: "1.5rem" }}>Privacy Policy</h1>
-        <p style={{ opacity: 0.8, marginBottom: "2rem" }}>Last updated: {new Date().toLocaleDateString()}</p>
-        
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", lineHeight: 1.7, opacity: 0.8 }}>
-          <section>
-            <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem", color: "var(--text)" }}>1. Data Collection</h2>
-            <p>We collect information you provide directly to us, such as when you create or modify your account, request support, or communicate with us. We also collect audio recordings and transcripts from the AI calls as part of the core service functionality.</p>
-          </section>
+    <main style={{
+      minHeight: "100vh", background: "var(--bg)", color: "var(--text)",
+      padding: "6rem 5%", fontFamily: "'Space Grotesk', sans-serif"
+    }}>
+      <div style={{ maxWidth: 800, margin: "0 auto", background: "#fff", border: "var(--border)", borderRadius: 24, padding: "4rem", boxShadow: "8px 8px 0 var(--accent-pink)" }}>
+        <h1 style={{ fontSize: "3rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem", letterSpacing: -1 }}>Privacy Policy</h1>
+        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#64748b", marginBottom: "3rem" }}>Last Updated: May 2026</p>
 
-          <section>
-            <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem", color: "var(--text)" }}>2. Data Usage</h2>
-            <p>We use the information we collect to provide, maintain, and improve our services. Audio and transcript data is strictly used for your analytics and to improve the specific agent models you train.</p>
-          </section>
+        <section style={{ marginBottom: "2.5rem" }}>
+          <h2 style={{ fontSize: "1.8rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>1. Information We Collect</h2>
+          <p style={{ fontSize: "1.1rem", lineHeight: 1.6, fontWeight: 500, marginBottom: "1rem" }}>
+            When you use AIxCaller, we collect information you provide directly to us, such as your name, email address, and payment information when creating an account. Additionally, because our platform involves telecommunications, we collect and store call transcripts, audio recordings (if enabled by you), and Knowledge Base documents (uploaded PDFs/URLs).
+          </p>
+        </section>
 
-          <section>
-            <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem", color: "var(--text)" }}>3. Third-Party Sharing</h2>
-            <p>We do not sell your personal data. We only share information with third-party service providers (such as Deepgram for STT/TTS) that are essential to delivering the AixCaller.live experience.</p>
-          </section>
+        <section style={{ marginBottom: "2.5rem" }}>
+          <h2 style={{ fontSize: "1.8rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>2. How We Use Your Information</h2>
+          <p style={{ fontSize: "1.1rem", lineHeight: 1.6, fontWeight: 500, marginBottom: "1rem" }}>
+            We use the collected information strictly to:
+          </p>
+          <ul style={{ fontSize: "1.1rem", lineHeight: 1.6, fontWeight: 500, paddingLeft: "1.5rem" }}>
+            <li style={{ marginBottom: "0.5rem" }}>Operate and maintain the AI voice agent services.</li>
+            <li style={{ marginBottom: "0.5rem" }}>Process payments and track per-second billing via Stripe.</li>
+            <li style={{ marginBottom: "0.5rem" }}>Generate post-call email summaries and provide transcripts.</li>
+            <li style={{ marginBottom: "0.5rem" }}>Improve the latency and accuracy of our semantic vector search (pgvector).</li>
+          </ul>
+        </section>
 
-          <section>
-            <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem", color: "var(--text)" }}>4. Security</h2>
-            <p>We implement appropriate technical and organizational measures to protect your personal data against unauthorized or unlawful processing, accidental loss, destruction, or damage.</p>
-          </section>
-        </div>
+        <section style={{ marginBottom: "2.5rem" }}>
+          <h2 style={{ fontSize: "1.8rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>3. Data Sharing & Third Parties</h2>
+          <p style={{ fontSize: "1.1rem", lineHeight: 1.6, fontWeight: 500, marginBottom: "1rem" }}>
+            We do not sell your personal data or your customers' data. We share data only with essential third-party infrastructure providers required to operate the service, including:
+          </p>
+          <ul style={{ fontSize: "1.1rem", lineHeight: 1.6, fontWeight: 500, paddingLeft: "1.5rem" }}>
+            <li style={{ marginBottom: "0.5rem" }}><strong>Telnyx:</strong> For provisioning global phone numbers and routing SIP trunks.</li>
+            <li style={{ marginBottom: "0.5rem" }}><strong>Deepgram & ElevenLabs:</strong> For speech-to-text and text-to-speech processing.</li>
+            <li style={{ marginBottom: "0.5rem" }}><strong>Stripe:</strong> For secure payment processing.</li>
+            <li style={{ marginBottom: "0.5rem" }}><strong>Supabase:</strong> For secure database and vector knowledge base storage.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 style={{ fontSize: "1.8rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>4. Contact Us</h2>
+          <p style={{ fontSize: "1.1rem", lineHeight: 1.6, fontWeight: 500 }}>
+            If you have any questions or concerns about this Privacy Policy, please contact us at <strong style={{ color: "var(--accent-green)" }}>privacy@callerx.ai</strong>.
+          </p>
+        </section>
       </div>
     </main>
   );
