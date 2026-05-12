@@ -28,19 +28,21 @@ async def search_numbers(req: SearchRequest):
     if not api_key:
         raise HTTPException(status_code=500, detail="Telnyx API key not configured")
 
+    params = {
+        "filter[country_code]": req.country_code,
+        "filter[features][]": "voice",
+        "filter[limit]": req.limit,
+        "filter[best_effort]": "true"
+    }
+    if req.area_code:
+        params["filter[national_destination_code]"] = req.area_code
+
     async with httpx.AsyncClient() as client:
         # Using Telnyx API to find local numbers
         response = await client.get(
             "https://api.telnyx.com/v2/available_phone_numbers",
             headers={"Authorization": f"Bearer {api_key}"},
-        params={
-            "filter[country_code]": req.country_code,
-            "filter[features][]": "voice",
-            "filter[limit]": req.limit,
-            "filter[best_effort]": "true"
-        }
-        if req.area_code:
-            params["filter[national_destination_code]"] = req.area_code
+            params=params
         )
         
         if response.status_code != 200:
@@ -74,8 +76,8 @@ async def search_numbers(req: SearchRequest):
 PLAN_AGENT_LIMITS = {
     "free":     1,
     "starter":  2,
-    "pro":      2,
-    "premium":  4,
+    "pro":      10,
+    "premium":  100,
 }
 
 
