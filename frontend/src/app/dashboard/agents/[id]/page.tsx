@@ -408,14 +408,34 @@ export default function AgentDetailsPage() {
                       <option key={v.voice_id} value={v.voice_id}>{v.name} — {v.gender}</option>
                     )) : (
                       <>
-                        <option value="aura-2-thalia-en">Thalia (F - Energetic)</option>
-                        <option value="aura-2-amalthea-en">Amalthea (F - Engaging)</option>
-                        <option value="aura-2-apollo-en">Apollo (M - Confident)</option>
-                        <option value="aura-2-arcas-en">Arcas (M - Smooth)</option>
-                        <option value="aura-2-aurora-en">Aurora (F - Cheerful)</option>
-                        <option value="aura-2-electra-en">Electra (F - Professional)</option>
-                        <option value="aura-2-hermes-en">Hermes (M - Professional)</option>
-                        <option value="aura-2-jupiter-en">Jupiter (M - Knowledgeable)</option>
+                        <option value="aura-2-thalia-en">Thalia (F - Energetic/Confident)</option>
+                        <option value="aura-2-amalthea-en">Amalthea (F - Engaging/Professional)</option>
+                        <option value="aura-2-andromeda-en">Andromeda (F - Casual/Expressive)</option>
+                        <option value="aura-2-apollo-en">Apollo (M - Confident/Casual)</option>
+                        <option value="aura-2-arcas-en">Arcas (M - Smooth/Natural)</option>
+                        <option value="aura-2-aries-en">Aries (M - Warm/Caring)</option>
+                        <option value="aura-2-aurora-en">Aurora (F - Cheerful/Friendly)</option>
+                        <option value="aura-2-delia-en">Delia (F - Friendly/Approachable)</option>
+                        <option value="aura-2-electra-en">Electra (F - Professional/Authoritative)</option>
+                        <option value="aura-2-harmonia-en">Harmonia (F - Empathetic/Sincere)</option>
+                        <option value="aura-2-helena-en">Helena (F - Caring/Natural)</option>
+                        <option value="aura-2-hermes-en">Hermes (M - Professional/Knowledgeable)</option>
+                        <option value="aura-2-hyperion-en">Hyperion (M - Empathetic/Confident)</option>
+                        <option value="aura-2-juno-en">Juno (F - Melodic/Engaging)</option>
+                        <option value="aura-2-jupiter-en">Jupiter (M - Knowledgeable/Authoritative)</option>
+                        <option value="aura-2-mars-en">Mars (M - Trustworthy/Calm)</option>
+                        <option value="aura-2-neptune-en">Neptune (M - Polite/Professional)</option>
+                        <option value="aura-2-ophelia-en">Ophelia (F - Enthusiastic/Expressive)</option>
+                        <option value="aura-2-orion-en">Orion (M - Polite/Friendly)</option>
+                        <option value="aura-2-orpheus-en">Orpheus (M - Trustworthy/Warm)</option>
+                        <option value="aura-2-phoebe-en">Phoebe (F - Warm/Sincere)</option>
+                        <option value="aura-2-pluto-en">Pluto (M - Empathetic/Calm)</option>
+                        <option value="aura-2-saturn-en">Saturn (M - Confident/Authoritative)</option>
+                        <option value="aura-2-selene-en">Selene (F - Engaging/Clear)</option>
+                        <option value="aura-2-theia-en">Theia (F - Sincere/Professional)</option>
+                        <option value="aura-2-vesta-en">Vesta (F - Patient/Caring)</option>
+                        <option value="aura-2-luna-en">Luna (F - Expressive/Cheerful)</option>
+                        <option value="aura-2-odysseus-en">Odysseus (M - Strong/Direct)</option>
                       </>
                     )}
                   </select>
