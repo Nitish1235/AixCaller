@@ -136,12 +136,20 @@ async def dodo_webhook(request: Request, db: Session = Depends(get_db)):
             logger.warning(f"Tenant {tenant_id} not found")
             return {"status": "tenant_not_found"}
 
+        # Robust minute assignment with fallback
+        default_minutes = {
+            "starter": 200,
+            "pro": 500,
+            "premium": 1100
+        }
+        minutes = plan.get("minutes") or default_minutes.get(plan_tier, 0)
+
         # Activate subscription
         tenant.is_active = True
         tenant.plan_tier = plan_tier
         tenant.subscription_id = subscription_id
         tenant.subscription_status = "active"
-        tenant.minutes_included = plan["minutes"]
+        tenant.minutes_included = int(minutes)
         tenant.minutes_used = 0.0  # Reset usage on renewal
         tenant.cycle_start = datetime.utcnow()
         tenant.cycle_end = datetime.utcnow() + timedelta(days=30)
