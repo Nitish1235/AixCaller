@@ -183,11 +183,18 @@ async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Plan limit check (only counts agents with phone numbers — drafts are free)
-    active_count = _count_active_agents(db, tenant_uuid)
+    # ── Strict Plan Limit Check ──────────────────────────────────────────────
+    # We count ALL agents (including drafts) to strictly enforce the plan's 
+    # slot limit as requested.
+    total_agents = db.exec(select(Agent).where(Agent.tenant_id == tenant_uuid)).all()
     limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
-    # We allow creating drafts beyond limit; the phone assignment endpoint
-    # is where the limit is actually enforced. We still warn here for clarity.
+    
+    if len(total_agents) >= limit:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Your {tenant.plan_tier} plan allows up to {limit} agent(s). You have already reached this limit."
+        )
+    # ─────────────────────────────────────────────────────────────────────────
 
     new_agent = Agent(
         tenant_id=tenant_uuid,

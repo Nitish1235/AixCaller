@@ -103,10 +103,10 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    if tenant.subscription_status != "active" and tenant.plan_tier != "free":
+    if tenant.subscription_status != "active":
         raise HTTPException(
             status_code=402,
-            detail="Active subscription required to assign a phone number. Please subscribe to a plan."
+            detail="Active subscription required to claim a phone number. Please subscribe to a plan."
         )
 
     # Count agents that already have a phone number (only THOSE consume slots)

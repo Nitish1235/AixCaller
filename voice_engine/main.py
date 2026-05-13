@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import jwt
+import uuid
 from fastapi import FastAPI, WebSocket
 from loguru import logger
 import traceback

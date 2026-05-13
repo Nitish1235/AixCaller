@@ -7,6 +7,7 @@ from typing import Optional
 from loguru import logger
 
 # ── Pipecat: Audio ──────────────────────────────────────────────────────────
+# ── Pipecat: Audio ──────────────────────────────────────────────────────────
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 
@@ -16,54 +17,58 @@ from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 
 # ── Pipecat: Context & Aggregators ───────────────────────────────────────────
-# Source-verified: llm_context.py → LLMContext(messages=[...])
 from pipecat.processors.aggregators.llm_context import LLMContext
-# Source-verified: llm_response_universal.py
-#   LLMContextAggregatorPair(context, user_params=LLMUserAggregatorParams(...))
-#   LLMUserAggregatorParams(vad_analyzer=...) ← confirmed field name
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
 
 # ── Pipecat: Serializer ──────────────────────────────────────────────────────
-# Source-verified: telnyx.py
-#   TelnyxFrameSerializer(stream_id, outbound_encoding, inbound_encoding,
-#                         call_control_id=None, api_key=None, params=InputParams())
-#   InputParams.auto_hang_up: bool = True  (default)
 from pipecat.serializers.telnyx import TelnyxFrameSerializer
 
 # ── Pipecat: Services ────────────────────────────────────────────────────────
-# Source-verified: deepgram/stt.py
-#   DeepgramSTTService(api_key, settings=Settings(...))
-#   Settings = DeepgramSTTSettings — has model, language, smart_format, endpointing, etc.
 from pipecat.services.deepgram.stt import DeepgramSTTService
-# Source-verified: deepgram/tts.py
 from pipecat.services.deepgram.tts import DeepgramTTSService
-# Source-verified: openai/llm.py
-#   OpenAILLMService(api_key, settings=Settings(model=..., temperature=...))
 from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
-# Source-verified: frames.py exports LLMMessagesAppendFrame
-from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame
+from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
-# Source-verified: transports/websocket/fastapi.py
-#   FastAPIWebsocketTransport(websocket, params=FastAPIWebsocketParams(...))
-#   FastAPIWebsocketParams: audio_in_enabled, audio_out_enabled, serializer
-#   Events: on_client_connected(transport, websocket)
-#           on_client_disconnected(transport, websocket)
 from pipecat.transports.websocket.fastapi import (
     FastAPIWebsocketParams,
     FastAPIWebsocketTransport,
 )
+
+# ── Base Processor ──────────────────────────────────────────────────────────
+from pipecat.processors.framework_processor import FrameProcessor
 
 # ── Internal ─────────────────────────────────────────────────────────────────
 import uuid
 from shared.kb import search_knowledge_base
 from voice_engine.tools import shopify, custom_api, google_calendar as gcal_tools
 
+
+# ── Custom Processors ────────────────────────────────────────────────────────
+class GoodbyeDetector(FrameProcessor):
+    """
+    Monitor's the assistant's text output. If it sees goodbye keywords,
+    it triggers the hangup logic automatically, even if the LLM forgot 
+    to call the end_call tool.
+    """
+    def __init__(self, agent):
+        super().__init__()
+        self.agent = agent
+
+    async def process_frame(self, frame, direction):
+        await self.push_frame(frame, direction)
+        if isinstance(frame, TextFrame):
+            text = frame.text.lower()
+            if any(k in text for k in self.agent.GOODBYE_KEYWORDS):
+                logger.info(f"👋 Goodbye detected in assistant speech: '{text}'. Hanging up.")
+                # Trigger hangup in background
+                import asyncio
+                asyncio.create_task(self.agent.trigger_hangup())
 
 class VoiceAgent:
     # Filler phrases — randomized so it doesn't sound robotic
@@ -77,6 +82,9 @@ class VoiceAgent:
     # Don't play another filler within this window (prevents stacking when LLM
     # makes parallel function calls — e.g. "Let me check that..." playing twice)
     FILLER_COOLDOWN_SECONDS = 4.0
+
+    # Phrases that trigger automatic hangup if detected in assistant speech
+    GOODBYE_KEYWORDS = ["bye", "goodbye", "see you", "take care", "have a great day"]
 
     def __init__(self, tenant_id: str, agent_config: dict):
         self.tenant_id = tenant_id
@@ -159,19 +167,15 @@ class VoiceAgent:
 
     # ── Tool: End Call ───────────────────────────────────────────────────────
     async def end_call(self, params):
-        """LLM decided the conversation is over. Hang up the Telnyx call gracefully.
-
-        Flow:
-          1. Acknowledge the tool call (LLM has already said goodbye in its message)
-          2. Wait briefly so the farewell TTS finishes playing
-          3. POST to Telnyx hangup API to terminate the call
-          4. Voice engine pipeline cleanup is triggered by Telnyx disconnect
-        """
-        import asyncio
-        logger.info(f"🛑 AI requested call end for tenant {self.tenant_id}")
+        """LLM decided the conversation is over via tool call."""
         await params.result_callback("Goodbye message delivered. Hanging up now.")
+        await self.trigger_hangup()
 
-        # Telnyx call_control_id — passed in from voice_engine/main.py
+    async def trigger_hangup(self):
+        """Internal hangup logic, can be called by tool or by GoodbyeDetector."""
+        import asyncio
+        logger.info(f"🛑 Initiating hangup for tenant {self.tenant_id}")
+
         call_control_id = self.agent_config.get("call_control_id")
         telnyx_api_key = os.environ.get("TELNYX_API_KEY")
 
@@ -179,9 +183,9 @@ class VoiceAgent:
             logger.warning("Cannot hang up — missing call_control_id or TELNYX_API_KEY")
             return
 
-        # Give the farewell TTS ~2 seconds to play out before hanging up
+        # Give the farewell TTS ~2.5 seconds to play out before hanging up
         async def _delayed_hangup():
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(2.5)
             try:
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     resp = await client.post(
@@ -744,6 +748,7 @@ class VoiceAgent:
             stt,
             aggregators.user(),
             llm,
+            GoodbyeDetector(self),  # Automatically detect goodbye and end call
             tts,
             transport.output(),
             aggregators.assistant()
@@ -758,7 +763,7 @@ class VoiceAgent:
                 enable_metrics=True,
                 enable_usage_metrics=True,
             ),
-            idle_timeout_secs=30,
+            idle_timeout_secs=15,  # Reduced from 30 for better responsiveness on silence
         )
         # Expose task to tool functions so they can push filler audio (TTSSpeakFrame)
         # while long-running operations like KB search are in progress.
