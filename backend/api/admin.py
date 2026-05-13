@@ -110,12 +110,8 @@ async def generate_voice_previews(admin: str = Depends(get_admin_user)):
                         blob = bucket.blob(blob_name)
                         blob.upload_from_string(response.content, content_type="audio/mpeg")
                         
-                        # Make public (optional, based on bucket policy)
-                        try:
-                            blob.make_public()
-                            public_url = blob.public_url
-                        except:
-                            public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
+                        # Since bucket is made public at bucket-level (Storage Object Viewer)
+                        public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
                         
                         # 3. Upsert into VoiceOption Table
                         statement = select(VoiceOption).where(VoiceOption.voice_id == voice_id)
