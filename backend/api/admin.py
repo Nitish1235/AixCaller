@@ -162,22 +162,35 @@ async def assign_plan(
     if plan_tier not in PLANS and plan_tier != "free":
         raise HTTPException(status_code=400, detail=f"Invalid plan tier: {plan_tier}")
 
-    statement = select(Tenant).where(Tenant.contact_email == email)
+    # Case-insensitive email lookup
+    statement = select(Tenant).where(Tenant.contact_email.ilike(email))
     tenant = db.exec(statement).first()
     
     if not tenant:
-        raise HTTPException(status_code=404, detail="User with this email not found")
+        raise HTTPException(status_code=404, detail=f"User with email '{email}' not found")
 
-    # Get plan config
-    plan_cfg = PLANS.get(plan_tier, {"minutes": 0})
-    minutes = custom_minutes if custom_minutes is not None else plan_cfg.get("minutes", 0)
+    # Get plan config with explicit fallbacks for manual assignment
+    plan_cfg = PLANS.get(plan_tier, {})
+    
+    # Robust minute selection logic
+    if custom_minutes is not None and custom_minutes > 0:
+        minutes = custom_minutes
+    else:
+        # Explicit fallbacks if PLANS lookup is wonky
+        default_minutes = {
+            "starter": 200,
+            "pro": 500,
+            "premium": 1100,
+            "free": 0
+        }
+        minutes = plan_cfg.get("minutes") or default_minutes.get(plan_tier, 0)
 
     # Update tenant subscription info
     tenant.plan_tier = plan_tier
     tenant.is_active = True
     tenant.subscription_status = "active"
     tenant.subscription_id = f"admin_manual_{secrets.token_hex(4)}"
-    tenant.minutes_included = minutes
+    tenant.minutes_included = int(minutes)
     tenant.minutes_used = 0.0  # Reset usage for the new cycle
     tenant.cycle_start = datetime.utcnow()
     tenant.cycle_end = datetime.utcnow() + timedelta(days=30)
