@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   // Loading & Message states
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [details, setDetails] = useState<{ success: string[], failed: any[] } | null>(null);
 
   const getHeaders = () => {
     const auth = btoa(`${username}:${password}`);
@@ -65,6 +66,7 @@ export default function AdminDashboard() {
     if (!confirm("Are you sure? This will call Deepgram 28+ times and upload to GCS.")) return;
     setLoading(true);
     setMessage("Generating previews and uploading to GCS... This may take up to a minute.");
+    setDetails(null);
     try {
       const res = await fetch(`${API_URL}/admin/generate-voice-previews`, {
         method: "POST",
@@ -72,7 +74,8 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`✅ Success: ${data.message}. Previews generated for ${data.details.success.length} voices.`);
+        setMessage(`✅ Success: Voice catalog updated. Previews generated for ${data.details.success.length} voices.`);
+        setDetails(data.details);
       } else {
         setMessage(`⚠️ Error: ${data.detail || JSON.stringify(data)}`);
       }
@@ -146,8 +149,49 @@ export default function AdminDashboard() {
         </header>
 
         {message && (
-          <div className={`mb-8 p-4 rounded-xl border ${message.includes('✅') ? 'bg-emerald-950/30 border-emerald-500/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700 text-blue-400'}`}>
+          <div className={`mb-8 p-4 rounded-xl border ${message.includes('✅') ? 'bg-emerald-950/30 border-emerald-500/50 text-emerald-400' : 'bg-red-950/30 border-red-500/50 text-red-400'}`}>
             {message}
+          </div>
+        )}
+
+        {/* Process Logs (Success & Failure) */}
+        {details && (
+          <div className="mb-8 p-6 bg-slate-900 rounded-2xl border border-slate-800">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Process Logs</h3>
+            <div className="space-y-4 max-h-80 overflow-y-auto font-mono text-xs">
+              
+              <div>
+                <div className="text-emerald-400 font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Success ({details.success.length})
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {details.success.length > 0 ? details.success.map(v => (
+                    <div key={v} className="bg-slate-800 p-1 px-2 rounded text-slate-400 border border-slate-700/50">{v}</div>
+                  )) : <div className="text-slate-600">No successes</div>}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-800 pt-4">
+                <div className="text-red-400 font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  Failures ({details.failed.length})
+                </div>
+                <div className="space-y-1">
+                  {details.failed.length > 0 ? details.failed.map((f, i) => (
+                    <div key={i} className="text-red-300/80 bg-red-950/20 p-2 rounded border border-red-900/30">
+                      {JSON.stringify(f)}
+                    </div>
+                  )) : <div className="text-slate-600">No failures reported</div>}
+                </div>
+              </div>
+
+              {details.success.length === 0 && details.failed.length === 0 && (
+                <div className="text-amber-400">
+                  ⚠️ The backend returned an empty result. This usually means the internal voice list didn't match any criteria or an environment variable (DEEPGRAM_API_KEY) is missing.
+                </div>
+              )}
+            </div>
           </div>
         )}
 

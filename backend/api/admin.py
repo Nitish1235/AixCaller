@@ -79,7 +79,11 @@ async def generate_voice_previews(admin: str = Depends(get_admin_user)):
     from google.cloud import storage
     
     bucket_name = os.environ.get("GCS_BUCKET_NAME", "callerx-voice-previews")
+    deepgram_key = os.environ.get("DEEPGRAM_API_KEY")
     preview_script = "Hi, I'm your AI assistant from AIxcaller. How can I help you today?"
+    
+    if not deepgram_key:
+        raise HTTPException(status_code=500, detail="DEEPGRAM_API_KEY environment variable is missing.")
     
     try:
         storage_client = storage.Client()
@@ -96,7 +100,7 @@ async def generate_voice_previews(admin: str = Depends(get_admin_user)):
                     # 1. Call Deepgram TTS
                     response = await client.post(
                         f"https://api.deepgram.com/v1/speak?model={voice_id}",
-                        headers={"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"},
+                        headers={"Authorization": f"Token {deepgram_key}"},
                         json={"text": preview_script}
                     )
                     
