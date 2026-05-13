@@ -41,7 +41,7 @@ from pipecat.transports.websocket.fastapi import (
 )
 
 # ── Base Processor ──────────────────────────────────────────────────────────
-from pipecat.processors.framework_processor import FrameProcessor
+from pipecat.processors.frame_processor import FrameProcessor
 
 # ── Internal ─────────────────────────────────────────────────────────────────
 import uuid
