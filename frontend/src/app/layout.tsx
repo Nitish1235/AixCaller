@@ -1,34 +1,85 @@
-"use client";
+import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { usePathname } from "next/navigation";
+import ClientLayout from "@/components/ClientLayout";
 
 const outfit = Outfit({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: {
+    default: "AIxCaller — AI-Powered Calling Platform",
+    template: "%s | AIxCaller",
+  },
+  description:
+    "Automate outbound & inbound calls with intelligent AI voice agents. Save hours, qualify leads, and book appointments — on autopilot.",
+  metadataBase: new URL("https://aixcaller.live"),
+  keywords: [
+    "AI calling",
+    "voice agent",
+    "outbound dialer",
+    "AI phone calls",
+    "sales automation",
+    "AIxCaller",
+  ],
+  authors: [{ name: "AIxCaller Team", url: "https://aixcaller.live" }],
+  creator: "AIxCaller",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://aixcaller.live",
+    siteName: "AIxCaller",
+    title: "AIxCaller — AI-Powered Calling Platform",
+    description:
+      "Automate outbound & inbound calls with intelligent AI voice agents. Save hours, qualify leads, and book appointments — on autopilot.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "AIxCaller — AI-Powered Calling Platform",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@aixcaller",
+    creator: "@aixcaller",
+    title: "AIxCaller — AI-Powered Calling Platform",
+    description:
+      "Automate outbound & inbound calls with intelligent AI voice agents.",
+    images: ["/opengraph-image"],
+  },
+  icons: {
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/logo.svg",
+    shortcut: "/logo.svg",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "https://aixcaller.live",
+  },
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const isDashboard = pathname?.startsWith("/dashboard");
-
   return (
     <html lang="en">
       <body className={outfit.className}>
-        {!isDashboard && (
-          <div className="bg-mesh">
-            <div className="blob blob-1"></div>
-            <div className="blob blob-2"></div>
-            <div className="blob blob-3"></div>
-          </div>
-        )}
-        
-        {!isDashboard && <Navbar />}
-        {children}
-        {!isDashboard && <Footer />}
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

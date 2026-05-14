@@ -2,6 +2,7 @@
 import Link from "next/link";
 import styles from "./Navbar.module.css";
 import { useEffect, useState } from "react";
+import Logo from "./Logo";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -14,9 +15,8 @@ export default function Navbar() {
 
   return (
     <nav className={styles.nav}>
-      <Link href="/" className={styles.logo}>
-        <div className={styles.logoIcon}>🎙️</div>
-        AIxCaller<span className={styles.logoDot}>.live</span>
+      <Link href="/" className={styles.logo} style={{ textDecoration: "none" }}>
+        <Logo size={38} showText={true} dark={false} />
       </Link>
       <ul className={styles.navLinks}>
         <li><Link href="/#features">Features</Link></li>

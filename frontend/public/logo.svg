@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Green background block -->
+  <rect width="100" height="100" rx="22" fill="#4ADE80"/>
+  <!-- Tilted Violet Half-Citrus Slice -->
+  <g transform="rotate(45, 50, 50)">
+    <!-- Outer rind -->
+    <path d="M8,50 A42,42 0 0,0 92,50 L8,50 Z" fill="#A855F7" opacity="0.35"/>
+    <!-- White rind separator -->
+    <path d="M13,50 A37,37 0 0,0 87,50 L13,50 Z" fill="#E2E8F0" opacity="0.9"/>
+    <!-- Fruit flesh -->
+    <path d="M18,50 A32,32 0 0,0 82,50 L18,50 Z" fill="#A855F7"/>
+    <!-- Segment lines -->
+    <g transform="translate(50,50)">
+      <line x1="0" y1="0" x2="0" y2="32" stroke="#fff" stroke-width="2" opacity="0.7"/>
+      <line x1="0" y1="0" x2="22" y2="22" stroke="#fff" stroke-width="2" opacity="0.7"/>
+      <line x1="0" y1="0" x2="-22" y2="22" stroke="#fff" stroke-width="2" opacity="0.7"/>
+      <line x1="0" y1="0" x2="30" y2="8" stroke="#fff" stroke-width="2" opacity="0.7"/>
+      <line x1="0" y1="0" x2="-30" y2="8" stroke="#fff" stroke-width="2" opacity="0.7"/>
+    </g>
+    <!-- Center pip -->
+    <path d="M46,50 A4,4 0 0,0 54,50 L46,50 Z" fill="#fff"/>
+  </g>
+</svg>

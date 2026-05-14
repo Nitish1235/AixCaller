@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Logo from "@/components/Logo";
 
 interface User {
   email: string;
@@ -71,12 +72,8 @@ export default function DashboardShell({ user, children }: { user: User; childre
         position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50,
       }}>
         {/* Brand */}
-        <div style={{ padding: "1.5rem 1.25rem 1.25rem", display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #334155" }}>
-          <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--accent-green)", border: "2px solid #fff", boxShadow: "2px 2px 0 #fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>🎙️</div>
-          <div>
-            <div style={{ fontWeight: 900, fontSize: "1.1rem", color: "#fff", textTransform: "uppercase" }}>AIxCaller</div>
-            <div style={{ fontSize: "0.7rem", color: "var(--accent-pink)", fontWeight: 800, textTransform: "uppercase" }}>Platform</div>
-          </div>
+        <div style={{ padding: "1.5rem 1.25rem 1.25rem", borderBottom: "2px solid #334155" }}>
+          <Logo size={42} showText={true} dark={true} />
         </div>
 
         {/* Nav */}

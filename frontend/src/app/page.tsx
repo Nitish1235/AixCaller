@@ -3,9 +3,58 @@ import { DemoCard } from "@/components/DemoCard";
 
 export const dynamic = "force-dynamic";
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://aixcaller.live/#organization",
+      "name": "AIxCaller",
+      "url": "https://aixcaller.live",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://aixcaller.live/logo.svg",
+        "width": 100,
+        "height": 100
+      },
+      "description": "Automate outbound & inbound calls with intelligent AI voice agents.",
+      "sameAs": ["https://twitter.com/aixcaller"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://aixcaller.live/#website",
+      "url": "https://aixcaller.live",
+      "name": "AIxCaller",
+      "publisher": { "@id": "https://aixcaller.live/#organization" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://aixcaller.live/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "AIxCaller",
+      "operatingSystem": "Web",
+      "applicationCategory": "BusinessApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "50",
+        "priceCurrency": "USD"
+      },
+      "description": "AI-powered calling platform. Automate outbound & inbound calls with intelligent voice agents."
+    }
+  ]
+};
+
 export default function Home() {
   return (
     <main style={{ paddingBottom: "0rem", overflowX: "hidden" }}>
+      {/* JSON-LD Structured Data for Google */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ── HERO ── */}
       <section style={{ textAlign: "center", paddingTop: "6rem", position: "relative", maxWidth: 1300, margin: "0 auto", padding: "6rem 5% 0" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 15, background: "#fff", border: "var(--border)", padding: "1rem 2rem", borderRadius: 99, boxShadow: "var(--shadow)", marginBottom: "3rem", transform: "rotate(-2deg)" }}>
