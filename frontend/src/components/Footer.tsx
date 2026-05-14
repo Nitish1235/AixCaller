@@ -43,7 +43,7 @@ export default function Footer() {
 
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>© 2026 AIxCaller. All rights reserved.</p>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>Built with Pipecat · Deepgram · GPT-4o</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>Enterprise-Grade Voice AI</p>
         </div>
       </div>
     </footer>

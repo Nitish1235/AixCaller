@@ -97,10 +97,10 @@ export default function Home() {
         </div>
         
         <h1 style={{ fontSize: "clamp(3rem, 7vw, 6.5rem)", fontWeight: 900, lineHeight: 1, margin: "0 0 2rem", letterSpacing: -2, textTransform: "uppercase" }}>
-          AI Voice Agents <br />for B2B Sales & Support
+          The Ultimate <br />AI Call Assistant
         </h1>
         <p style={{ fontSize: "clamp(1.1rem, 2vw, 1.5rem)", fontWeight: 600, maxWidth: 800, margin: "0 auto 4rem", lineHeight: 1.5 }}>
-          We provide real phone numbers powered by conversational AI. Train the agent on your documents, let it answer your calls 24/7, and get instant summaries sent to your email.
+          Deploy an intelligent AI virtual caller with a real phone number. Train your AI call handler on your documents, let it act as your 24/7 virtual assistant answering inbound queries, and automate outbound dialing.
         </p>
         
         <Link href="/signup">
@@ -112,7 +112,7 @@ export default function Home() {
           
           <div style={{ flex: "1 1 400px", textAlign: "left" }}>
             <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)", lineHeight: 1, margin: "0 0 1.5rem", textTransform: "uppercase", color: "var(--accent-yellow)", fontWeight: 900 }}>
-              Experience Real-Time <br />AI Voice Agents
+              Experience Our <br />AI Call Handler Live
             </h2>
             <div style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "2rem", color: "#cbd5e1" }}>
               Test the sub-second latency for yourself. Choose a persona and dial the number or test via browser.
@@ -176,7 +176,7 @@ export default function Home() {
             <div style={{ background: "rgba(255,255,255,0.5)", border: "2px dashed var(--text)", borderRadius: 12, padding: "2rem", textAlign: "center", fontWeight: 700 }}>
               <div style={{ fontSize: "2rem", marginBottom: 10 }}>📄</div>
               Drop PDF files here or paste URL<br />
-              <div className="mono" style={{ display: "inline-block", background: "var(--text)", color: "#fff", padding: "0.4rem 1rem", borderRadius: 99, fontSize: "0.8rem", marginTop: 10 }}>pgvector indexing...</div>
+              <div className="mono" style={{ display: "inline-block", background: "var(--text)", color: "#fff", padding: "0.4rem 1rem", borderRadius: 99, fontSize: "0.8rem", marginTop: 10 }}>Processing document...</div>
             </div>
           </div>
           
@@ -212,7 +212,7 @@ export default function Home() {
                 ✅ Goal Achieved: Appointment Booked
               </div>
               <div style={{ color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.6, paddingBottom: "1rem", borderBottom: "2px solid #334155", marginBottom: "1rem" }}>
-                <strong style={{ color: "#fff" }}>Summary:</strong> Sarah called asking about the Pro plan. She had questions regarding vector search latency. The agent explained our pgvector integration and successfully booked a demo for Tuesday at 2 PM.
+                <strong style={{ color: "#fff" }}>Summary:</strong> Sarah called asking about the Pro plan. She had questions regarding call latency. The agent explained our proprietary architecture and successfully booked a demo for Tuesday at 2 PM.
               </div>
               <div style={{ color: "#94a3b8", fontSize: "0.8rem" }}>
                 Duration: 142s • <span style={{ textDecoration: "underline", cursor: "pointer" }}>View Full Transcript</span>
@@ -225,14 +225,14 @@ export default function Home() {
 
       {/* ── STEPS ── */}
       <section style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Deploy Custom AI Voice Agents in 3 Steps</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Deploy Your Custom AI Caller in 3 Steps</h2>
         
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
           <div className="card" style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-1deg)", flexWrap: "wrap" }}>
             <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>1</div>
             <div style={{ flex: 1 }}>
               <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Build the Brain</h3>
-              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Write a system prompt, select an ElevenLabs voice ID, and upload your knowledge base.</p>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Write a system prompt, select a hyper-realistic voice, and upload your knowledge base.</p>
             </div>
           </div>
           
@@ -260,15 +260,15 @@ export default function Home() {
           {[1,2,3].map(k => (
             <div key={k} style={{ display: "flex", gap: "3rem" }}>
               <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-green)" }}>
-                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"The Telnyx integration is seamless. We provisioned 5 UK numbers and 3 US numbers in about two minutes."</p>
+                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"The telephony integration is seamless. We provisioned 5 UK numbers and 3 US numbers in about two minutes."</p>
                 <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— David Chen, CTO</div>
               </div>
               <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-pink)" }}>
-                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Vector search is incredibly fast. The agent reads from our 50-page PDF policy manual in under a second while on the phone."</p>
+                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Knowledge retrieval is incredibly fast. The agent reads from our 50-page PDF policy manual in under a second while on the phone."</p>
                 <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— Sarah J., Support Lead</div>
               </div>
               <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-yellow)" }}>
-                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Per-second billing via Stripe makes this a no-brainer. We only pay exactly for what we use."</p>
+                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Per-second billing makes this a no-brainer. We only pay exactly for what we use."</p>
                 <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— Marcus T., Operations</div>
               </div>
             </div>
@@ -361,7 +361,7 @@ export default function Home() {
       {/* ── FOOTER CTA ── */}
       <footer style={{ background: "var(--accent-green)", borderTop: "var(--border)", textAlign: "center", padding: "8rem 5%", marginTop: "6rem" }}>
         <h2 style={{ fontSize: "clamp(3.5rem, 6vw, 6rem)", fontWeight: 900, textTransform: "uppercase", margin: "0 0 3rem", lineHeight: 1, letterSpacing: -2 }}>
-          Deploy Your First <br />AI Voice Agent Today
+          Deploy Your First <br />Virtual Assistant Today
         </h2>
         <Link href="/signup">
           <button className="btn-brutal white" style={{ fontSize: "1.5rem", padding: "1.5rem 4rem" }}>Deploy Your First Agent</button>

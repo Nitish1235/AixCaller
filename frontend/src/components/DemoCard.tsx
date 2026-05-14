@@ -165,7 +165,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
         {/* Name & subtitle */}
         <div style={{ textAlign: "center" }}>
           <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B" }}>Aria</div>
-          <div style={{ fontSize: "0.78rem", color: "#9CA3AF", marginTop: 2 }}>AI Voice Agent · AIxCaller</div>
+          <div style={{ fontSize: "0.78rem", color: "#9CA3AF", marginTop: 2 }}>AI Call Assistant · AIxCaller</div>
         </div>
 
         {/* Duration */}
