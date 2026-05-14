@@ -67,17 +67,6 @@ export default function Logo({ size = 36, showText = true, dark = false }: LogoP
           }}>
             AIxCaller
           </span>
-          {size >= 36 && (
-            <span style={{
-              fontSize: Math.round(size * 0.22),
-              fontWeight: 700,
-              color: dark ? "#A855F7" : "#10B981",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}>
-              .live
-            </span>
-          )}
         </div>
       )}
     </div>

@@ -9,7 +9,7 @@ export default function Footer() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
               <div style={{ width: 32, height: 32, borderRadius: 9, background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>🎙️</div>
-              <span style={{ fontWeight: 900, fontSize: "1.1rem" }}>AIxCaller.live</span>
+              <span style={{ fontWeight: 900, fontSize: "1.1rem" }}>AIxCaller</span>
             </div>
             <p style={{ color: "#6EE7B7", fontSize: "0.88rem", lineHeight: 1.6, maxWidth: 260 }}>
               The AI voice platform that answers every call, qualifies every lead, and never takes a day off.
@@ -42,7 +42,7 @@ export default function Footer() {
         </div>
 
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>© 2026 AIxCaller.live. All rights reserved.</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>© 2026 AIxCaller. All rights reserved.</p>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>Built with Pipecat · Deepgram · GPT-4o</p>
         </div>
       </div>

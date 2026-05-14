@@ -68,12 +68,6 @@ export default function OGImage() {
               }}>
                 AIxCaller
               </span>
-              <span style={{
-                fontSize: "22px", fontWeight: 700, color: "#10B981",
-                letterSpacing: "4px", textTransform: "uppercase",
-              }}>
-                .live
-              </span>
             </div>
           </div>
 

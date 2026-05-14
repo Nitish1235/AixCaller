@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   },
   description:
     "Automate outbound & inbound calls with intelligent AI voice agents. Save hours, qualify leads, and book appointments — on autopilot.",
-  metadataBase: new URL("https://aixcaller.live"),
+  metadataBase: new URL("https://aixcaller.com"),
   keywords: [
     "AI calling",
     "voice agent",
@@ -21,12 +21,12 @@ export const metadata: Metadata = {
     "sales automation",
     "AIxCaller",
   ],
-  authors: [{ name: "AIxCaller Team", url: "https://aixcaller.live" }],
+  authors: [{ name: "AIxCaller Team", url: "https://aixcaller.com" }],
   creator: "AIxCaller",
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://aixcaller.live",
+    url: "https://aixcaller.com",
     siteName: "AIxCaller",
     title: "AIxCaller — AI-Powered Calling Platform",
     description:
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://aixcaller.live",
+    canonical: "https://aixcaller.com",
   },
 };
 

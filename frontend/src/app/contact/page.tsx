@@ -6,7 +6,7 @@ export default function ContactPage() {
     <main className={styles.container}>
       <div className={styles.authCard} style={{ maxWidth: "600px" }}>
         <h1>Contact Sales</h1>
-        <p>Interested in deploying AixCaller.live for your enterprise? Reach out below.</p>
+        <p>Interested in deploying AixCaller for your enterprise? Reach out below.</p>
         
         <form onSubmit={(e) => e.preventDefault()}>
           <div className={styles.formGroup}>

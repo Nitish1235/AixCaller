@@ -8,12 +8,12 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://aixcaller.live/#organization",
+      "@id": "https://aixcaller.com/#organization",
       "name": "AIxCaller",
-      "url": "https://aixcaller.live",
+      "url": "https://aixcaller.com",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://aixcaller.live/logo.svg",
+        "url": "https://aixcaller.com/logo.svg",
         "width": 100,
         "height": 100
       },
@@ -22,13 +22,13 @@ const jsonLd = {
     },
     {
       "@type": "WebSite",
-      "@id": "https://aixcaller.live/#website",
-      "url": "https://aixcaller.live",
+      "@id": "https://aixcaller.com/#website",
+      "url": "https://aixcaller.com",
       "name": "AIxCaller",
-      "publisher": { "@id": "https://aixcaller.live/#organization" },
+      "publisher": { "@id": "https://aixcaller.com/#organization" },
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "https://aixcaller.live/?q={search_term_string}",
+        "target": "https://aixcaller.com/?q={search_term_string}",
         "query-input": "required name=search_term_string"
       }
     },
@@ -43,6 +43,35 @@ const jsonLd = {
         "priceCurrency": "USD"
       },
       "description": "AI-powered calling platform. Automate outbound & inbound calls with intelligent voice agents."
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do AI voice agents work for customer support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Our AI voice agents use natural language processing and voice synthesis to answer calls, process inquiries, and resolve customer issues 24/7 without human intervention."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use my own business phone number?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, you can easily port your existing number or provision new global virtual phone numbers directly through the AIxCaller dashboard."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What industries benefit most from AI voice agents?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Real estate, dental clinics, e-commerce, and B2B SaaS companies see the highest ROI by automating lead qualification and appointment scheduling."
+          }
+        }
+      ]
     }
   ]
 };
@@ -68,7 +97,7 @@ export default function Home() {
         </div>
         
         <h1 style={{ fontSize: "clamp(3rem, 7vw, 6.5rem)", fontWeight: 900, lineHeight: 1, margin: "0 0 2rem", letterSpacing: -2, textTransform: "uppercase" }}>
-          AI Voice Agents <br />for your business.
+          AI Voice Agents <br />for B2B Sales & Support
         </h1>
         <p style={{ fontSize: "clamp(1.1rem, 2vw, 1.5rem)", fontWeight: 600, maxWidth: 800, margin: "0 auto 4rem", lineHeight: 1.5 }}>
           We provide real phone numbers powered by conversational AI. Train the agent on your documents, let it answer your calls 24/7, and get instant summaries sent to your email.
@@ -83,7 +112,7 @@ export default function Home() {
           
           <div style={{ flex: "1 1 400px", textAlign: "left" }}>
             <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)", lineHeight: 1, margin: "0 0 1.5rem", textTransform: "uppercase", color: "var(--accent-yellow)", fontWeight: 900 }}>
-              Talk to our <br />Agent live.
+              Experience Real-Time <br />AI Voice Agents
             </h2>
             <div style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "2rem", color: "#cbd5e1" }}>
               Test the sub-second latency for yourself. Choose a persona and dial the number or test via browser.
@@ -115,13 +144,13 @@ export default function Home() {
 
       {/* ── PLATFORM ── */}
       <section id="platform" style={{ padding: "8rem 5%", maxWidth: 1300, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Exactly what we do.</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>How Our AI Voice Automation Works</h2>
         
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "3rem" }}>
           
           {/* Telephony */}
           <div className="card" style={{ background: "var(--accent-pink)", gridRow: "span 2" }}>
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Get a Real Phone Number</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Deploy Global Virtual Phone Numbers</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
               We instantly provide real local and toll-free phone numbers. No telecom setup required—just pick a country and area code, and your AI is ready to answer calls.
             </p>
@@ -140,7 +169,7 @@ export default function Home() {
           
           {/* Knowledge Base */}
           <div className="card" style={{ background: "var(--accent-yellow)" }}>
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Train AI on your Data</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Train Voice AI on Your Proprietary Data</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
               Upload your business policies, menus, or FAQs as PDFs. When a customer asks a question, the AI reads your documents and answers them accurately.
             </p>
@@ -153,7 +182,7 @@ export default function Home() {
           
           {/* Marketplace */}
           <div className="card">
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Pre-built AI Personas</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Launch Pre-Trained AI Voice Personas</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
               Don't want to start from scratch? Use our pre-trained AI templates. Whether you need a Real Estate Lead Qualifier or a Dental Receptionist, it's a one-click setup.
             </p>
@@ -166,7 +195,7 @@ export default function Home() {
           {/* Email Summaries */}
           <div className="card" style={{ background: "var(--text)", color: "#fff", gridColumn: "1 / -1", display: "flex", flexWrap: "wrap", gap: "2rem", alignItems: "center" }}>
             <div style={{ flex: "1 1 400px" }}>
-              <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900, color: "var(--accent-green)" }}>Get Call Summaries via Email</h3>
+              <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900, color: "var(--accent-green)" }}>Receive Instant Post-Call Analytics</h3>
               <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#cbd5e1", lineHeight: 1.5, margin: "0 0 2rem" }}>
                 You don't even need to log into our dashboard. The second a call finishes, the AI emails you the customer's intent, a brief summary of the conversation, and the full transcript.
               </p>
@@ -196,7 +225,7 @@ export default function Home() {
 
       {/* ── STEPS ── */}
       <section style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Live in 3 steps.</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Deploy Custom AI Voice Agents in 3 Steps</h2>
         
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
           <div className="card" style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-1deg)", flexWrap: "wrap" }}>
@@ -249,7 +278,7 @@ export default function Home() {
 
       {/* ── PRICING ── */}
       <section id="pricing" style={{ padding: "4rem 5%", maxWidth: 1100, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Honest Pricing.</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Transparent AI Voice Agent Pricing</h2>
         
         <div style={{ display: "flex", gap: "2rem", justifyContent: "center", alignItems: "stretch", flexWrap: "nowrap", width: "100%", overflowX: "auto", padding: "1rem" }}>
           
@@ -307,10 +336,32 @@ export default function Home() {
         </div>
       </section>
       
+      {/* ── FAQ ── */}
+      <section id="faq" style={{ padding: "4rem 5%", maxWidth: 800, margin: "0 auto 4rem" }}>
+        <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 3rem", textAlign: "center" }}>Frequently Asked Questions</h2>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>How do AI voice agents work for customer support?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Our AI voice agents use natural language processing and voice synthesis to answer calls, process inquiries, and resolve customer issues 24/7 without human intervention.</p>
+          </div>
+          
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>Can I use my own business phone number?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Yes, you can easily port your existing number or provision new global virtual phone numbers directly through the AIxCaller dashboard.</p>
+          </div>
+          
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>What industries benefit most from AI voice agents?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Real estate, dental clinics, e-commerce, and B2B SaaS companies see the highest ROI by automating lead qualification and appointment scheduling.</p>
+          </div>
+        </div>
+      </section>
+
       {/* ── FOOTER CTA ── */}
       <footer style={{ background: "var(--accent-green)", borderTop: "var(--border)", textAlign: "center", padding: "8rem 5%", marginTop: "6rem" }}>
         <h2 style={{ fontSize: "clamp(3.5rem, 6vw, 6rem)", fontWeight: 900, textTransform: "uppercase", margin: "0 0 3rem", lineHeight: 1, letterSpacing: -2 }}>
-          Ready to clone <br />your top performer?
+          Deploy Your First <br />AI Voice Agent Today
         </h2>
         <Link href="/signup">
           <button className="btn-brutal white" style={{ fontSize: "1.5rem", padding: "1.5rem 4rem" }}>Deploy Your First Agent</button>
