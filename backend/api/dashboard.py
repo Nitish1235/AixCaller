@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
+from sqlalchemy import text
 from typing import List, Optional
-import uuid, json
+import uuid, json, os
 from pydantic import BaseModel
-from shared.database import engine
+from shared.database import engine, get_db
 from shared.models import Agent, VoiceOption, CallRecord, Tenant
 from backend.services.analytics import AnalyticsService
 from backend.services.crm import ZohoCRMService
@@ -12,6 +13,9 @@ from shared.database import get_db
 from backend.api.telegram import send_telegram_message
 from backend.services.email import send_call_summary_email
 from backend.services.agent_templates import list_templates, get_template
+from loguru import logger
+
+_INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
 router = APIRouter(prefix="/api/v1", tags=["dashboard"])
 analytics_service = AnalyticsService()
@@ -183,18 +187,19 @@ async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # ── Strict Plan Limit Check ──────────────────────────────────────────────
-    # We count ALL agents (including drafts) to strictly enforce the plan's 
-    # slot limit as requested.
-    total_agents = db.exec(select(Agent).where(Agent.tenant_id == tenant_uuid)).all()
+    # ── Plan Limit: count only agents with phone numbers ──────────────────────
+    active_agents = db.exec(
+        select(Agent).where(
+            Agent.tenant_id == tenant_uuid,
+            Agent.phone_number.is_not(None),
+        )
+    ).all()
     limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
-    
-    if len(total_agents) >= limit:
+    if len(active_agents) >= limit:
         raise HTTPException(
             status_code=403,
-            detail=f"Your {tenant.plan_tier} plan allows up to {limit} agent(s). You have already reached this limit."
+            detail=f"Your {tenant.plan_tier} plan allows up to {limit} active agent(s)."
         )
-    # ─────────────────────────────────────────────────────────────────────────
 
     new_agent = Agent(
         tenant_id=tenant_uuid,
@@ -246,29 +251,41 @@ async def get_agent_limits(tenant_id: str, db: Session = Depends(get_db)):
 
 @router.get("/agents", response_model=List[Agent])
 async def get_my_agents(tenant_id: str, db: Session = Depends(get_db)):
-    """
-    Returns all agents belonging to the specific tenant.
-    """
-    import uuid
+    """Returns all agents belonging to the specific tenant."""
     tenant_uuid = uuid.UUID(tenant_id)
     statement = select(Agent).where(Agent.tenant_id == tenant_uuid)
     agents = db.exec(statement).all()
     return agents
 
+class AgentUpdateRequest(BaseModel):
+    """Strict schema for agent updates — prevents mass-assignment attacks.
+    Only fields listed here can be updated via the API."""
+    name: Optional[str] = None
+    business_name: Optional[str] = None
+    system_prompt: Optional[str] = None
+    voice_id: Optional[str] = None
+    idle_timeout: Optional[int] = None
+    llm_temperature: Optional[float] = None
+    language: Optional[str] = None
+    forwarding_number: Optional[str] = None
+    human_transfer_enabled: Optional[bool] = None
+    human_transfer_timezone: Optional[str] = None
+    human_transfer_hours: Optional[dict] = None
+    auto_callback_enabled: Optional[bool] = None
+    tools_config: Optional[dict] = None
+
+
 @router.patch("/agents/{agent_id}", response_model=Agent)
-async def update_agent_config(agent_id: uuid.UUID, config: dict, db: Session = Depends(get_db)):
-    """
-    Updates an agent's settings (voice, prompt, timeout, etc.)
-    """
+async def update_agent_config(agent_id: uuid.UUID, config: AgentUpdateRequest, db: Session = Depends(get_db)):
+    """Updates an agent's settings. Only whitelisted fields are accepted."""
     agent = db.get(Agent, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
-    # Update only provided fields
-    for key, value in config.items():
-        if hasattr(agent, key):
-            setattr(agent, key, value)
-    
+
+    update_data = config.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(agent, key, value)
+
     db.add(agent)
     db.commit()
     db.refresh(agent)
@@ -276,17 +293,19 @@ async def update_agent_config(agent_id: uuid.UUID, config: dict, db: Session = D
 
 @router.get("/calls", response_model=List[CallRecord])
 async def get_call_history(tenant_id: str, db: Session = Depends(get_db)):
-    import uuid
     tenant_uuid = uuid.UUID(tenant_id)
     statement = select(CallRecord).where(CallRecord.tenant_id == tenant_uuid).order_by(CallRecord.created_at.desc())
     calls = db.exec(statement).all()
     return calls
 
 @router.post("/process-call-data")
-async def process_call_data(data: dict, db: Session = Depends(get_db)):
+async def process_call_data(request: Request, data: dict, db: Session = Depends(get_db)):
     """
-    Internal endpoint called by Voice Engine to save transcript and trigger analytics.
+    Internal endpoint called by Voice Engine. Requires X-Internal-Key header.
+    Saves transcript, bills minutes, triggers analytics + integrations.
     """
+    if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
     call_id = data.get("call_id")
     transcript = data.get("transcript")
 
@@ -323,13 +342,21 @@ async def process_call_data(data: dict, db: Session = Depends(get_db)):
 
     db.add(new_call)
 
-    # 2b. Increment tenant's minutes_used so we can enforce plan limits
-    tenant = db.get(Tenant, uuid.UUID(data.get("tenant_id")))
-    if tenant and duration_sec > 0:
-        tenant.minutes_used = (tenant.minutes_used or 0.0) + (duration_sec / 60.0)
-        db.add(tenant)
+    # 2b. Atomically increment minutes_used — avoids read-modify-write race
+    #     when concurrent calls finish simultaneously.
+    if duration_sec > 0:
+        db.execute(
+            text(
+                "UPDATE tenant SET minutes_used = COALESCE(minutes_used, 0) + :delta "
+                "WHERE id = CAST(:tid AS UUID)"
+            ),
+            {"delta": round(duration_sec / 60.0, 6), "tid": data.get("tenant_id")},
+        )
 
     db.commit()
+
+    # Re-fetch tenant for downstream integrations (email, Zoho, etc.)
+    tenant = db.get(Tenant, uuid.UUID(data.get("tenant_id")))
 
     if not tenant:
         return {"status": "success"}

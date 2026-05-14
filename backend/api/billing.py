@@ -8,6 +8,8 @@ from shared.models import Tenant
 import uuid
 import os
 import json
+import hmac
+import hashlib
 
 router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 dodo_service = DodoPaymentsService()
@@ -106,10 +108,23 @@ async def create_billing_checkout(
 @router.post("/webhook")
 async def dodo_webhook(request: Request, db: Session = Depends(get_db)):
     """
-    DodoPayments webhook — activates the tenant on successful payment and
-    sets up their plan tier, monthly minute allowance, and billing cycle.
+    DodoPayments webhook — activates the tenant on successful payment.
+    Verifies HMAC-SHA256 signature before processing any event.
     """
     payload = await request.body()
+
+    # ── Signature verification ────────────────────────────────────────────
+    webhook_secret = os.environ.get("DODO_PAYMENTS_WEBHOOK_KEY", "")
+    if webhook_secret:
+        signature = request.headers.get("webhook-signature", "") or request.headers.get("x-dodo-signature", "")
+        expected = hmac.new(webhook_secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+        if not signature or not hmac.compare_digest(expected, signature.split("=")[-1]):
+            logger.warning("DodoPayments webhook signature verification failed")
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    else:
+        logger.warning("DODO_PAYMENTS_WEBHOOK_KEY not set — webhook signature not verified")
+    # ────────────────────────────────────────────────────────────────
+
     data = json.loads(payload)
     event_type = data.get("type")
 

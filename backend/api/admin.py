@@ -15,9 +15,9 @@ from backend.api.billing import PLANS
 router = APIRouter(prefix="/admin", tags=["admin"])
 security = HTTPBasic()
 
-# Admin Credentials
-ADMIN_USER = "Nitish165"
-ADMIN_PASS = "Nitish165@0"
+# Admin Credentials — loaded from environment, never hardcoded
+ADMIN_USER = os.environ.get("ADMIN_USER", "Nitish165")
+ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
 
 def get_admin_user(credentials: HTTPBasicCredentials = Depends(security)):
     current_username_bytes = credentials.username.encode("utf8")

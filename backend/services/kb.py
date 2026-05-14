@@ -65,10 +65,9 @@ class IngestionService:
     async def delete_agent_kb(self, agent_id: uuid.UUID):
         """Delete all knowledge base chunks for a specific agent."""
         with Session(engine) as db:
-            chunks = db.exec(
-                select(KnowledgeChunk).where(KnowledgeChunk.agent_id == agent_id)
-            ).all()
-            for chunk in chunks:
-                db.delete(chunk)
+            db.execute(
+                text("DELETE FROM knowledge_chunks WHERE agent_id = CAST(:agent_id AS UUID)"),
+                {"agent_id": str(agent_id)}
+            )
             db.commit()
         logger.info(f"Deleted KB for agent {agent_id}.")

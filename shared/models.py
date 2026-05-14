@@ -66,7 +66,7 @@ class Tenant(SQLModel, table=True):
 
 class Agent(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    tenant_id: uuid.UUID = Field(foreign_key="tenant.id")
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", index=True)  # indexed for dashboard loads
     name: str                              # e.g. "Sarah" — agent's persona name
     business_name: Optional[str] = None    # e.g. "NovaEdge Solutions" — used in greeting
     system_prompt: str
@@ -97,8 +97,8 @@ class Agent(SQLModel, table=True):
     
 class CallRecord(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    tenant_id: uuid.UUID = Field(foreign_key="tenant.id")
-    agent_id: uuid.UUID = Field(foreign_key="agent.id")
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", index=True)   # indexed for /calls dashboard
+    agent_id: uuid.UUID = Field(foreign_key="agent.id", index=True)     # indexed for per-agent filters
     from_number: str
     to_number: str
     direction: str = Field(default="inbound")

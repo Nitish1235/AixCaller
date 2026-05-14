@@ -52,7 +52,7 @@ async def process_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60
                     "https://api.telnyx.com/v2/texml/calls",
                     headers={
                         "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/x-www-form-urlencoded"
+                        "Content-Type": "application/json"
                     },
                     json={
                         "to": call.from_number,

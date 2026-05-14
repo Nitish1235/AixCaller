@@ -3,9 +3,24 @@ from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from sqlmodel import Session, select
+from loguru import logger
 import jwt
 import time
+import uuid
 import traceback
+
+# ── Startup validation — fail hard if critical secrets are missing ────────────
+_JWT_SECRET = os.environ.get("JWT_SECRET")
+if not _JWT_SECRET:
+    raise RuntimeError("JWT_SECRET env var is required — refusing to start without it")
+
+_INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+
+_ALLOWED_ORIGINS = [
+    o.strip() for o in
+    os.environ.get("ALLOWED_ORIGINS", "https://callerx.ai,https://www.callerx.ai").split(",")
+    if o.strip()
+]
 
 try:
     from shared.database import engine, get_db
@@ -26,7 +41,7 @@ app = FastAPI(title="AIxcaller SaaS Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,8 +92,7 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         "voice_id": agent.voice_id,
         "exp": time.time() + 300
     }
-    secret = os.environ.get("JWT_SECRET", "super-secret-key")
-    signed_token = jwt.encode(token_payload, secret, algorithm="HS256")
+    signed_token = jwt.encode(token_payload, _JWT_SECRET, algorithm="HS256")
 
     # 4. Route to Voice Engine with the Token
     voice_url = os.environ.get("VOICE_ENGINE_URL")
@@ -99,17 +113,22 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     return PlainTextResponse(texml, media_type="application/xml")
 
 @app.post("/api/v1/kb/upload")
-async def upload_kb(tenant_id: str, content: str, db: Session = Depends(get_db)):
+async def upload_kb(request: Request, tenant_id: str, agent_id: str, content: str, db: Session = Depends(get_db)):
     """
-    Multi-tenant KB ingestion.
+    Internal KB ingestion — requires X-Internal-Key header.
+    Prefer the /api/v1/kb/upload-text route from the dashboard.
     """
-    # Verify tenant exists
-    tenant = db.get(Tenant, tenant_id)
+    if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-
-    await kb_service.process_text(tenant_id, content)
-    return {"status": "success", "message": "Knowledge base indexed"}
+    count = await kb_service.ingest_text(
+        content=content,
+        tenant_id=uuid.UUID(tenant_id),
+        agent_id=uuid.UUID(agent_id),
+    )
+    return {"status": "success", "chunks_stored": count}
 
 @app.post("/call-status")
 async def handle_call_status(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -176,8 +195,7 @@ async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)
         "is_recovery": True,
         "exp": time.time() + 300
     }
-    secret = os.environ.get("JWT_SECRET", "super-secret-key")
-    signed_token = jwt.encode(token_payload, secret, algorithm="HS256")
+    signed_token = jwt.encode(token_payload, _JWT_SECRET, algorithm="HS256")
 
     voice_url = os.environ.get("VOICE_ENGINE_URL")
     

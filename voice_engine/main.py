@@ -3,6 +3,7 @@ import json
 import asyncio
 import jwt
 import uuid
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket
 from loguru import logger
 import traceback
@@ -10,16 +11,18 @@ from sqlmodel import Session
 from shared.database import engine
 from shared.models import Agent
 
+# ── Startup validation ─────────────────────────────────────────────
+_JWT_SECRET = os.environ.get("JWT_SECRET")
+if not _JWT_SECRET:
+    raise RuntimeError("JWT_SECRET env var is required — refusing to start without it")
+# ────────────────────────────────────────────────────────────────
+
 try:
     from voice_engine.bot import VoiceAgent
     from voice_engine.demo_session import run_demo_session
 except Exception as e:
     print(f"CRITICAL STARTUP CRASH: {traceback.format_exc()}")
     raise
-
-app = FastAPI(title="AIxcaller Voice Engine")
-
-@app.on_event("startup")
 async def startup_event():
     from sqlalchemy import text
     from voice_engine.preload import warmup_models
@@ -60,6 +63,15 @@ async def startup_event():
     logger.info("=" * 60)
     logger.info("✅ Startup complete — idle RAM ~330MB, ready to handle calls")
     logger.info("=" * 60)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await startup_event()
+    yield
+
+
+app = FastAPI(title="AIxcaller Voice Engine", lifespan=lifespan)
 
 @app.websocket("/demo")
 async def demo_endpoint(websocket: WebSocket):
@@ -129,8 +141,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     return
 
                 try:
-                    secret = os.environ.get("JWT_SECRET", "super-secret-key")
-                    decoded = jwt.decode(token, secret, algorithms=["HS256"])
+                    decoded = jwt.decode(token, _JWT_SECRET, algorithms=["HS256"])
                     
                     tenant_id = decoded["tenant_id"]
                     agent_id = decoded["agent_id"]

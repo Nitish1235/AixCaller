@@ -152,7 +152,7 @@ async def send_call_summary_email(to_email: str, data: dict) -> bool:
 
     try:
         # resend.Emails.send is synchronous — run in thread executor
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(None, lambda: resend.Emails.send(params))
         logger.info(f"Summary email sent to {to_email} | id={response.get('id')}")
         return True

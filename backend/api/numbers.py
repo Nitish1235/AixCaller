@@ -6,6 +6,7 @@ from loguru import logger
 from sqlmodel import Session, select
 from shared.database import engine, get_db
 from shared.models import Tenant, Agent
+from backend.api.dashboard import PLAN_AGENT_LIMITS  # single source of truth
 
 router = APIRouter(prefix="/api/v1/numbers", tags=["Numbers"])
 
@@ -72,13 +73,6 @@ async def search_numbers(req: SearchRequest):
         
         return {"numbers": results}
 
-# Plan limits — kept in sync with backend/api/dashboard.py
-PLAN_AGENT_LIMITS = {
-    "free":     1,
-    "starter":  2,
-    "pro":      10,
-    "premium":  100,
-}
 
 
 @router.post("/purchase")

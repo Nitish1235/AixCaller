@@ -92,6 +92,7 @@ class VoiceAgent:
         self.task = None  # Pipeline task ref — set in start() so tools can push frames
         self._last_filler_time = 0.0  # for filler debounce
         self._transfer_off_hours_reason: Optional[str] = None  # set in start()
+        self._hangup_triggered = False  # guard against double-hangup (GoodbyeDetector + end_call)
 
     # ── Hot KB Pre-warm (background task) ────────────────────────────────────
     async def _prewarm_hot_kb_safe(self):
@@ -172,7 +173,11 @@ class VoiceAgent:
         await self.trigger_hangup()
 
     async def trigger_hangup(self):
-        """Internal hangup logic, can be called by tool or by GoodbyeDetector."""
+        """Internal hangup logic. Guarded against double-fire (end_call + GoodbyeDetector)."""
+        if self._hangup_triggered:
+            logger.info("Hangup already in progress — skipping duplicate trigger")
+            return
+        self._hangup_triggered = True
         import asyncio
         logger.info(f"🛑 Initiating hangup for tenant {self.tenant_id}")
 
@@ -825,16 +830,20 @@ class VoiceAgent:
             # Send transcript + duration to backend for analytics + minute tracking
             try:
                 transcript = context.get_messages()
+                internal_key = os.environ.get("INTERNAL_API_KEY", "")
                 async with httpx.AsyncClient() as client:
                     backend_url = os.environ.get("BACKEND_URL", "http://localhost:8000")
                     await client.post(
                         f"{backend_url}/api/v1/process-call-data",
+                        headers={"X-Internal-Key": internal_key},
                         json={
-                            "call_id": call_id,
-                            "transcript": transcript,
-                            "tenant_id": self.tenant_id,
-                            "agent_id": self.agent_config.get("agent_id"),
+                            "call_id":          call_id,
+                            "transcript":       transcript,
+                            "tenant_id":        self.tenant_id,
+                            "agent_id":         self.agent_config.get("agent_id"),
                             "duration_seconds": duration_seconds,
+                            "from_number":      self.agent_config.get("from_number", "unknown"),
+                            "to_number":        self.agent_config.get("to_number", "unknown"),
                         },
                         timeout=10.0
                     )

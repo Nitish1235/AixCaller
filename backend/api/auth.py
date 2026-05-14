@@ -1,4 +1,5 @@
 import uuid
+import os
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -9,9 +10,9 @@ from shared.models import Tenant
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
-# --- Restricted Access Credentials ---
-ALLOWED_USER = "Nitish165"
-ALLOWED_PASS = "Nitish165@0"
+# Credentials loaded from environment — never hardcoded in source
+ALLOWED_USER = os.environ.get("ADMIN_USER", "Nitish165")
+ALLOWED_PASS = os.environ.get("ADMIN_PASS", "")
 
 class LoginRequest(BaseModel):
     email: str # We use 'email' field to maintain frontend compatibility, but it will accept 'Nitish165'

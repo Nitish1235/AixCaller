@@ -36,7 +36,9 @@ SCOPES = " ".join([
 
 
 def get_oauth_redirect_uri() -> str:
-    host = os.environ.get("SERVER_HOST", "http://localhost:8000")
+    host = os.environ.get("SERVER_HOST", "localhost:8000")
+    # Strip any existing scheme so we don't produce "https://https://..."
+    host = host.replace("https://", "").replace("http://", "").rstrip("/")
     return f"https://{host}/api/v1/google/callback"
 
 
