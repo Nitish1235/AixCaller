@@ -30,14 +30,14 @@ PLANS = {
         "name":        "Pro",
         "price_usd":   119,
         "minutes":     500,
-        "agent_limit": 10,
+        "agent_limit": 2,
         "product_id":  os.environ.get("DODO_PRODUCT_PRO", "prod_pro"),
     },
     "premium": {
         "name":        "Premium",
         "price_usd":   250,
         "minutes":     1100,
-        "agent_limit": 100,
+        "agent_limit": 4,
         "product_id":  os.environ.get("DODO_PRODUCT_PREMIUM", "prod_premium"),
     },
 }

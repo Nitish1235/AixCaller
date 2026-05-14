@@ -276,7 +276,7 @@ export default function Home() {
             <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#94a3b8", marginBottom: "2rem" }}>Includes 500 Minutes</div>
             
             <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
-              {["10 Active Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Marketplace Access"].map(item => (
+              {["2 Active Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Marketplace Access"].map(item => (
                 <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
                   <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
                 </li>
@@ -293,7 +293,7 @@ export default function Home() {
             <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#64748b", marginBottom: "2rem" }}>Includes 1100 Minutes</div>
             
             <ul style={{ listStyle: "none", padding: 0, fontSize: "1.1rem", fontWeight: 700, textAlign: "left", margin: "2rem 0 3rem" }}>
-              {["Unlimited Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Missed Call Recovery"].map(item => (
+              {["4 Active Agents", "Vector Knowledge Base", "Global Numbers (31+)", "Missed Call Recovery"].map(item => (
                 <li key={item} style={{ marginBottom: "1.2rem", display: "flex", gap: 10 }}>
                   <span style={{ color: "var(--accent-green)", fontWeight: 900, fontSize: "1.4rem" }}>✓</span> {item}
                 </li>

@@ -162,8 +162,8 @@ class CreateAgentRequest(BaseModel):
 PLAN_AGENT_LIMITS = {
     "free":     1,
     "starter":  2,   # $50 plan
-    "pro":      10,  # $119 plan
-    "premium":  100, # $250 plan
+    "pro":      2,   # $119 plan
+    "premium":  4,   # $250 plan
 }
 
 
