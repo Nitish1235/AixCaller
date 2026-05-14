@@ -20,8 +20,8 @@ export default function Navbar() {
       </Link>
       <ul className={styles.navLinks}>
         <li><Link href="/#features">Features</Link></li>
-        <li><Link href="/#how-it-works">How It Works</Link></li>
-        <li><Link href="/#use-cases">Use Cases</Link></li>
+        <li><Link href="/use-cases/real-estate-ai-voice-agent">Real Estate AI</Link></li>
+        <li><Link href="/compare/bland-ai-alternative">Compare</Link></li>
         <li><Link href="/#pricing">Pricing</Link></li>
       </ul>
       <div className={styles.actions}>

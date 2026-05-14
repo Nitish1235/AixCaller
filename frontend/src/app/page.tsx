@@ -45,6 +45,35 @@ const jsonLd = {
       "description": "AI-powered calling platform. Automate outbound & inbound calls with intelligent voice agents."
     },
     {
+      "@type": "ItemList",
+      "itemListElement": [
+        {
+          "@type": "SiteNavigationElement",
+          "position": 1,
+          "name": "Transparent Pricing",
+          "url": "https://aixcaller.com/#pricing"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 2,
+          "name": "Real Estate AI",
+          "url": "https://aixcaller.com/use-cases/real-estate-ai-voice-agent"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 3,
+          "name": "Dental Receptionist",
+          "url": "https://aixcaller.com/use-cases/dental-receptionist-ai"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 4,
+          "name": "Sign In",
+          "url": "https://aixcaller.com/login"
+        }
+      ]
+    },
+    {
       "@type": "FAQPage",
       "mainEntity": [
         {
@@ -119,9 +148,11 @@ export default function Home() {
             </div>
             
             <div className="mono" style={{ display: "flex", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
-              <div style={{ background: "var(--accent-pink)", color: "var(--text)", border: "2px solid var(--accent-pink)", padding: "0.8rem 1.5rem", borderRadius: 99, fontWeight: 800, fontSize: "1rem", cursor: "pointer", textTransform: "uppercase", boxShadow: "4px 4px 0 #fff" }}>
-                🛍️ E-Com Support
-              </div>
+              <Link href="/use-cases/ecommerce-support-ai" style={{ textDecoration: "none" }}>
+                <div style={{ background: "var(--accent-pink)", color: "var(--text)", border: "2px solid var(--accent-pink)", padding: "0.8rem 1.5rem", borderRadius: 99, fontWeight: 800, fontSize: "1rem", cursor: "pointer", textTransform: "uppercase", boxShadow: "4px 4px 0 #fff" }}>
+                  🛍️ E-Com Support
+                </div>
+              </Link>
               <div style={{ background: "transparent", color: "#fff", border: "2px solid #fff", padding: "0.8rem 1.5rem", borderRadius: 99, fontWeight: 800, fontSize: "1rem", cursor: "pointer", textTransform: "uppercase" }}>
                 💼 Aggressive Sales
               </div>
@@ -143,7 +174,7 @@ export default function Home() {
       </section>
 
       {/* ── PLATFORM ── */}
-      <section id="platform" style={{ padding: "8rem 5%", maxWidth: 1300, margin: "0 auto" }}>
+      <section id="features" style={{ padding: "8rem 5%", maxWidth: 1300, margin: "0 auto" }}>
         <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>How Our AI Voice Automation Works</h2>
         
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "3rem" }}>
@@ -187,8 +218,12 @@ export default function Home() {
               Don't want to start from scratch? Use our pre-trained AI templates. Whether you need a Real Estate Lead Qualifier or a Dental Receptionist, it's a one-click setup.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-              <div style={{ background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, textAlign: "center", fontWeight: 700 }}>🦷 Dental Desk</div>
-              <div style={{ background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, textAlign: "center", fontWeight: 700 }}>🏠 Realtor Bot</div>
+              <Link href="/use-cases/dental-receptionist-ai" style={{ textDecoration: "none" }}>
+                <div style={{ background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, textAlign: "center", fontWeight: 700, color: "var(--text)" }}>🦷 Dental Desk</div>
+              </Link>
+              <Link href="/use-cases/real-estate-ai-voice-agent" style={{ textDecoration: "none" }}>
+                <div style={{ background: "#fff", border: "2px solid var(--text)", padding: "1rem", borderRadius: 8, textAlign: "center", fontWeight: 700, color: "var(--text)" }}>🏠 Realtor Bot</div>
+              </Link>
             </div>
           </div>
           
@@ -215,7 +250,7 @@ export default function Home() {
                 <strong style={{ color: "#fff" }}>Summary:</strong> Sarah called asking about the Pro plan. She had questions regarding call latency. The agent explained our proprietary architecture and successfully booked a demo for Tuesday at 2 PM.
               </div>
               <div style={{ color: "#94a3b8", fontSize: "0.8rem" }}>
-                Duration: 142s • <span style={{ textDecoration: "underline", cursor: "pointer" }}>View Full Transcript</span>
+                Duration: 142s • <Link href="/signup" style={{ color: "inherit" }}><span style={{ textDecoration: "underline", cursor: "pointer" }}>View Full Transcript</span></Link>
               </div>
             </div>
           </div>
@@ -224,7 +259,7 @@ export default function Home() {
       </section>
 
       {/* ── STEPS ── */}
-      <section style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
+      <section id="how-it-works" style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
         <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Deploy Your Custom AI Caller in 3 Steps</h2>
         
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -277,10 +312,10 @@ export default function Home() {
       </div>
 
       {/* ── PRICING ── */}
-      <section id="pricing" style={{ padding: "4rem 5%", maxWidth: 1100, margin: "0 auto" }}>
+      <section id="pricing" style={{ padding: "4rem 5%", maxWidth: 1200, margin: "0 auto" }}>
         <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Transparent AI Voice Agent Pricing</h2>
         
-        <div style={{ display: "flex", gap: "2rem", justifyContent: "center", alignItems: "stretch", flexWrap: "nowrap", width: "100%", overflowX: "auto", padding: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem", alignItems: "start", width: "100%", padding: "1rem 0" }}>
           
           <div className="card" style={{ padding: "4rem 2rem", textAlign: "center", flex: 1, minWidth: "300px" }}>
             <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>Starter</div>
