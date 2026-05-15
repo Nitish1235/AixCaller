@@ -1,16 +1,9 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { fetchVoices, fetchAgents, updateAgent, apiPost, API_BASE_URL } from "@/lib/api";
+import { fetchVoices, fetchAgents, updateAgent, apiPost, API_BASE_URL, getTenantId } from "@/lib/api";
 
-const getTenantId = () => {
-  if (typeof window === "undefined") return "00000000-0000-0000-0000-000000000000";
-  const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
-  let tid = match ? decodeURIComponent(match[1]) : null;
-  if (tid) { localStorage.setItem("tenant_id", tid); return tid; }
-  return localStorage.getItem("tenant_id") || "00000000-0000-0000-0000-000000000000";
-};
-const TENANT_ID = getTenantId();
+// Removed top-level TENANT_ID constant as it can be stale during client navigation.
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: 9,
@@ -128,8 +121,9 @@ export default function AgentDetailsPage() {
 
   useEffect(() => {
     const load = async () => {
+      const tid = getTenantId();
       try {
-        const list = await fetchAgents(TENANT_ID);
+        const list = await fetchAgents(tid);
         const found = list.find((a: any) => a.id === agentId);
         if (found) {
           setAgent(found);

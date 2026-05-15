@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { API_BASE_URL, getTenantId } from "@/lib/api";
 
 interface CallRecord {
   id: string;
@@ -59,19 +60,16 @@ export default function LiveMonitorPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
 
-  // Fetch tenant_id from localStorage (set on login)
-  const tenantId = typeof window !== "undefined" ? localStorage.getItem("tenant_id") : null;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
   const loadData = async () => {
+    const tenantId = getTenantId();
     if (!tenantId) {
       setLoading(false);
       return;
     }
     try {
       const [callsRes, subRes] = await Promise.all([
-        fetch(`${apiUrl}/api/v1/calls?tenant_id=${tenantId}`),
-        fetch(`${apiUrl}/api/v1/billing/subscription?tenant_id=${tenantId}`),
+        fetch(`${API_BASE_URL}/calls?tenant_id=${tenantId}`),
+        fetch(`${API_BASE_URL}/billing/subscription?tenant_id=${tenantId}`),
       ]);
       if (callsRes.ok) setCalls(await callsRes.json());
       if (subRes.ok) setSub(await subRes.json());

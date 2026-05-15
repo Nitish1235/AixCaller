@@ -1,14 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { fetchIntegrations, apiPatch, apiDelete, API_BASE_URL } from "@/lib/api";
+import { fetchIntegrations, apiPatch, apiDelete, API_BASE_URL, getTenantId } from "@/lib/api";
 
-const getTenantId = () => {
-  if (typeof document === "undefined") return "00000000-0000-0000-0000-000000000000";
-  const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : "00000000-0000-0000-0000-000000000000";
-};
-
-const TENANT_ID = getTenantId();
+// Removed top-level TENANT_ID constant
 
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -120,8 +114,9 @@ export default function IntegrationsPage() {
   const [googleSheetName, setGoogleSheetName] = useState("Leads");
 
   const load = useCallback(async () => {
+    const tid = getTenantId();
     try {
-      const data = await fetchIntegrations(TENANT_ID);
+      const data = await fetchIntegrations(tid);
       if (data) {
         setCfg(data);
         setEmailEnabled(data.email_summary_enabled ?? true);
@@ -162,25 +157,27 @@ export default function IntegrationsPage() {
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const save = async (patch: Record<string, any>) => {
+    const tid = getTenantId();
     setSaving(true);
     try {
-      await apiPatch(`/integrations?tenant_id=${TENANT_ID}`, patch);
+      await apiPatch(`/integrations?tenant_id=${tid}`, patch);
       await load(); setModal(null); showToast("✅ Settings saved!");
     } catch { showToast("⚠️ Failed to save."); }
     setSaving(false);
   };
 
   const disconnect = async (key: string) => {
+    const tid = getTenantId();
     setSaving(true);
     try {
       if (key === "zoho") {
-        await fetch(`${API_BASE_URL}/zoho/disconnect?tenant_id=${TENANT_ID}`, { method: "DELETE" });
+        await fetch(`${API_BASE_URL}/zoho/disconnect?tenant_id=${tid}`, { method: "DELETE" });
       } else if (key === "shopify") {
-        await apiPatch(`/integrations?tenant_id=${TENANT_ID}`, { shopify_domain: null, shopify_token: null });
+        await apiPatch(`/integrations?tenant_id=${tid}`, { shopify_domain: null, shopify_token: null });
       } else if (key === "google") {
-        await fetch(`${API_BASE_URL}/google/disconnect?tenant_id=${TENANT_ID}`, { method: "DELETE" });
+        await fetch(`${API_BASE_URL}/google/disconnect?tenant_id=${tid}`, { method: "DELETE" });
       } else {
-        await apiDelete(`/integrations/${key}?tenant_id=${TENANT_ID}`);
+        await apiDelete(`/integrations/${key}?tenant_id=${tid}`);
       }
       await load(); showToast(`🔌 ${key} disconnected.`);
     } catch {}
@@ -188,13 +185,15 @@ export default function IntegrationsPage() {
   };
 
   const connectZoho = () => {
-    window.location.href = `${API_BASE_URL}/zoho/install?tenant_id=${TENANT_ID}&dc=${zohoDC}`;
+    const tid = getTenantId();
+    window.location.href = `${API_BASE_URL}/zoho/install?tenant_id=${tid}&dc=${zohoDC}`;
   };
 
   const testZoho = async () => {
+    const tid = getTenantId();
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/zoho/test-connection?tenant_id=${TENANT_ID}`, { method: "POST" });
+      const res = await fetch(`${API_BASE_URL}/zoho/test-connection?tenant_id=${tid}`, { method: "POST" });
       const data = await res.json();
       showToast(data.ok ? `✅ ${data.message}` : `⚠️ ${data.message}`);
     } catch { showToast("⚠️ Test failed."); }
@@ -202,17 +201,19 @@ export default function IntegrationsPage() {
   };
 
   const connectGoogle = () => {
-    window.location.href = `${API_BASE_URL}/google/install?tenant_id=${TENANT_ID}`;
+    const tid = getTenantId();
+    window.location.href = `${API_BASE_URL}/google/install?tenant_id=${tid}`;
   };
 
   const saveGoogleSettings = async () => {
+    const tid = getTenantId();
     setSaving(true);
     try {
       await fetch(`${API_BASE_URL}/google/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: TENANT_ID,
+          tenant_id: tid,
           calendar_id: googleCalendarId,
           sheet_id: googleSheetId,
           sheet_name: googleSheetName,

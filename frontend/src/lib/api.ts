@@ -1,5 +1,21 @@
 const RAW_API_URL = (process.env.NEXT_PUBLIC_API_URL || "https://backend-597874469660.europe-west1.run.app").trim();
-export const API_BASE_URL = RAW_API_URL.replace(/\/+$/, "") + (RAW_API_URL.endsWith("/api/v1") ? "" : "/api/v1");
+
+// When running in the browser, we use the local proxy to avoid CORS issues.
+// On the server (SSR/Server Components), we use the full URL.
+export const API_BASE_URL = typeof window !== "undefined"
+  ? "/api/v1"
+  : (RAW_API_URL.replace(/\/+$/, "") + (RAW_API_URL.endsWith("/api/v1") ? "" : "/api/v1"));
+
+export const getTenantId = () => {
+  if (typeof window === "undefined") return "00000000-0000-0000-0000-000000000000";
+  const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
+  let tid = match ? decodeURIComponent(match[1]) : null;
+  if (tid) { 
+    localStorage.setItem("tenant_id", tid); 
+    return tid; 
+  }
+  return localStorage.getItem("tenant_id") || "00000000-0000-0000-0000-000000000000";
+};
 
 export async function fetchAgents(tenantId: string) {
   try {

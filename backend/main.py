@@ -18,7 +18,7 @@ _INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
 _ALLOWED_ORIGINS = [
     o.strip() for o in
-    os.environ.get("ALLOWED_ORIGINS", "https://callerx.ai,https://www.callerx.ai").split(",")
+    os.environ.get("ALLOWED_ORIGINS", "https://callerx.ai,https://www.callerx.ai,http://localhost:3000,http://localhost:3001").split(",")
     if o.strip()
 ]
 
