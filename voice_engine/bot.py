@@ -346,9 +346,9 @@ class VoiceAgent:
         tts = DeepgramTTSService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
             encoding="linear16",
+            sample_rate=8000,
             settings=DeepgramTTSService.Settings(
-                voice=self.agent_config.get("voice_id", "aura-2-thalia-en"),
-                sample_rate=8000,
+                voice=self.agent_config.get("voice_id", "aura-2-thalia-en")
             )
         )
 
