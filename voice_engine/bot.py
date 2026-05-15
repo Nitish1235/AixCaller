@@ -32,7 +32,7 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
-from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
+from pipecat.frames.frames import EndFrame, FrameDirection, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 from pipecat.transports.websocket.fastapi import (
@@ -806,10 +806,8 @@ class VoiceAgent:
                 else:
                     greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
 
-            # 1. INSTANT AUDIO: Send text directly to TTS, bypassing the LLM completely
-            await task.queue_frames([
-                TTSSpeakFrame(text=greeting_text)
-            ])
+            # 1. INSTANT AUDIO: Send directly to TTS service to bypass LLM/STT stages
+            await tts.process_frame(TTSSpeakFrame(text=greeting_text), FrameDirection.DOWNSTREAM)
 
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said
             context.add_message({"role": "assistant", "content": greeting_text})
