@@ -176,7 +176,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             "system_prompt": agent.system_prompt,
                             "voice_id": agent.voice_id,
                             "agent_id": str(agent.id),
-                            "idle_timeout": agent.idle_timeout or 7,
+                            "idle_timeout": agent.idle_timeout or 15,
                             "llm_temperature": agent.llm_temperature or 0.7,
                             "language": agent.language or "en",
                             "is_recovery": decoded.get("is_recovery", False),

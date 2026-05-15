@@ -6,10 +6,8 @@ import json
 from typing import Optional
 from loguru import logger
 
-# ── Pipecat: Audio ──────────────────────────────────────────────────────────
-# ── Pipecat: Audio ──────────────────────────────────────────────────────────
-from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.audio.vad.vad_analyzer import VADParams
+# ── VAD (shared singleton session — loaded once at startup) ─────────────────
+from voice_engine.preload import create_phone_vad
 
 # ── Pipecat: Pipeline ────────────────────────────────────────────────────────
 from pipecat.pipeline.pipeline import Pipeline
@@ -32,7 +30,7 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
-from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
+from pipecat.frames.frames import EndFrame, FrameDirection, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 from pipecat.transports.websocket.fastapi import (
@@ -648,19 +646,9 @@ class VoiceAgent:
             ]
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
-        # VAD with PHONE-tuned params (defaults are too strict for 8kHz PCMU phone audio).
-        # NOTE: We instantiate fresh per call because Silero has per-call internal state
-        # (self._state, self._context) that must not be shared. Preload at startup just
-        # warms the ONNX runtime + OS file cache so this instantiation is fast.
-        phone_vad = SileroVADAnalyzer(
-            sample_rate=8000,
-            params=VADParams(
-                confidence=0.5,    # ↓ from 0.7 (phone has noise)
-                min_volume=0.15,   # ↓ from 0.6 (phone audio is quiet)
-                start_secs=0.15,   # ↓ from 0.2 (faster start)
-                stop_secs=0.4,     # ↑ from 0.2 (allow natural pauses)
-            )
-        )
+        # Per-call cost: state tensor allocation only (~microseconds).
+        # The 90 MiB ONNX session is the shared singleton loaded at startup.
+        phone_vad = create_phone_vad()
         aggregators = LLMContextAggregatorPair(
             context,
             user_params=LLMUserAggregatorParams(
@@ -806,10 +794,8 @@ class VoiceAgent:
                 else:
                     greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
 
-            # 1. INSTANT AUDIO: Send text directly to TTS, bypassing the LLM completely
-            await task.queue_frames([
-                TTSSpeakFrame(text=greeting_text)
-            ])
+            # 1. INSTANT AUDIO: Send directly to TTS service to bypass LLM/STT stages
+            await tts.process_frame(TTSSpeakFrame(text=greeting_text), FrameDirection.DOWNSTREAM)
 
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said
             context.add_message({"role": "assistant", "content": greeting_text})
