@@ -31,7 +31,6 @@ from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
 from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
-from pipecat.processors.frame_processor import FrameDirection
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 from pipecat.transports.websocket.fastapi import (
@@ -799,8 +798,15 @@ class VoiceAgent:
                 else:
                     greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
 
-            # 1. INSTANT AUDIO: Send directly to TTS service to bypass LLM/STT stages
-            await tts.process_frame(TTSSpeakFrame(text=greeting_text), FrameDirection.DOWNSTREAM)
+            # 1. GREETING AUDIO: Queue through the pipeline task.
+            # Do NOT call tts.process_frame() directly here — Pipecat 1.2.0's TTS service
+            # uses a context system (_playing_context_id) that is only initialised AFTER
+            # StartFrame propagates through the pipeline. Calling process_frame() before
+            # that point means _audio_context_task_handler hasn't started yet, so
+            # get_active_audio_context_id() returns None and every audio chunk is silently
+            # dropped. queue_frames() buffers the TTSSpeakFrame and processes it the moment
+            # the pipeline is ready (<10ms after on_connected fires).
+            await self.task.queue_frames([TTSSpeakFrame(text=greeting_text)])
 
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said
             context.add_message({"role": "assistant", "content": greeting_text})
