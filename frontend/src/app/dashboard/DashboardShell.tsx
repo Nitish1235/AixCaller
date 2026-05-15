@@ -70,6 +70,7 @@ export default function DashboardShell({ user, children }: { user: User; childre
         width: 250, flexShrink: 0, background: "var(--text)", borderRight: "var(--border)",
         display: "flex", flexDirection: "column",
         position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50,
+        overflowY: "auto"
       }}>
         {/* Brand */}
         <div style={{ padding: "1.5rem 1.25rem 1.25rem", borderBottom: "2px solid #334155" }}>
