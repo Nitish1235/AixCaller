@@ -46,8 +46,31 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
     if (waveRef.current) clearInterval(waveRef.current);
     recRef.current?.stop();
     streamRef.current?.getTracks().forEach(t => t.stop());
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.close();
     wsRef.current = null; recRef.current = null; streamRef.current = null;
+  }, []);
+
+  const audioQueueRef = useRef<AudioBuffer[]>([]);
+  const isPlayingRef = useRef(false);
+
+  const playNextInQueue = useCallback(() => {
+    if (audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      setAiSpeaking(false);
+      return;
+    }
+    isPlayingRef.current = true;
+    setAiSpeaking(true);
+    const buffer = audioQueueRef.current.shift();
+    if (!ctxRef.current) return;
+    const src = ctxRef.current.createBufferSource();
+    src.buffer = buffer!;
+    src.connect(ctxRef.current.destination);
+    srcRef.current = src;
+    src.onended = () => playNextInQueue();
+    src.start();
   }, []);
 
   const playAudio = useCallback(async (b64: string) => {
@@ -56,19 +79,16 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
       const ctx = ctxRef.current;
       if (ctx.state === "suspended") await ctx.resume();
       
-      // Stop previous audio if still playing
-      if (srcRef.current) {
-        try { srcRef.current.stop(); } catch {}
-      }
-
       const raw = atob(b64); const buf = new ArrayBuffer(raw.length); const view = new Uint8Array(buf);
       for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
       const decoded = await ctx.decodeAudioData(buf);
-      const src = ctx.createBufferSource(); src.buffer = decoded; src.connect(ctx.destination);
-      srcRef.current = src;
-      setAiSpeaking(true); src.start(); src.onended = () => setAiSpeaking(false);
+      
+      audioQueueRef.current.push(decoded);
+      if (!isPlayingRef.current) {
+        playNextInQueue();
+      }
     } catch { setAiSpeaking(false); }
-  }, []);
+  }, [playNextInQueue]);
 
 
   const start = useCallback(async () => {
@@ -96,6 +116,8 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
         const msg = JSON.parse(e.data);
         if (msg.type === "tts_audio") await playAudio(msg.data);
         else if (msg.type === "interrupt") {
+          audioQueueRef.current = [];
+          isPlayingRef.current = false;
           if (srcRef.current) {
             try { srcRef.current.stop(); } catch {}
             srcRef.current = null;

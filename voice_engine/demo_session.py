@@ -39,48 +39,94 @@ async def run_demo_session(websocket: WebSocket):
         except Exception:
             pass
 
-    async def call_llm(history: list) -> str:
+    async def call_llm_stream(history: list):
         from openai import AsyncOpenAI
+        import re
         client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         resp = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=history,
             max_tokens=80,
-            temperature=0.5
+            temperature=0.5,
+            stream=True
         )
-        return resp.choices[0].message.content.strip()
+        buffer = ""
+        async for chunk in resp:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                buffer += delta
+                match = re.search(r'([.!?]+(?:\s+|\n))', buffer)
+                if match:
+                    split_idx = match.end()
+                    sentence = buffer[:split_idx].strip()
+                    buffer = buffer[split_idx:]
+                    if sentence:
+                        yield sentence
+        if buffer.strip():
+            yield buffer.strip()
 
-    async def speak(text: str):
-        state["is_speaking"] = True
+    async def get_tts(text_chunk: str):
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 resp = await client.post(
                     "https://api.deepgram.com/v1/speak",
-                    json={"text": text},
+                    json={"text": text_chunk},
                     headers={"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"},
                     params={"model": "aura-asteria-en", "encoding": "mp3"}
                 )
                 if resp.status_code == 200:
-                    audio_b64 = base64.b64encode(resp.content).decode()
-                    await send({"type": "tts_audio", "data": audio_b64})
-                else:
-                    logger.error(f"Deepgram TTS failed: {resp.status_code} {resp.text}")
-        except asyncio.CancelledError:
-            raise
+                    return base64.b64encode(resp.content).decode()
         except Exception as e:
             logger.error(f"Demo TTS error: {e}")
+        return None
+
+    # Used for the initial greeting
+    async def speak(text: str):
+        state["is_speaking"] = True
+        try:
+            audio_b64 = await get_tts(text)
+            if audio_b64:
+                await send({"type": "tts_audio", "data": audio_b64})
         finally:
             state["is_speaking"] = False
 
     async def generate_response(text: str):
         state["is_generating"] = True
+        full_response = ""
+        tts_queue = asyncio.Queue()
+        playback_task = None
+        
+        async def playback_worker():
+            state["is_speaking"] = True
+            try:
+                while True:
+                    task = await tts_queue.get()
+                    if task is None:
+                        break
+                    audio_b64 = await task
+                    if audio_b64:
+                        await send({"type": "tts_audio", "data": audio_b64})
+            except asyncio.CancelledError:
+                pass
+            finally:
+                state["is_speaking"] = False
+
         try:
+            playback_task = asyncio.create_task(playback_worker())
             conversation_history.append({"role": "user", "content": text})
-            response = await call_llm(conversation_history)
-            conversation_history.append({"role": "assistant", "content": response})
-            await speak(response)
+            
+            async for sentence in call_llm_stream(conversation_history):
+                full_response += sentence + " "
+                task = asyncio.create_task(get_tts(sentence))
+                await tts_queue.put(task)
+                
+            await tts_queue.put(None)
+            conversation_history.append({"role": "assistant", "content": full_response.strip()})
+            await playback_task
         except asyncio.CancelledError:
             logger.info("Demo LLM/TTS generation interrupted")
+            if playback_task:
+                playback_task.cancel()
             if conversation_history and conversation_history[-1]["role"] == "user":
                 conversation_history.pop()
         except Exception as e:
