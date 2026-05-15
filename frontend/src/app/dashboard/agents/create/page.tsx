@@ -1,23 +1,9 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { fetchVoices, createAgent as createAgentApi, apiPost, API_BASE_URL } from "@/lib/api";
+import { fetchVoices, createAgent as createAgentApi, apiPost, API_BASE_URL, getTenantId } from "@/lib/api";
 
-const getTenantId = () => {
-  if (typeof window === "undefined") return "00000000-0000-0000-0000-000000000000";
-  const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
-  let tid = match ? decodeURIComponent(match[1]) : null;
-  
-  if (tid) {
-    localStorage.setItem("tenant_id", tid);
-    return tid;
-  }
-  
-  return localStorage.getItem("tenant_id") || "00000000-0000-0000-0000-000000000000";
-};
-
-const TENANT_ID = getTenantId();
-// Removed hardcoded API_URL
+// Removed top-level TENANT_ID constant
 
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -155,12 +141,13 @@ export default function CreateAgentPage() {
   /* ── Step 1: Create agent ── */
   const createAgent = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError("");
+    const tid = getTenantId();
     try {
       const agent = await createAgentApi({
         name,
         business_name: businessName.trim() || null,
         system_prompt: prompt,
-        tenant_id: TENANT_ID,
+        tenant_id: tid,
         voice_id: voice,
       });
       setAgentId(agent.id);
@@ -222,8 +209,9 @@ export default function CreateAgentPage() {
 
   const claimNumber = async (phone: string) => {
     if (!agentId) return; setLoading(true);
+    const tid = getTenantId();
     try {
-      await apiPost("/numbers/purchase", { phone_number: phone, tenant_id: TENANT_ID, agent_id: agentId });
+      await apiPost("/numbers/purchase", { phone_number: phone, tenant_id: tid, agent_id: agentId });
       router.push(`/dashboard/agents/${agentId}`);
     } catch (err: any) { setError(err.message); }
     setLoading(false);

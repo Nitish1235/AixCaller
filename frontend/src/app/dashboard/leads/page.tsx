@@ -1,22 +1,17 @@
 "use client";
 import { useState, useEffect } from "react";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch, getTenantId } from "@/lib/api";
 
-const getTenantId = () => {
-  if (typeof document === "undefined") return "00000000-0000-0000-0000-000000000000";
-  const match = document.cookie.match(/(?:^|; )tenant_id=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : "00000000-0000-0000-0000-000000000000";
-};
-
-const TENANT_ID = getTenantId();
+// Removed top-level TENANT_ID constant
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadLeads = async () => {
+    const tid = getTenantId();
     try {
-      const data = await apiGet(`/leads?tenant_id=${TENANT_ID}`);
+      const data = await apiGet(`/leads?tenant_id=${tid}`);
       if (data && data.leads) {
         setLeads(data.leads);
       }

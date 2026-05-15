@@ -275,9 +275,10 @@ export default function AgentDetailsPage() {
 
   const claimNumber = async (phone: string) => {
     setProvLoading(true); setProvError("");
+    const tid = getTenantId();
     try {
-      await apiPost("/numbers/purchase", { phone_number: phone, tenant_id: TENANT_ID, agent_id: id });
-      const list = await fetchAgents(TENANT_ID);
+      await apiPost("/numbers/purchase", { phone_number: phone, tenant_id: tid, agent_id: id });
+      const list = await fetchAgents(tid);
       const updated = list.find((a: any) => a.id === id);
       if (updated) setAgent(updated);
       setProvisioning(false);
