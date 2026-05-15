@@ -30,7 +30,8 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
-from pipecat.frames.frames import EndFrame, FrameDirection, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
+from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
+from pipecat.processors.frame_processor import FrameDirection
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 from pipecat.transports.websocket.fastapi import (
