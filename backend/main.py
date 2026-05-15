@@ -26,7 +26,7 @@ try:
     from shared.database import engine, get_db
     from shared.models import Agent, Tenant, CallRecord
     from backend.services.kb import IngestionService
-    from backend.services.outbound_dialer import process_missed_call
+    from backend.services.outbound_dialer import schedule_missed_call, execute_missed_call
     from backend.api import admin, dashboard, kb, billing, live, telegram, numbers
     from backend.api import shopify as shopify_api
     from backend.api import zoho as zoho_api
@@ -70,7 +70,8 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     """
     form = await request.form()
     to_number = form.get("To")
-    call_uuid = form.get("CallUUID")
+    from_number = form.get("From")
+    call_uuid = form.get("CallSid")  # Telnyx uses CallSid
 
     # DB Lookup
     statement = select(Agent).where(Agent.phone_number == to_number)
@@ -90,6 +91,8 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         "tenant_id": str(agent.tenant_id),
         "agent_id": str(agent.id),
         "voice_id": agent.voice_id,
+        "from_number": from_number,
+        "to_number": to_number,
         "exp": time.time() + 300
     }
     signed_token = jwt.encode(token_payload, _JWT_SECRET, algorithm="HS256")
@@ -133,7 +136,7 @@ async def upload_kb(request: Request, tenant_id: str, agent_id: str, content: st
 @app.post("/call-status")
 async def handle_call_status(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
-    Receives Plivo's Hangup/Status webhooks.
+    Receives Telnyx TeXML Hangup/Status webhooks.
     Flags missed calls and triggers the recovery dialer.
     """
     form = await request.form()
@@ -160,12 +163,26 @@ async def handle_call_status(request: Request, background_tasks: BackgroundTasks
             
             # Trigger background callback in 60 seconds ONLY if enabled
             if agent.auto_callback_enabled:
-                background_tasks.add_task(process_missed_call, new_call.id, 60)
+                await schedule_missed_call(new_call.id, 60, background_tasks)
                 logger.info(f"Missed call detected from {from_number}. Recovery scheduled.")
             else:
                 logger.info(f"Missed call from {from_number}. Auto-callback is disabled.")
 
     return {"status": "received"}
+
+@app.post("/api/v1/internal/dial-recovery")
+async def dial_recovery_endpoint(request: Request, data: dict):
+    """
+    Internal endpoint hit by Google Cloud Tasks to execute delayed outbound recovery calls.
+    """
+    if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
+    call_record_id = data.get("call_record_id")
+    if not call_record_id:
+        raise HTTPException(status_code=400, detail="Missing call_record_id")
+    
+    await execute_missed_call(uuid.UUID(call_record_id))
+    return {"status": "executed"}
 
 @app.post("/outbound-answer")
 async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)):

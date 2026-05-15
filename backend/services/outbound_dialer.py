@@ -1,21 +1,77 @@
 import asyncio
 import os
 import uuid
-import jwt
-import time
+import json
 import httpx
+from datetime import datetime, timedelta
 from loguru import logger
-from sqlmodel import Session, select
+from sqlmodel import Session
 from shared.database import engine
 from shared.models import CallRecord, Agent
 
-async def process_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60):
+async def schedule_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60, background_tasks = None):
     """
-    Background task that waits for the specified delay, then initiates an outbound call
-    if the call is still marked as requires_callback.
+    Schedules an outbound recovery call.
+    Uses Google Cloud Tasks if configured (required for Cloud Run),
+    otherwise falls back to FastAPI BackgroundTasks for local development.
     """
-    logger.info(f"Scheduled recovery call for {call_record_id} in {delay_seconds}s")
-    await asyncio.sleep(delay_seconds)
+    gcp_project = os.environ.get("GCP_PROJECT_ID")
+    gcp_location = os.environ.get("GCP_LOCATION")
+    gcp_queue = os.environ.get("GCP_QUEUE_NAME")
+    server_host = os.environ.get("SERVER_HOST")
+    internal_key = os.environ.get("INTERNAL_API_KEY", "")
+
+    if gcp_project and gcp_location and gcp_queue and server_host:
+        # Enqueue via Google Cloud Tasks
+        try:
+            from google.cloud import tasks_v2
+            from google.protobuf import timestamp_pb2
+
+            client = tasks_v2.CloudTasksClient()
+            parent = client.queue_path(gcp_project, gcp_location, gcp_queue)
+
+            url = f"https://{server_host}/api/v1/internal/dial-recovery"
+            payload = {"call_record_id": str(call_record_id)}
+            
+            task = {
+                "http_request": {
+                    "http_method": tasks_v2.HttpMethod.POST,
+                    "url": url,
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "X-Internal-Key": internal_key
+                    },
+                    "body": json.dumps(payload).encode(),
+                }
+            }
+
+            # Set delay
+            d = datetime.utcnow() + timedelta(seconds=delay_seconds)
+            timestamp = timestamp_pb2.Timestamp()
+            timestamp.FromDatetime(d)
+            task["schedule_time"] = timestamp
+
+            response = client.create_task(request={"parent": parent, "task": task})
+            logger.info(f"☁️ Scheduled Cloud Task for recovery call {call_record_id}: {response.name}")
+        except Exception as e:
+            logger.error(f"Failed to schedule Cloud Task: {e}")
+    else:
+        # Fallback to local asyncio sleep (will NOT survive Cloud Run CPU throttling)
+        logger.warning("Google Cloud Tasks not fully configured. Falling back to local BackgroundTask.")
+        if background_tasks:
+            async def _delayed_execution():
+                await asyncio.sleep(delay_seconds)
+                await execute_missed_call(call_record_id)
+            background_tasks.add_task(_delayed_execution)
+        else:
+            logger.error("No background_tasks provided for local execution fallback.")
+
+
+async def execute_missed_call(call_record_id: uuid.UUID):
+    """
+    Executes the outbound call. Triggered either locally or via Cloud Tasks webhook.
+    """
+    logger.info(f"Executing recovery call for {call_record_id}")
     
     with Session(engine) as db:
         call = db.get(CallRecord, call_record_id)
@@ -69,6 +125,7 @@ async def process_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60
             
             # Save the outbound call record to link it
             outbound_call = CallRecord(
+                id=uuid.uuid4(),
                 tenant_id=call.tenant_id,
                 agent_id=call.agent_id,
                 from_number=agent.phone_number,
@@ -82,7 +139,3 @@ async def process_missed_call(call_record_id: uuid.UUID, delay_seconds: int = 60
             
         except Exception as e:
             logger.error(f"Failed to initiate outbound call via Telnyx: {e}")
-            # Optionally revert callback requirement if failed
-            # call.requires_callback = True
-            # db.add(call)
-            # db.commit()

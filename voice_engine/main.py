@@ -190,8 +190,8 @@ async def websocket_endpoint(websocket: WebSocket):
                             "call_control_id": call_control_id,
                             "call_session_id": call_session_id,
                             # Caller's incoming phone (for Shopify caller-ID verification)
-                            "from_number":     start_data.get("from"),
-                            "to_number":       start_data.get("to"),
+                            "from_number":     decoded.get("from_number", "unknown"),
+                            "to_number":       decoded.get("to_number", "unknown"),
                             "tools_config": agent.tools_config or {}
                         }
                         # Inject tenant-level integration status

@@ -191,6 +191,15 @@ class VoiceAgent:
         # Give the farewell TTS ~2.5 seconds to play out before hanging up
         async def _delayed_hangup():
             await asyncio.sleep(2.5)
+            
+            # Gracefully stop Pipecat pipeline to free server resources
+            if self.task:
+                try:
+                    from pipecat.frames.frames import EndFrame
+                    await self.task.queue_frames([EndFrame()])
+                except Exception as e:
+                    logger.warning(f"Failed to push EndFrame: {e}")
+
             try:
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     resp = await client.post(
@@ -768,7 +777,7 @@ class VoiceAgent:
                 enable_metrics=True,
                 enable_usage_metrics=True,
             ),
-            idle_timeout_secs=15,  # Reduced from 30 for better responsiveness on silence
+            idle_timeout_secs=self.agent_config.get("idle_timeout", 15),
         )
         # Expose task to tool functions so they can push filler audio (TTSSpeakFrame)
         # while long-running operations like KB search are in progress.

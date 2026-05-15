@@ -6,8 +6,8 @@ The platform consists of three Cloud Run services:
 
 | Service | Description | Port |
 |---|---|---|
-| `aixcaller-backend` | FastAPI — Plivo webhooks, dashboard API, Telegram | 8080 |
-| `aixcaller-voice-engine` | FastAPI — Plivo WebSocket `/ws`, Browser Demo `/demo` | 8080 |
+| `aixcaller-backend` | FastAPI — Telnyx webhooks, dashboard API, Telegram | 8080 |
+| `aixcaller-voice-engine` | FastAPI — Telnyx WebSocket `/ws`, Browser Demo `/demo` | 8080 |
 | `aixcaller-frontend` | Next.js — User dashboard & landing page | 3000 |
 
 > **Infrastructure Note:** AIxCaller uses **Supabase (PostgreSQL + pgvector)** as its only database.
@@ -85,8 +85,7 @@ Instead of pasting API keys directly into Cloud Run environment variables, store
 | `OPENAI_API_KEY` | OpenAI key — used for KB embeddings (`text-embedding-3-small`) |
 | `DEEPGRAM_API_KEY` | Your Deepgram STT/TTS key |
 | `XAI_API_KEY` | Your xAI / Grok LLM key |
-| `PLIVO_AUTH_ID` | Your Plivo Auth ID |
-| `PLIVO_AUTH_TOKEN` | Your Plivo Auth Token |
+| `TELNYX_API_KEY` | Your Telnyx API Key V2 |
 | `JWT_SECRET` | A long random string (min 32 chars) |
 | `TELEGRAM_BOT_TOKEN` | Token from @BotFather |
 
@@ -131,6 +130,7 @@ Instead of pasting API keys directly into Cloud Run environment variables, store
    - Under **Variables & Secrets**, add the following as **Secret References**:
      - `DEEPGRAM_API_KEY`
      - `XAI_API_KEY`
+     - `TELNYX_API_KEY`
      - `JWT_SECRET`
      - `DATABASE_URL`
    - Add as plain **Environment Variables**:
@@ -156,8 +156,7 @@ Instead of pasting API keys directly into Cloud Run environment variables, store
      - `DATABASE_DIRECT_URL`
      - `OPENAI_API_KEY`
      - `DEEPGRAM_API_KEY`
-     - `PLIVO_AUTH_ID`
-     - `PLIVO_AUTH_TOKEN`
+     - `TELNYX_API_KEY`
      - `JWT_SECRET`
      - `TELEGRAM_BOT_TOKEN`
    - Add as plain **Environment Variables**:
@@ -216,20 +215,20 @@ Run the database initialization script **once** after first deploy. This will:
 
 ---
 
-## Step 8 — Configure Plivo Webhooks
+## Step 8 — Configure Telnyx Webhooks
 
-1. Log into your [Plivo Console](https://console.plivo.com).
-2. Navigate to **Phone Numbers → Your Number → Edit**.
-3. Set the following URLs:
+1. Log into your [Telnyx Portal](https://portal.telnyx.com).
+2. Navigate to **Voice → Call Control Applications**.
+3. Create a **TeXML Application** and set the following URLs:
 
 | Webhook | URL |
 |---|---|
-| Answer URL | `https://aixcaller-backend-xxxx.a.run.app/incoming-call` |
-| Hangup URL | `https://aixcaller-backend-xxxx.a.run.app/call-status` |
+| Send Webhook To (Answer) | `https://aixcaller-backend-xxxx.a.run.app/incoming-call` |
+| Status Callback | `https://aixcaller-backend-xxxx.a.run.app/call-status` |
 
-4. Click **Update**.
+4. Assign this TeXML Application to your Telnyx phone number.
 
-> The `Hangup URL` powers **Missed Call Auto-Recovery**. Plivo calls this endpoint on every call end, which the backend uses to detect missed calls and schedule automatic callbacks.
+> The `Status Callback` powers **Missed Call Auto-Recovery**. Telnyx calls this endpoint on every call end, which the backend uses to detect missed calls and schedule automatic callbacks.
 
 ---
 
@@ -255,7 +254,7 @@ This is a one-time setup that connects your Telegram bot to your backend.
 | Frontend is live | Open the frontend URL — landing page should appear |
 | Demo works | Click 🎤 on the landing page, grant mic access, talk to the AI |
 | pgvector KB works | Upload a document in the dashboard → make a call and ask a question from it |
-| Inbound call works | Call your Plivo number — AI should answer |
+| Inbound call works | Call your Telnyx number — AI should answer |
 | Missed call recovery | Call and hang up before AI answers — you should get a callback in 60s |
 | Telegram alerts | Connect Telegram from the Integrations page, make a call, check Telegram |
 
@@ -270,10 +269,10 @@ This is a one-time setup that connects your Telegram bot to your backend.
   Browser ─────────▶  aixcaller-frontend (Next.js)  │
                     │          :3000                 │
                     │              │                 │
-  Plivo ────────────▶  aixcaller-backend (FastAPI)  │
+  Telnyx ───────────▶  aixcaller-backend (FastAPI)  │
   Telegram ─────────▶        :8080                  │
                     │              │                 │
-  Plivo Audio ──────▶  aixcaller-voice-engine       │
+  Telnyx Audio ─────▶  aixcaller-voice-engine       │
   Browser Demo ─────▶        :8080 /ws /demo        │
                     │                                │
                     └────────────────────────────────┘
@@ -300,8 +299,7 @@ This is a one-time setup that connects your Telegram bot to your backend.
 | `OPENAI_API_KEY` | Backend | OpenAI `text-embedding-3-small` for KB vectors |
 | `DEEPGRAM_API_KEY` | Backend, Voice Engine | Deepgram STT & TTS |
 | `XAI_API_KEY` | Voice Engine | xAI / Grok LLM API key |
-| `PLIVO_AUTH_ID` | Backend, Voice Engine | Plivo account ID |
-| `PLIVO_AUTH_TOKEN` | Backend, Voice Engine | Plivo account token |
+| `TELNYX_API_KEY` | Backend, Voice Engine, Dialer | Telnyx API Key V2 |
 | `JWT_SECRET` | Backend, Voice Engine | Shared JWT signing secret |
 | `SERVER_HOST` | Backend | Backend hostname (no `https://`) |
 | `VOICE_ENGINE_URL` | Backend | `wss://` URL to Voice Engine `/ws` |
