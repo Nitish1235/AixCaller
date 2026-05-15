@@ -61,7 +61,7 @@ class GoodbyeDetector(FrameProcessor):
         self.agent = agent
 
     async def process_frame(self, frame, direction):
-        await self.push_frame(frame, direction)
+        await super().process_frame(frame, direction)
         if isinstance(frame, TextFrame):
             text = frame.text.lower()
             if any(k in text for k in self.agent.GOODBYE_KEYWORDS):
@@ -347,7 +347,8 @@ class VoiceAgent:
             api_key=os.environ["DEEPGRAM_API_KEY"],
             encoding="linear16",
             settings=DeepgramTTSService.Settings(
-                voice=self.agent_config.get("voice_id", "aura-2-thalia-en")
+                voice=self.agent_config.get("voice_id", "aura-2-thalia-en"),
+                sample_rate=8000,
             )
         )
 

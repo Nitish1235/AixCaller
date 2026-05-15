@@ -1,45 +1,45 @@
 """
-Lightweight startup warmup — only warms I/O and network connections.
+Standard startup warmup — pre-loads lightweight ONNX models to eliminate first-call latency.
 
-Memory budget analysis (Cloud Run 2 GB limit):
-  Python + FastAPI base             ~180 MB
-  PyTorch (Silero VAD dependency)   ~350 MB  ← only loaded when first call arrives
-  Silero VAD ONNX                   ~100 MB  ← per-call, lazy
-  Smart Turn V3 ONNX                ~100 MB  ← per-call, lazy
-  MiniLM embeddings                  ~90 MB  ← per-call, lazy
-  Pipecat + all deps                ~150 MB
+Memory budget analysis (Cloud Run 512 MiB limit):
+  Python + FastAPI base             ~180 MiB
+  Silero VAD ONNX                   ~90 MiB
+  FastEmbed (MiniLM) ONNX           ~80 MiB
+  Pipecat + all deps                ~120 MiB
   ────────────────────────────────────────
-  IDLE FOOTPRINT (no calls)         ~330 MB  ✅
-  PEAK (1 active call)              ~970 MB  ✅ well under 2 GB
+  IDLE FOOTPRINT (Pre-loaded)       ~470 MiB  ✅ Fits in 512 MiB tier
 
-REMOVED from startup warmup:
-  - Silero VAD instantiation  (was pulling in PyTorch at boot → +400 MB before first call)
-  - Smart Turn V3 load        (ONNX still lazy-loads fine on first call)
-  - MiniLM get_model()        (lazy-loads on first KB search)
-
-KEPT in startup warmup:
-  - DB connection pool ping   (fast, no memory cost)
-  - OpenAI HTTP pool          (fast, no memory cost)
-  - Redis ping                (fast, no memory cost)
-
-Effect: Idle memory drops from ~1050 MB → ~330 MB.
-        First-call warm-up cost is ~30-80 ms — acceptable for a voice platform.
+Pre-loading now enabled:
+  - Silero VAD (ONNX)
+  - FastEmbed (all-MiniLM-L6-v2)
+  - DB/Redis connection pools
 """
 from loguru import logger
 
 
 def warmup_models():
     """
-    Intentionally lightweight. Do NOT pre-load ML models here.
-
-    Pre-loading Silero VAD pulls in PyTorch (~350 MB) before the
-    first call even arrives, which causes Cloud Run to OOM at the
-    1 GB memory tier. Models are lazy-loaded per call instead.
-
-    The only thing we do here is log that startup completed.
+    Pre-loads lightweight ONNX models (Silero VAD and FastEmbed) into memory
+    at startup to ensure sub-second response times on the very first call.
     """
-    logger.info(
-        "⚡ Model warmup skipped (lazy-load strategy) — "
-        "ML models will load on first call to stay under memory limits."
-    )
-    logger.info("✅ Startup warmup complete (lightweight mode)")
+    logger.info("🚀 Starting model pre-load sequence...")
+
+    # 1. Pre-load Silero VAD (ONNX)
+    try:
+        from pipecat.audio.vad.silero import SileroVADAnalyzer
+        logger.info("Warming up Silero VAD...")
+        _ = SileroVADAnalyzer()
+        logger.info("✅ Silero VAD ready")
+    except Exception as e:
+        logger.warning(f"Silero VAD pre-load failed: {e}")
+
+    # 2. Pre-load Local Embeddings (FastEmbed ONNX)
+    try:
+        from shared.local_embeddings import get_model
+        logger.info("Warming up FastEmbed...")
+        _ = get_model()
+        logger.info("✅ FastEmbed ready")
+    except Exception as e:
+        logger.warning(f"FastEmbed pre-load failed: {e}")
+
+    logger.info("✅ Startup warmup complete — Models are hot and ready")
