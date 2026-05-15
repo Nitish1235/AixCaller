@@ -67,6 +67,13 @@ class GoodbyeDetector(FrameProcessor):
                 # Trigger hangup in background
                 import asyncio
                 asyncio.create_task(self.agent.trigger_hangup())
+        # CRITICAL: always forward every frame downstream.
+        # Pipecat's base process_frame is a no-op — subclasses are responsible
+        # for calling push_frame. Without this line, StartFrame never reaches
+        # the TTS service (so _audio_context_task never starts and _playing_context_id
+        # stays None), LLM text never reaches TTS, and _wait_for_pipeline_start
+        # never resolves — breaking the entire pipeline silently.
+        await self.push_frame(frame, direction)
 
 class VoiceAgent:
     # Filler phrases — randomized so it doesn't sound robotic
