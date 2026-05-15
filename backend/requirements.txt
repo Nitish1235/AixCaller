@@ -20,5 +20,5 @@ python-multipart
 resend
 bcrypt
 redis>=5.0.0
-sentence-transformers>=2.7.0
+fastembed>=0.2.7
 google-cloud-tasks

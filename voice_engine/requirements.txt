@@ -14,4 +14,4 @@ PyJWT
 deepgram-sdk>=3.4.0
 websockets
 redis>=5.0.0
-sentence-transformers>=2.7.0
+fastembed>=0.2.7

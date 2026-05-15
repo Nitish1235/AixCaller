@@ -1,19 +1,15 @@
 """
-Local sentence-transformers embeddings using all-MiniLM-L6-v2.
+Local embeddings using FastEmbed (all-MiniLM-L6-v2).
 
-Why local?
-  - 5-10ms per query vs 150-300ms for OpenAI API (network hop saved)
-  - $0 ongoing cost vs OpenAI embedding fees
+Why FastEmbed?
+  - Uses ONNX Runtime: ~150MB RAM vs ~500MB+ for PyTorch
+  - Perfect for memory-constrained environments like Cloud Run (512MB tier)
+  - 5-10ms per query (comparable to sentence-transformers)
+  - $0 ongoing cost
   - No rate limits
-  - Works offline
 
 Model details:
   - all-MiniLM-L6-v2 is ~80MB, 384-dim output
-  - Trained on 1B+ sentence pairs, MTEB score ~58
-  - Quality is slightly below OpenAI text-embedding-3-small (~63) but
-    perfectly adequate for FAQ-style voice agent KBs
-
-Loaded ONCE per process at startup (via preload.py).
 """
 from typing import List, Optional
 from loguru import logger
@@ -25,14 +21,15 @@ _model = None
 
 
 def get_model():
-    """Lazy-load the SentenceTransformer model. Thread-safe enough for our use."""
+    """Lazy-load the FastEmbed model. Much lighter than sentence-transformers."""
     global _model
     if _model is None:
         try:
-            from sentence_transformers import SentenceTransformer
+            from fastembed import TextEmbedding
             logger.info(f"Loading local embedding model: {MODEL_NAME}")
-            _model = SentenceTransformer(MODEL_NAME, device="cpu")
-            logger.info(f"✅ Loaded {MODEL_NAME} ({EMBEDDING_DIM} dims)")
+            # FastEmbed uses ONNX for ~150MB memory footprint vs ~500MB+ for torch
+            _model = TextEmbedding(model_name=MODEL_NAME)
+            logger.info(f"✅ Loaded {MODEL_NAME} via FastEmbed ({EMBEDDING_DIM} dims)")
         except Exception as e:
             logger.error(f"Failed to load embedding model: {e}")
             raise
@@ -42,14 +39,9 @@ def get_model():
 def embed_texts(texts: List[str]) -> List[List[float]]:
     """Embed a list of texts. Returns list of 384-dim vectors."""
     model = get_model()
-    # normalize_embeddings=True is critical for cosine-similarity search
-    embeddings = model.encode(
-        texts,
-        normalize_embeddings=True,
-        show_progress_bar=False,
-        batch_size=32,
-    )
-    return embeddings.tolist()
+    # FastEmbed returns an iterator of numpy arrays
+    embeddings = list(model.embed(texts))
+    return [e.tolist() for e in embeddings]
 
 
 def embed_query(query: str) -> List[float]:
