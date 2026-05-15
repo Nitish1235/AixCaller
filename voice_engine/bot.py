@@ -376,6 +376,17 @@ class VoiceAgent:
                 + system_prompt
             )
 
+        # ── Human Transfer: Check availability BEFORE building system prompt ──
+        from shared.transfer_hours import is_human_transfer_available
+        transfer_available, transfer_reason = is_human_transfer_available(
+            enabled=self.agent_config.get("human_transfer_enabled", False),
+            forwarding_number=self.agent_config.get("forwarding_number"),
+            timezone=self.agent_config.get("human_transfer_timezone", "UTC"),
+            hours=self.agent_config.get("human_transfer_hours", {}),
+        )
+        self._transfer_off_hours_reason = transfer_reason if not transfer_available else None
+        logger.info(f"Human transfer check: {transfer_available} ({transfer_reason})")
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "system", "content": (
@@ -436,9 +447,7 @@ class VoiceAgent:
                     "like 'Sure, let me transfer you to a team member now — one moment please.' "
                     "and IMMEDIATELY call `transfer_to_human`. The transfer takes ~2 seconds. "
                     "Don't call it for routine questions you can answer from the KB."
-                    if (self._transfer_off_hours_reason is None
-                        and self.agent_config.get("human_transfer_enabled")
-                        and self.agent_config.get("forwarding_number"))
+                    if transfer_available
                     else
                     # OFF-HOURS — tool NOT registered, AI must politely decline + offer alternative
                     f"   Human transfer is NOT available right now. Reason: "
@@ -485,18 +494,7 @@ class VoiceAgent:
             )
         ]
 
-        # ── Human Transfer: only expose the tool if the business has opted in
-        #    AND the current time is within their staffed-hours window ──────
-        from shared.transfer_hours import is_human_transfer_available
-        transfer_available, transfer_reason = is_human_transfer_available(
-            enabled=self.agent_config.get("human_transfer_enabled", False),
-            forwarding_number=self.agent_config.get("forwarding_number"),
-            timezone=self.agent_config.get("human_transfer_timezone", "UTC"),
-            hours=self.agent_config.get("human_transfer_hours", {}),
-        )
-        # Stash the off-hours reason so the system prompt can echo it if asked
-        self._transfer_off_hours_reason = transfer_reason if not transfer_available else None
-        logger.info(f"Human transfer available: {transfer_available} — {transfer_reason}")
+        # (Transfer check moved to top of start())
 
         if transfer_available:
             standard_tools.append(
