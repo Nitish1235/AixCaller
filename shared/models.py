@@ -103,13 +103,13 @@ class CallRecord(SQLModel, table=True):
     to_number: str
     direction: str = Field(default="inbound")
     status: str = Field(default="completed")
-    requires_callback: bool = Field(default=False)
+    requires_callback: Optional[bool] = Field(default=False)
     parent_call_id: Optional[uuid.UUID] = Field(default=None, foreign_key="callrecord.id")
     transcript: Optional[str] = None
     summary: Optional[str] = None
     sentiment: Optional[str] = None
     action_items: Optional[str] = None
-    duration_seconds: int = Field(default=0)  # call duration in seconds
+    duration_seconds: Optional[int] = Field(default=0)  # call duration in seconds
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class VoiceOption(SQLModel, table=True):
