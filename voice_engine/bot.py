@@ -350,6 +350,10 @@ class VoiceAgent:
                 voice=self.agent_config.get("voice_id", "aura-2-thalia-en")
             )
         )
+        # TTSService.__init__ sets _sample_rate=0 and only updates it when StartFrame
+        # propagates through the pipeline. The greeting fires in on_connected BEFORE
+        # StartFrame arrives, so without this line Deepgram receives sample_rate=0 → HTTP 400.
+        tts._sample_rate = 8000
 
         # 5. LLM
         # Source-verified: OpenAILLMService(api_key, settings=Settings(model, temperature))
