@@ -134,10 +134,10 @@ def create_phone_vad():
         vad,
         sample_rate=8000,
         params=VADParams(
-            confidence=0.5,
-            min_volume=0.15,
-            start_secs=0.15,
-            stop_secs=0.4,
+            confidence=0.4,   # lowered from 0.5 — Silero is conservative; 0.4 still avoids false positives
+            min_volume=0.05,  # lowered from 0.15 — PCMU-decoded PCM from Telnyx has lower amplitude than mic audio
+            start_secs=0.2,   # slightly longer to ignore single-syllable noise bursts
+            stop_secs=0.5,    # slightly longer to avoid cutting off mid-sentence pauses
         ),
     )
     vad._model = _SharedSessionSileroModel()

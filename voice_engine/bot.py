@@ -767,6 +767,9 @@ class VoiceAgent:
         ])
 
         # 9. Pipeline Task — sample rates go HERE per official example
+        # Enforce a minimum idle timeout of 30 s regardless of the DB value.
+        # The DB default of 7 s fires before the user can respond to the greeting.
+        _idle_timeout = max(self.agent_config.get("idle_timeout", 30), 30)
         task = PipelineTask(
             pipeline,
             params=PipelineParams(
@@ -775,8 +778,9 @@ class VoiceAgent:
                 enable_metrics=True,
                 enable_usage_metrics=True,
             ),
-            idle_timeout_secs=self.agent_config.get("idle_timeout", 15),
+            idle_timeout_secs=_idle_timeout,
         )
+        logger.info(f"Pipeline idle timeout set to {_idle_timeout}s (DB={self.agent_config.get('idle_timeout')})")
         # Expose task to tool functions so they can push filler audio (TTSSpeakFrame)
         # while long-running operations like KB search are in progress.
         self.task = task
@@ -787,7 +791,12 @@ class VoiceAgent:
         # 10. Event Handlers
         @transport.event_handler("on_client_connected")
         async def on_connected(transport, client):
-            logger.info("Telnyx audio stream connected. Sending instant TTS greeting.")
+            logger.info(
+                f"Telnyx audio stream connected. "
+                f"idle_timeout={_idle_timeout}s | "
+                f"vad=silero(min_vol=0.05, conf=0.4) | "
+                f"Sending TTS greeting."
+            )
             call_started_at["value"] = time.time()
 
             agent_name = self.agent_config.get("name", "our assistant")
