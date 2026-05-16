@@ -353,10 +353,10 @@ class VoiceAgent:
                 voice=self.agent_config.get("voice_id", "aura-2-thalia-en")
             )
         )
-        # TTSService.__init__ sets _sample_rate=0 and only updates it when StartFrame
-        # propagates through the pipeline. The greeting fires in on_connected BEFORE
-        # StartFrame arrives, so without this line Deepgram receives sample_rate=0 → HTTP 400.
-        tts._sample_rate = 8000
+        # NOTE: We no longer hack tts._sample_rate here. The greeting is now queued
+        # via task.queue_frames() which only fires after StartFrame has fully
+        # propagated, so _sample_rate is correctly populated from PipelineParams
+        # by the time the greeting reaches TTS.
 
         # 5. LLM
         # Source-verified: OpenAILLMService(api_key, settings=Settings(model, temperature))
@@ -791,7 +791,7 @@ class VoiceAgent:
             logger.info(
                 f"Telnyx audio stream connected. "
                 f"idle_timeout={_idle_timeout}s | "
-                f"vad=silero(min_vol=0.05, conf=0.4) | "
+                f"vad=silero | audio_passthrough=ON | "
                 f"Sending TTS greeting."
             )
             call_started_at["value"] = time.time()
@@ -811,29 +811,34 @@ class VoiceAgent:
                 else:
                     greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
 
-            # 1. GREETING AUDIO: Inject DIRECTLY into the TTS service — do NOT use
-            # task.queue_frames([TTSSpeakFrame(...)]) for the greeting.
+            # 1. GREETING AUDIO: Queue through the pipeline task.
             #
-            # Why: queue_frames() pushes frames to the pipeline SOURCE, so they travel:
-            #   transport.input → stt → user_aggregator → llm → GoodbyeDetector → tts
-            # When TTSSpeakFrame passes through user_aggregator it can flip internal
-            # turn-detection state (e.g. "bot is speaking"). The resulting
-            # BotStoppedSpeakingFrame only flows DOWNSTREAM (tts → transport.output),
-            # so user_aggregator never sees it and its suppression flag stays set → VAD
-            # is permanently silent after the greeting → user speech never detected.
+            # We previously tried `await tts.process_frame(TTSSpeakFrame, DOWNSTREAM)`
+            # to bypass user_aggregator. That fires BEFORE TTS has received its own
+            # StartFrame, which caused Deepgram to open TWO WebSocket connections
+            # (one from our premature process_frame call, one from StartFrame init)
+            # and the resulting audio was orphaned — "Bot started speaking" never
+            # fired and the caller heard total silence.
             #
-            # The fix: call tts.process_frame() directly. By the time on_client_connected
-            # fires, StartFrame has already propagated through every processor including TTS
-            # (_audio_context_task_handler is running, _playing_context_id is set).
-            # tts._sample_rate is hard-set to 8000 at construction time so the HTTP 400
-            # is also avoided. Audio flows tts → transport.output → Telnyx, bypassing
-            # user_aggregator and LLM entirely.
-            
-            # SMALL STARTUP DELAY: Give the carrier/Telnyx ~500ms to fully bridge 
-            # the media leg before we blast the first audio packets. Prevents 
-            # the first word of the greeting from being clipped.
+            # task.queue_frames() defers the frame inside _push_queue until
+            # _wait_for_pipeline_start resolves (StartFrame has reached the end of
+            # the pipeline). At that point TTS is fully initialized: ONE WebSocket,
+            # correct _sample_rate from PipelineParams, _audio_context_task_handler
+            # already running. The TTSSpeakFrame routes through every processor in
+            # the pipeline but each just passes it through (none of them handle
+            # TTSSpeakFrame except TTS itself).
+            #
+            # The earlier hypothesis that user_aggregator flips VAD suppression on
+            # TTSSpeakFrame was wrong — the real reason "user speech never detected"
+            # was DeepgramSTTService.audio_passthrough=False (default). Audio frames
+            # were consumed at STT and never reached LLMUserAggregator's VAD.
+            # We set audio_passthrough=True above, which is the actual fix.
+
+            # SMALL STARTUP DELAY: give the carrier/Telnyx ~500ms to fully bridge
+            # the media leg before we blast the first audio packets. Prevents the
+            # first syllable of the greeting from being clipped.
             await asyncio.sleep(0.5)
-            await tts.process_frame(TTSSpeakFrame(text=greeting_text), FrameDirection.DOWNSTREAM)
+            await self.task.queue_frames([TTSSpeakFrame(text=greeting_text)])
 
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said
             context.add_message({"role": "assistant", "content": greeting_text})
