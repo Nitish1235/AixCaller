@@ -133,22 +133,27 @@ def create_phone_vad():
     VADAnalyzer.__init__(
         vad,
         sample_rate=8000,
+        # OFFICIAL DEFAULTS — verified against the Pipecat 1.2.0 source and the
+        # official inbound Telnyx example (which uses bare `SileroVADAnalyzer()`).
+        #
+        # Why we MUST match the defaults exactly:
+        #   Pipecat's TurnAnalyzer hardcodes p99 STT latency assumptions that
+        #   assume `stop_secs=0.2`. If stop_secs > STT p99 latency (~0.35s),
+        #   Pipecat's own logs warn:
+        #     "STT wait timeout collapsed to 0s, which may cause delayed turn
+        #      detection specified by the user_turn_stop_timeout parameter"
+        #   We hit exactly this with stop_secs=0.5 — Smart Turn analysis
+        #   stalled for 6.5 s after the caller stopped speaking and the LLM
+        #   never fired.
+        #
+        # min_volume=0.6 and confidence=0.7 are the official mic-audio defaults.
+        # If they prove too strict for quiet phone callers in production, tune
+        # ONLY those two — do NOT touch stop_secs again.
         params=VADParams(
-            # confidence=0.7 is the official default.
-            # 0.4 is used here because Silero can be over-confident on compressed
-            # phone audio (PCMU µ-law at 8kHz has less high-frequency detail than
-            # 16kHz mic audio), so a slightly lower threshold catches more real speech.
-            confidence=0.4,
-            # Official default is 0.6 which works for mic audio.
-            # PCMU-decoded phone audio normalised to [-1, 1] typically peaks at
-            # 0.1–0.3 for normal handset speech — 0.6 would silently filter it all.
-            # 0.05 catches quiet callers while still rejecting sub-threshold line noise.
-            min_volume=0.05,
-            # Official default: 0.2s. Keep as-is — balanced for phone conversations.
+            confidence=0.7,
             start_secs=0.2,
-            # Official default: 0.2s. 0.5s gives more tolerance for natural pauses
-            # mid-sentence on phone calls (latency + thinking pauses are common).
-            stop_secs=0.5,
+            stop_secs=0.2,
+            min_volume=0.6,
         ),
     )
     vad._model = _SharedSessionSileroModel()
