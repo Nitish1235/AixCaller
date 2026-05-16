@@ -30,7 +30,7 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
-from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, TTSSpeakFrame, TextFrame
+from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, LLMRunFrame, TTSSpeakFrame, TextFrame
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 from pipecat.transports.websocket.fastapi import (
@@ -39,7 +39,7 @@ from pipecat.transports.websocket.fastapi import (
 )
 
 # ── Base Processor ──────────────────────────────────────────────────────────
-from pipecat.processors.frame_processor import FrameProcessor
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 # ── Internal ─────────────────────────────────────────────────────────────────
 import uuid
@@ -794,7 +794,7 @@ class VoiceAgent:
             logger.info(
                 f"Telnyx audio stream connected. "
                 f"idle_timeout={_idle_timeout}s | "
-                f"vad=silero(min_vol=0.05, conf=0.4) | "
+                f"vad=silero(min_vol=0.1, conf=0.5) | "
                 f"Sending TTS greeting."
             )
             call_started_at["value"] = time.time()
@@ -814,15 +814,24 @@ class VoiceAgent:
                 else:
                     greeting_text = f"Hi there, this is {agent_name}. How can I help you today?"
 
-            # 1. GREETING AUDIO: Queue through the pipeline task.
-            # Do NOT call tts.process_frame() directly here — Pipecat 1.2.0's TTS service
-            # uses a context system (_playing_context_id) that is only initialised AFTER
-            # StartFrame propagates through the pipeline. Calling process_frame() before
-            # that point means _audio_context_task_handler hasn't started yet, so
-            # get_active_audio_context_id() returns None and every audio chunk is silently
-            # dropped. queue_frames() buffers the TTSSpeakFrame and processes it the moment
-            # the pipeline is ready (<10ms after on_connected fires).
-            await self.task.queue_frames([TTSSpeakFrame(text=greeting_text)])
+            # 1. GREETING AUDIO: Inject DIRECTLY into the TTS service — do NOT use
+            # task.queue_frames([TTSSpeakFrame(...)]) for the greeting.
+            #
+            # Why: queue_frames() pushes frames to the pipeline SOURCE, so they travel:
+            #   transport.input → stt → user_aggregator → llm → GoodbyeDetector → tts
+            # When TTSSpeakFrame passes through user_aggregator it can flip internal
+            # turn-detection state (e.g. "bot is speaking"). The resulting
+            # BotStoppedSpeakingFrame only flows DOWNSTREAM (tts → transport.output),
+            # so user_aggregator never sees it and its suppression flag stays set → VAD
+            # is permanently silent after the greeting → user speech never detected.
+            #
+            # The fix: call tts.process_frame() directly. By the time on_client_connected
+            # fires, StartFrame has already propagated through every processor including TTS
+            # (_audio_context_task_handler is running, _playing_context_id is set).
+            # tts._sample_rate is hard-set to 8000 at construction time so the HTTP 400
+            # is also avoided. Audio flows tts → transport.output → Telnyx, bypassing
+            # user_aggregator and LLM entirely.
+            await tts.process_frame(TTSSpeakFrame(text=greeting_text), FrameDirection.DOWNSTREAM)
 
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said
             context.add_message({"role": "assistant", "content": greeting_text})
@@ -834,14 +843,15 @@ class VoiceAgent:
             import asyncio
             asyncio.create_task(self._prewarm_hot_kb_safe())
 
-        # Official example: on_client_disconnected sends EndFrame (graceful shutdown)
-        # then does post-call processing. task.cancel() is too abrupt.
         @transport.event_handler("on_client_disconnected")
         async def on_disconnected(transport, client):
-            logger.info(f"Call {call_id} disconnected. Sending transcript to backend...")
+            logger.info(f"Call {call_id} disconnected. Cancelling pipeline and sending transcript...")
 
-            # Graceful shutdown — matches official Pipecat Telnyx example
-            await task.queue_frames([EndFrame()])
+            # Official Pipecat pattern: task.cancel() on disconnect (not EndFrame).
+            # EndFrame is for graceful *bot-initiated* shutdown (e.g. end_call tool).
+            # When Telnyx disconnects first we should cancel immediately so no frames
+            # keep being processed on a dead socket.
+            await task.cancel()
 
             # Compute call duration in seconds
             duration_seconds = 0
@@ -872,6 +882,17 @@ class VoiceAgent:
             except Exception as e:
                 logger.error(f"Failed to send post-call hook: {e}")
 
-        # 11. Run
+        # 11. Idle-timeout handler — log a clear message instead of silent pipeline death
+        @task.event_handler("on_idle_timeout")
+        async def on_idle_timeout(task):
+            logger.warning(
+                f"⏱️  Idle timeout ({_idle_timeout}s) — no user or bot speech detected. "
+                "Hanging up silently."
+            )
+            # Trigger Telnyx hangup (same path as end_call tool).  pipeline is already
+            # being cancelled by cancel_on_idle_timeout=True (the default).
+            await self.trigger_hangup()
+
+        # 12. Run
         runner = PipelineRunner()
         await runner.run(task)
