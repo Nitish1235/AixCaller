@@ -1,4 +1,5 @@
 import os
+import asyncio
 import time
 import random
 import httpx
@@ -65,7 +66,6 @@ class GoodbyeDetector(FrameProcessor):
             if any(k in text for k in self.agent.GOODBYE_KEYWORDS):
                 logger.info(f"👋 Goodbye detected in assistant speech: '{text}'. Hanging up.")
                 # Trigger hangup in background
-                import asyncio
                 asyncio.create_task(self.agent.trigger_hangup())
         # CRITICAL: always forward every frame downstream.
         # Pipecat's base process_frame is a no-op — subclasses are responsible
@@ -183,7 +183,6 @@ class VoiceAgent:
             logger.info("Hangup already in progress — skipping duplicate trigger")
             return
         self._hangup_triggered = True
-        import asyncio
         logger.info(f"🛑 Initiating hangup for tenant {self.tenant_id}")
 
         call_control_id = self.agent_config.get("call_control_id")
@@ -239,8 +238,6 @@ class VoiceAgent:
           5. The on_client_disconnected handler will fire automatically when
              Telnyx tears down the WebSocket
         """
-        import asyncio
-
         forwarding_number = self.agent_config.get("forwarding_number")
         agent_phone_number = self.agent_config.get("agent_phone_number")
         call_control_id = self.agent_config.get("call_control_id")
@@ -845,7 +842,6 @@ class VoiceAgent:
             # Fires 3 broad KB queries in parallel and caches the top chunks in Redis.
             # By the time the user asks their first question, results are ready (5-10ms vs 700ms).
             # Runs as a background task — does NOT block the greeting.
-            import asyncio
             asyncio.create_task(self._prewarm_hot_kb_safe())
 
         @transport.event_handler("on_client_disconnected")
