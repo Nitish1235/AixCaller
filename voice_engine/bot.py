@@ -794,7 +794,7 @@ class VoiceAgent:
             logger.info(
                 f"Telnyx audio stream connected. "
                 f"idle_timeout={_idle_timeout}s | "
-                f"vad=silero(min_vol=0.1, conf=0.5) | "
+                f"vad=silero(min_vol=0.05, conf=0.4) | "
                 f"Sending TTS greeting."
             )
             call_started_at["value"] = time.time()
@@ -831,6 +831,11 @@ class VoiceAgent:
             # tts._sample_rate is hard-set to 8000 at construction time so the HTTP 400
             # is also avoided. Audio flows tts → transport.output → Telnyx, bypassing
             # user_aggregator and LLM entirely.
+            
+            # SMALL STARTUP DELAY: Give the carrier/Telnyx ~500ms to fully bridge 
+            # the media leg before we blast the first audio packets. Prevents 
+            # the first word of the greeting from being clipped.
+            await asyncio.sleep(0.5)
             await tts.process_frame(TTSSpeakFrame(text=greeting_text), FrameDirection.DOWNSTREAM)
 
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said

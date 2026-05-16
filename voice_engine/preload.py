@@ -135,20 +135,20 @@ def create_phone_vad():
         sample_rate=8000,
         params=VADParams(
             # confidence=0.7 is the official default.
-            # 0.5 is used here because Silero can be over-confident on compressed
+            # 0.4 is used here because Silero can be over-confident on compressed
             # phone audio (PCMU µ-law at 8kHz has less high-frequency detail than
             # 16kHz mic audio), so a slightly lower threshold catches more real speech.
-            confidence=0.5,
+            confidence=0.4,
             # Official default is 0.6 which works for mic audio.
             # PCMU-decoded phone audio normalised to [-1, 1] typically peaks at
             # 0.1–0.3 for normal handset speech — 0.6 would silently filter it all.
-            # 0.1 catches quiet callers while still rejecting sub-threshold line noise.
-            min_volume=0.1,
+            # 0.05 catches quiet callers while still rejecting sub-threshold line noise.
+            min_volume=0.05,
             # Official default: 0.2s. Keep as-is — balanced for phone conversations.
             start_secs=0.2,
-            # Official default: 0.2s. 0.4s gives more tolerance for natural pauses
+            # Official default: 0.2s. 0.5s gives more tolerance for natural pauses
             # mid-sentence on phone calls (latency + thinking pauses are common).
-            stop_secs=0.4,
+            stop_secs=0.5,
         ),
     )
     vad._model = _SharedSessionSileroModel()
