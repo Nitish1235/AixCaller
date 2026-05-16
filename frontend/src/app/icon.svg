@@ -1,7 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="AIxCaller">
-  <!-- White rounded background -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <rect width="100" height="100" rx="22" fill="#FFFFFF"/>
-  <!-- Seven waveform bars, centered: 7 × 8px wide + 6 × 4px gap = 80px, x-offset = 10 -->
   <rect x="10" y="38" width="8" height="24" rx="4" fill="#86EFAC"/>
   <rect x="22" y="18" width="8" height="64" rx="4" fill="#10B981"/>
   <rect x="34" y="26" width="8" height="48" rx="4" fill="#064E3B"/>

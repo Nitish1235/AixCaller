@@ -38,27 +38,23 @@ export default function OGImage() {
 
         {/* Left side — Logo + Text */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          {/* Logo Block */}
+          {/* Logo Block — waveform mark on white rounded square (brand spec) */}
           <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
             <div style={{
-              width: 100, height: 100, borderRadius: "24px",
-              background: "#4ADE80",
+              width: 110, height: 110, borderRadius: "26px",
+              background: "#FFFFFF",
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 8px 32px rgba(74,222,128,0.4)",
+              boxShadow: "0 12px 36px rgba(16,185,129,0.25)",
+              border: "2px solid rgba(16,185,129,0.18)",
             }}>
-              {/* SVG Citrus Slice */}
-              <svg width="72" height="72" viewBox="0 0 120 120">
-                <g transform="rotate(45, 60, 60)">
-                  <path d="M10,60 A50,50 0 0,0 110,60 L10,60 Z" fill="#A855F7" opacity="0.35"/>
-                  <path d="M15,60 A45,45 0 0,0 105,60 L15,60 Z" fill="#E2E8F0" opacity="0.9"/>
-                  <path d="M20,60 A40,40 0 0,0 100,60 L20,60 Z" fill="#A855F7"/>
-                  <line x1="60" y1="60" x2="60" y2="100" stroke="white" strokeWidth="2.5" opacity="0.8"/>
-                  <line x1="60" y1="60" x2="88" y2="88" stroke="white" strokeWidth="2.5" opacity="0.8"/>
-                  <line x1="60" y1="60" x2="32" y2="88" stroke="white" strokeWidth="2.5" opacity="0.8"/>
-                  <line x1="60" y1="60" x2="98" y2="70" stroke="white" strokeWidth="2.5" opacity="0.8"/>
-                  <line x1="60" y1="60" x2="22" y2="70" stroke="white" strokeWidth="2.5" opacity="0.8"/>
-                  <circle cx="60" cy="60" r="5" fill="white"/>
-                </g>
+              <svg width="86" height="86" viewBox="0 0 100 100">
+                <rect x="10" y="38" width="8" height="24" rx="4" fill="#86EFAC" />
+                <rect x="22" y="18" width="8" height="64" rx="4" fill="#10B981" />
+                <rect x="34" y="26" width="8" height="48" rx="4" fill="#064E3B" />
+                <rect x="46" y="12" width="8" height="76" rx="4" fill="#10B981" />
+                <rect x="58" y="22" width="8" height="56" rx="4" fill="#064E3B" />
+                <rect x="70" y="32" width="8" height="36" rx="4" fill="#86EFAC" />
+                <rect x="82" y="40" width="8" height="20" rx="4" fill="#86EFAC" />
               </svg>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
