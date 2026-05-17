@@ -17,6 +17,19 @@ from loguru import logger
 
 SHOPIFY_API_VERSION = "2024-01"
 
+# Carrier → tracking URL (voice-readable, no https:// prefix)
+_CARRIER_URLS: dict[str, str] = {
+    "fedex":        "fedex.com/tracking",
+    "ups":          "ups.com/track",
+    "usps":         "usps.com/tracking",
+    "dhl":          "dhl.com/tracking",
+    "canada post":  "canadapost.ca",
+    "royal mail":   "royalmail.com/track-your-item",
+    "australia post": "auspost.com.au/mypost/track",
+    "evri":         "evri.com/track",
+    "hermes":       "evri.com/track",
+}
+
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 def _normalize_order_number(raw: str) -> str:
@@ -120,7 +133,6 @@ async def lookup_order(order_number: str, config: dict, caller_phone: Optional[s
     if not order:
         return f"I couldn't find an order matching {order_number}. Could you double-check the number?"
 
-    verified = _caller_matches_order(caller_phone, order)
     cust = order.get("customer") or {}
     customer_name = (cust.get("first_name") or "").strip()
 
@@ -130,7 +142,8 @@ async def lookup_order(order_number: str, config: dict, caller_phone: Optional[s
     total_str = _summarize_money(order.get("total_price"), order.get("currency", "USD"))
     name = order.get("name", order_number)
 
-    greeting = f"Hi {customer_name}, " if verified and customer_name else ""
+    # Greet by name whenever it's available in the order — no phone match required.
+    greeting = f"Hi {customer_name}, " if customer_name else ""
     return (
         f"{greeting}order {name} is currently {fulfillment}, payment status is {financial}. "
         f"It has {item_count} item{'s' if item_count != 1 else ''}, total {total_str}."
@@ -157,6 +170,16 @@ async def get_order_tracking(order_number: str, config: dict, caller_phone: Opti
         parts.append(f"tracking number is {tracking_num}")
     if eta:
         parts.append(f"estimated delivery {eta.split('T')[0]}")
+    elif tracking_num:
+        # No ETA from Shopify — point caller to the carrier's tracking page.
+        carrier_url = next(
+            (url for key, url in _CARRIER_URLS.items() if key in carrier.lower()),
+            None,
+        )
+        if carrier_url:
+            parts.append(f"you can check the latest delivery estimate at {carrier_url}")
+        else:
+            parts.append("you can track it directly on the carrier's website using that number")
     return ". ".join(parts) + "."
 
 

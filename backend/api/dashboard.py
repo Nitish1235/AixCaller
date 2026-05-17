@@ -333,9 +333,24 @@ async def process_call_data(request: Request, data: dict, db: Session = Depends(
         duration_seconds=duration_sec,
     )
 
-    # 2. Run AI Analytics (Summary, Sentiment, Action Items)
+    # 2. Run AI Analytics (Summary, Sentiment, Action Items, Call Type, etc.)
+    # Fetch agent for context hints (name, tools_config, forwarding_number).
+    agent_context: dict | None = None
+    agent_name: str = ""
+    try:
+        agent_obj = db.get(Agent, uuid.UUID(data.get("agent_id")))
+        if agent_obj:
+            agent_name = agent_obj.name or ""
+            agent_context = {
+                "name": agent_name,
+                "tools_config": agent_obj.tools_config or {},
+                "forwarding_number": getattr(agent_obj, "forwarding_number", None),
+            }
+    except Exception as e:
+        logger.warning(f"Could not fetch agent for analytics context: {e}")
+
     # Pass the original list so analytics can skip system messages cleanly.
-    analysis = await analytics_service.analyze_call(transcript)
+    analysis = await analytics_service.analyze_call(transcript, agent_context=agent_context)
     if analysis:
         new_call.summary = analysis.get("summary")
         new_call.sentiment = analysis.get("sentiment")
@@ -401,12 +416,19 @@ async def process_call_data(request: Request, data: dict, db: Session = Depends(
             await send_call_summary_email(
                 to_email=tenant.contact_email,
                 data={
-                    "call_id":      str(new_call.id),
-                    "phone":        new_call.from_number,
-                    "summary":      new_call.summary or "",
-                    "sentiment":    new_call.sentiment or "neutral",
-                    "action_items": new_call.action_items or "None",
-                    "transcript":   transcript or "",
+                    "call_id":          str(new_call.id),
+                    "phone":            new_call.from_number,
+                    "summary":          new_call.summary or "",
+                    "sentiment":        new_call.sentiment or "neutral",
+                    "action_items":     new_call.action_items or "None",
+                    "transcript":       transcript or "",
+                    # enriched fields from extended analytics
+                    "call_type":        analysis.get("call_type", "general") if analysis else "general",
+                    "lead_info":        analysis.get("lead_info") if analysis else None,
+                    "booking_info":     analysis.get("booking_info") if analysis else None,
+                    "issue_info":       analysis.get("issue_info") if analysis else None,
+                    "agent_name":       agent_name,
+                    "duration_seconds": duration_sec,
                 }
             )
         except Exception as e:
