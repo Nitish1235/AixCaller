@@ -130,7 +130,8 @@ _STT_WS_URL = (
     "&interim_results=true"
     "&endpointing=100"        # was 150 ms — tighter silence detection
     "&utterance_end_ms=700"   # was 1000 ms — backup trigger fires sooner
-    "&no_delay=true"
+    # NOTE: no_delay=true removed — Deepgram returns HTTP 400 for this param
+    # (it was deprecated from the streaming STT API)
 )
 
 

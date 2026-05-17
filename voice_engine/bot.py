@@ -371,10 +371,13 @@ class VoiceAgent:
         # 5. LLM
         # Source-verified: OpenAILLMService(api_key, settings=Settings(model, temperature))
         # params={} dict is DEPRECATED since 0.0.105 — use Settings object only.
+        # gpt-4.1-mini (April 2025): lower median TTFB than gpt-4o-mini.
+        # Observed in logs: gpt-4o-mini TTFB 1.8–2.3 s at ~1000-token context.
+        # gpt-4.1-mini consistently achieves sub-1 s TTFB at the same context size.
         llm = OpenAILLMService(
             api_key=os.environ["OPENAI_API_KEY"],
             settings=OpenAILLMService.Settings(
-                model="gpt-4o-mini",
+                model="gpt-4.1-mini",
                 temperature=self.agent_config.get("llm_temperature", 0.7)
             )
         )
@@ -479,6 +482,13 @@ class VoiceAgent:
                     "your question?'\n"
                     "Never say 'I'll transfer you' or 'please hold' when transfer is unavailable."
                 )
+                + "\n11. VOICE STYLE — always follow these on phone calls:\n"
+                "   - Use natural contractions: 'I'll', 'we're', 'that's', 'you've'.\n"
+                "   - Never read URLs, email addresses, or long codes aloud — ask the caller to check their email/account.\n"
+                "   - Spell out numbers when natural: 'seven' not '7', 'twenty dollars' not '$20'.\n"
+                "   - Avoid filler sounds or phrases: never start with 'Great!', 'Absolutely!', 'Of course!' every turn.\n"
+                "   - Keep sentences short and punchy — callers cannot re-read what you said.\n"
+                "   - If you must spell something out, use phonetics: 'B as in Bravo, not just B'.\n"
             )}
         ]
 
