@@ -155,6 +155,52 @@ class VoiceAgent:
         except Exception as e:
             logger.warning(f"Hot KB pre-warm skipped: {e}")
 
+    # ── Context pruning ───────────────────────────────────────────────────────
+    def _prune_kb_context(self) -> None:
+        """Remove completed KB tool_call + tool_result pairs from LLM context.
+
+        Each KB query adds two "scaffolding" messages that balloon the context:
+          - {"role": "assistant", "tool_calls": [...]}  ← LLM's search decision
+          - {"role": "tool",      "tool_call_id": ...}  ← raw KB results blob
+
+        Without pruning, context grows ~600 tokens per turn:
+          Turn 1: ~1,100 → 1,735 tokens
+          Turn 3: ~1,735 → 3,375 tokens   (LLM-2 TTFB: 1.6 s)
+
+        With pruning, only the final assistant text answer survives each turn,
+        keeping context growth at ~200 tokens/turn (user + assistant text only).
+
+        Safety rule: only prune a tool_calls message if it is already followed by
+        a tool response message — meaning that call is fully resolved.
+        The in-flight tool_calls message (current turn, no result yet) is always
+        the LAST assistant entry with no following tool message, so it is safe.
+        """
+        if not getattr(self, "_context", None):
+            return
+        try:
+            messages = self._context.messages
+            to_remove: set = set()
+            for i, msg in enumerate(messages):
+                role = msg.get("role", "")
+                # Prune assistant tool-call decisions that are already resolved
+                # (i.e., the very next message is the tool response for it)
+                if role == "assistant" and msg.get("tool_calls"):
+                    if i + 1 < len(messages) and messages[i + 1].get("role") == "tool":
+                        to_remove.add(i)
+                # Always prune tool response messages (raw KB blobs)
+                elif role == "tool":
+                    to_remove.add(i)
+
+            if to_remove:
+                new_messages = [m for i, m in enumerate(messages) if i not in to_remove]
+                self._context.set_messages(new_messages)
+                logger.debug(
+                    f"Context pruned: -{len(to_remove)} tool msgs "
+                    f"→ {len(new_messages)} messages remain"
+                )
+        except Exception as e:
+            logger.warning(f"Context pruning skipped (non-fatal): {e}")
+
     # ── Tool: Knowledge Base Search ──────────────────────────────────────────
     async def search_kb(self, params):
         """Semantic search via pgvector with smart filler logic.
@@ -169,6 +215,10 @@ class VoiceAgent:
              In that case, queue a filler phrase so the user knows we're working,
              then run the full pgvector search (~700ms).
         """
+        # Prune resolved tool_call + tool_result pairs from previous turns
+        # BEFORE doing any search — keeps context compact for the upcoming LLM-2 call.
+        self._prune_kb_context()
+
         t0 = time.time()
         try:
             query = params.arguments.get("query", "")
@@ -708,6 +758,8 @@ class VoiceAgent:
             ]
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
+        # Store reference so search_kb can prune stale tool messages between turns
+        self._context = context
 
         # ── VAD (per-call state, shared ONNX weights) ────────────────────────
         # Per-call cost: state tensor allocation only (~microseconds).

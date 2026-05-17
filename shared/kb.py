@@ -77,13 +77,27 @@ async def _get_query_embedding_cached(query: str) -> List[float]:
     return vector
 
 
+# ── Chunk content cap ────────────────────────────────────────────────────────
+# Each raw KB chunk can be a verbose paragraph (500-1500 chars / 125-375 tokens).
+# Injecting 3 full chunks into LLM-2 context adds ~400-900 uncached tokens,
+# which directly inflates LLM-2 TTFB (observed: 943 uncached tokens → 1.6 s).
+# Capping at 600 chars (~150 tokens) keeps content dense; 3 × 150 = ~450 tokens
+# max injected per query instead of potentially ~900+.
+# rsplit on space avoids cutting mid-word.
+_MAX_CHUNK_CHARS = 600
+
+
 def _format_chunks_for_llm(chunks: List[dict]) -> str:
     """Standard format for LLM context injection."""
     if not chunks:
         return "No relevant information found in the knowledge base."
-    formatted = "\n\n---\n\n".join(
-        f"[Source {i+1}] {c['content']}" for i, c in enumerate(chunks)
-    )
+    parts = []
+    for i, c in enumerate(chunks):
+        content = c["content"]
+        if len(content) > _MAX_CHUNK_CHARS:
+            content = content[:_MAX_CHUNK_CHARS].rsplit(" ", 1)[0] + "…"
+        parts.append(f"[Source {i+1}] {content}")
+    formatted = "\n\n---\n\n".join(parts)
     return (
         f"KNOWLEDGE BASE RESULTS (use this information to answer):\n\n"
         f"{formatted}\n\n"
@@ -144,7 +158,7 @@ async def search_knowledge_base(
     query: str,
     tenant_id: uuid.UUID,
     agent_id: uuid.UUID,
-    limit: int = 5,
+    limit: int = 3,
     fast_only: bool = False,
 ) -> "str | None":
     """
