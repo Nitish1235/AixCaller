@@ -22,6 +22,12 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 
+# ── Pipecat: SmartTurn (explicit configuration for low stop_secs) ─────────────
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
+from pipecat.turns.user_stop.turn_analyzer_user_turn_stop_strategy import TurnAnalyzerUserTurnStopStrategy
+
 # ── Pipecat: Serializer ──────────────────────────────────────────────────────
 from pipecat.serializers.telnyx import TelnyxFrameSerializer
 
@@ -76,12 +82,16 @@ class GoodbyeDetector(FrameProcessor):
         await self.push_frame(frame, direction)
 
 class VoiceAgent:
-    # Filler phrases — randomized so it doesn't sound robotic
+    # Filler phrases — short (≤3 words) so TTS audio finishes in ~0.4–0.6 s.
+    # The KB L4 search takes ~500ms; a long filler (e.g. "One moment, looking
+    # that up." = ~1.5 s) makes Pipecat wait for the filler to finish before
+    # injecting the function result — wasting ~1 s per KB lookup.
+    # Short fillers finish BEFORE the KB returns → zero extra wait.
     FILLER_PHRASES = [
-        "Let me check that for you.",
-        "One moment, looking that up.",
-        "Sure, let me find that.",
-        "Just a sec, checking now.",
+        "One moment.",
+        "Let me check.",
+        "Just a sec.",
+        "Sure, hold on.",
     ]
 
     # Don't play another filler within this window (prevents stacking when LLM
@@ -654,13 +664,35 @@ class VoiceAgent:
             ]
 
         context = LLMContext(messages=messages, tools=ToolsSchema(standard_tools=standard_tools))
+
+        # ── VAD (per-call state, shared ONNX weights) ────────────────────────
         # Per-call cost: state tensor allocation only (~microseconds).
         # The 90 MiB ONNX session is the shared singleton loaded at startup.
         phone_vad = create_phone_vad()
+
+        # ── SmartTurn: explicit stop_secs=1.0 s ──────────────────────────────
+        # Default stop_secs=3.0 s (STOP_SECS in base_smart_turn.py).
+        # When the model outputs INCOMPLETE the pipeline waits up to 3 s of
+        # silence before forcing the trigger — observed in logs as:
+        #   "End of Turn complete due to stop_secs. Silence in ms: 3000.0"
+        # This adds 2–3 s of wasted silence before the LLM fires on short
+        # phrases (e.g. "What services do you offer?" / single-word replies).
+        # Reducing to 1.0 s cuts worst-case latency by 2 s with no quality loss:
+        # genuine pause-in-speech is <300 ms; only true sentence-end silence
+        # reaches the 1 s mark.
+        # NOTE: The ONNX model was pre-loaded by warmup_models() at startup.
+        # Creating a new instance per call is cheap (state tensors only).
+        smart_turn = LocalSmartTurnAnalyzerV3(params=SmartTurnParams(stop_secs=1.0))
+
         aggregators = LLMContextAggregatorPair(
             context,
             user_params=LLMUserAggregatorParams(
                 vad_analyzer=phone_vad,
+                # Override ONLY the stop strategy — start strategy stays at the
+                # default VADUserTurnStartStrategy (driven by phone_vad above).
+                user_turn_strategies=UserTurnStrategies(
+                    stop=[TurnAnalyzerUserTurnStopStrategy(turn_analyzer=smart_turn)]
+                ),
             )
         )
 

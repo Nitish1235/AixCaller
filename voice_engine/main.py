@@ -60,6 +60,16 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Failed to warm up Redis: {e}")
 
+    # ── 4. Pre-synthesize demo greeting ──────────────────────────────────
+    # Calls Deepgram REST TTS once and caches the WAV bytes in memory.
+    # Every subsequent /demo WebSocket session sends the cached audio
+    # instantly on connect — eliminates ~700 ms of synthesis latency per demo.
+    try:
+        from voice_engine.demo_session import presynthesise_greeting
+        await presynthesise_greeting()
+    except Exception as e:
+        logger.warning(f"Demo greeting pre-synthesis failed (non-fatal): {e}")
+
     logger.info("=" * 60)
     logger.info("✅ Startup complete — idle RAM ~330MB, ready to handle calls")
     logger.info("=" * 60)

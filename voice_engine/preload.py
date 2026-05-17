@@ -175,12 +175,16 @@ def warmup_models():
         logger.warning(f"Silero VAD pre-load failed: {e}")
 
     # 2. Pre-load Smart Turn v3 (ONNX)
-    # LLMContextAggregatorPair auto-loads this model on every call.
-    # Without pre-loading it causes a ~6-second silence before the greeting fires.
+    # bot.py uses LocalSmartTurnAnalyzerV3(params=SmartTurnParams(stop_secs=1.0))
+    # per call.  Without pre-loading the ONNX session, the first call incurs a
+    # ~6-second model-load delay before the greeting fires.
+    # We pre-load with the same params used at runtime so the ONNX session is
+    # already in memory and per-call instantiation is cheap (state tensors only).
     try:
         from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
-        logger.info("Warming up Smart Turn v3...")
-        _ = LocalSmartTurnAnalyzerV3()
+        from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
+        logger.info("Warming up Smart Turn v3 (stop_secs=1.0)...")
+        _ = LocalSmartTurnAnalyzerV3(params=SmartTurnParams(stop_secs=1.0))
         logger.info("✅ Smart Turn v3 ready")
     except Exception as e:
         logger.warning(f"Smart Turn v3 pre-load failed: {e}")

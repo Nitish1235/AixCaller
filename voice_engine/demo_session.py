@@ -2,22 +2,27 @@
 Browser-based live demo session (AIxCaller demo widget).
 
 Architecture:
-  Browser webm/opus (250ms chunks)
+  Browser webm/opus (100ms chunks)
     → Deepgram STT WebSocket  (nova-2-general, speech_final trigger)
     → GPT-4o-mini streaming   (max 80 tokens)
     → Deepgram TTS WebSocket  (aura-2-thalia-en, linear16 PCM)
     → WAV-wrapped audio       → Browser (Web Audio decodeAudioData)
 
-Latency improvements vs original:
-  • TTS: persistent WebSocket replaces new httpx.AsyncClient() per sentence
-        → ~300 ms saved on first sentence (no TCP/TLS handshake)
-        → ~200 ms saved on every subsequent sentence
-  • STT: speech_final=True trigger instead of is_final
-        → prevents mid-utterance LLM invocations
-  • STT: no_delay=true + utterance_end_ms=1000
-        → skips smart_format post-processing wait
-  • LLM: OpenAI client created once per session, not per turn
-  • TTS: linear16 + 44-byte WAV header; browser decodeAudioData plays natively
+Latency optimisations (v2):
+  • GREETING: pre-synthesised at server startup via Deepgram REST API.
+              Stored as a cached WAV blob → sent to browser the instant the
+              WebSocket opens.  Eliminates ~700 ms of TTS WS setup + synthesis
+              on every demo session.
+  • WS OPEN:  TTS + STT Deepgram WebSockets opened in parallel (asyncio.gather)
+              instead of sequentially → saves ~300 ms.
+  • KEEPALIVE: KeepAlive sent to TTS WS every 10 s so it never silently drops
+              between the greeting and the first user query.
+              (Silent drop was the root cause of the 6-10 s query lag:
+              speak() was blocking on an 8 s timeout against a dead socket.)
+  • TIMEOUT:  TTS Flush timeout 8 s → 5 s for faster error recovery.
+  • STT:      endpointing 150 ms → 100 ms; utterance_end_ms 1000 → 700 ms.
+  • CHUNKS:   MediaRecorder sends 100 ms chunks (frontend) instead of 250 ms,
+              reducing STT buffering latency by up to 150 ms.
 """
 import asyncio
 import base64
@@ -28,17 +33,15 @@ from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 import websockets
 
-# ── Prompt — keep short; fewer tokens = lower LLM TTFT ──────────────────────
-DEMO_SYSTEM_PROMPT = (
-    "You are Aria, AIxCaller's live demo voice agent. You're on a phone call.\n"
-    "Rules: answer in 1-2 sentences max. Be warm and direct. Never use bullet points.\n"
-    "AIxCaller: AI phone agents that handle calls 24/7, set up in 5 minutes.\n"
-    "Plans: Starter $50/mo (200 min, 2 agents), Pro $119/mo (500 min), "
-    "Premium $250/mo (1100 min, 4 agents).\n"
-    "Integrations: Shopify order lookup, Google Calendar booking, Zoho/GoHighLevel CRMs."
-)
+# ── Greeting constants ────────────────────────────────────────────────────────
+# Short greeting = faster TTS synthesis on cache miss + smaller context token cost.
+GREETING_TEXT = "Hi, I'm Aria! Ask me anything about AIxCaller."
 
-DEMO_TIMEOUT = 110  # server enforces 110s; UI shows 2-min countdown
+# Filled by presynthesise_greeting() at server startup.
+# None = cache miss → real-time synthesis fallback inside speak().
+_CACHED_GREETING_WAV: bytes | None = None
+
+DEMO_TIMEOUT = 110  # server enforces 110 s; UI shows 2-min countdown
 
 
 # ── WAV header helper ────────────────────────────────────────────────────────
@@ -64,6 +67,84 @@ def _pcm_to_wav(pcm: bytes, sample_rate: int = 24_000, channels: int = 1, bits: 
     return header + pcm
 
 
+# ── Greeting pre-synthesis ───────────────────────────────────────────────────
+async def presynthesise_greeting() -> None:
+    """Pre-synthesize the demo greeting WAV at server startup.
+
+    Called once from voice_engine/main.py startup_event().
+    On success every subsequent demo session sends the cached WAV the instant
+    the WebSocket opens (~0 ms synthesis latency vs ~700 ms cold).
+    Falls back silently to on-demand synthesis if Deepgram is unreachable.
+    """
+    global _CACHED_GREETING_WAV
+    import httpx
+
+    api_key = os.environ.get("DEEPGRAM_API_KEY", "")
+    if not api_key:
+        logger.warning("DEEPGRAM_API_KEY not set — greeting pre-synthesis skipped")
+        return
+
+    url = (
+        "https://api.deepgram.com/v1/speak"
+        "?model=aura-2-thalia-en"
+        "&encoding=linear16"
+        "&sample_rate=24000"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                url,
+                headers={
+                    "Authorization": f"Token {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"text": GREETING_TEXT},
+            )
+        if resp.status_code == 200:
+            _CACHED_GREETING_WAV = _pcm_to_wav(resp.content, sample_rate=24_000)
+            duration_s = len(resp.content) / 2 / 24_000
+            logger.info(
+                f"✅ Demo greeting pre-synthesized: "
+                f"{len(_CACHED_GREETING_WAV):,} bytes  ({duration_s:.2f} s audio)"
+            )
+        else:
+            logger.warning(
+                f"Greeting pre-synthesis HTTP {resp.status_code}: {resp.text[:200]}"
+            )
+    except Exception as e:
+        logger.warning(f"Greeting pre-synthesis failed (will synthesize on demand): {e}")
+
+
+# ── Deepgram endpoint URLs ────────────────────────────────────────────────────
+_TTS_WS_URL = (
+    "wss://api.deepgram.com/v1/speak"
+    "?model=aura-2-thalia-en"
+    "&encoding=linear16"
+    "&sample_rate=24000"
+)
+
+_STT_WS_URL = (
+    "wss://api.deepgram.com/v1/listen"
+    "?model=nova-2-general"
+    "&language=en-US"
+    "&interim_results=true"
+    "&endpointing=100"        # was 150 ms — tighter silence detection
+    "&utterance_end_ms=700"   # was 1000 ms — backup trigger fires sooner
+    "&no_delay=true"
+)
+
+
+# ── Prompt — keep short; fewer tokens = lower LLM TTFT ──────────────────────
+DEMO_SYSTEM_PROMPT = (
+    "You are Aria, AIxCaller's live demo voice agent. You're on a phone call.\n"
+    "Rules: answer in 1-2 sentences max. Be warm and direct. Never use bullet points.\n"
+    "AIxCaller: AI phone agents that handle calls 24/7, set up in 5 minutes.\n"
+    "Plans: Starter $50/mo (200 min, 2 agents), Pro $119/mo (500 min), "
+    "Premium $250/mo (1100 min, 4 agents).\n"
+    "Integrations: Shopify order lookup, Google Calendar booking, Zoho/GoHighLevel CRMs."
+)
+
+
 # ── Main session ─────────────────────────────────────────────────────────────
 async def run_demo_session(websocket: WebSocket):
     """Manage a full browser demo session end-to-end."""
@@ -83,39 +164,26 @@ async def run_demo_session(websocket: WebSocket):
         except Exception:
             pass
 
-    # ── Deepgram TTS WebSocket ────────────────────────────────────────────────
-    # One connection for the entire session.
-    # Protocol:
-    #   → {"type":"Speak","text":"..."} — queue text for synthesis
-    #   → {"type":"Flush"}              — begin synthesis, stream audio back
-    #   ← binary frames                 — raw linear16 PCM chunks
-    #   ← {"type":"Flushed"}            — all audio for this Flush delivered
-    #
-    # We use linear16 (not mp3) because mp3/opus are REST-only on Deepgram's WS.
-    # linear16 wrapped in WAV is fully supported by browser Web Audio API.
-    TTS_WS_URL = (
-        "wss://api.deepgram.com/v1/speak"
-        "?model=aura-2-thalia-en"
-        "&encoding=linear16"
-        "&sample_rate=24000"
-    )
+    # ── Open TTS + STT WebSockets in PARALLEL ────────────────────────────────
+    # Previously sequential: ~300 ms TTS + ~300 ms STT = ~600 ms before any work.
+    # asyncio.gather opens both simultaneously → saves ~300 ms per session.
+    dg_auth = {"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"}
     try:
-        tts_ws = await websockets.connect(
-            TTS_WS_URL,
-            additional_headers={"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"},
+        tts_ws, stt_ws = await asyncio.gather(
+            websockets.connect(_TTS_WS_URL, additional_headers=dg_auth),
+            websockets.connect(_STT_WS_URL, additional_headers=dg_auth),
         )
     except Exception as e:
-        logger.error(f"Demo TTS WebSocket connect failed: {e}")
+        logger.error(f"Demo Deepgram WebSocket connect failed: {e}")
         await send({"type": "session_ended"})
         return
 
-    # Queue of synthesised PCM blobs — one entry per Flush/Flushed cycle.
-    # Using a Queue (not a shared list + Event) avoids race conditions when
-    # speak() is called quickly back-to-back.
+    # ── TTS reader ────────────────────────────────────────────────────────────
+    # Background task: collects binary PCM chunks; on "Flushed" puts assembled
+    # PCM on the queue so speak() can read it.
     _tts_results: asyncio.Queue[bytes] = asyncio.Queue()
 
     async def _tts_reader():
-        """Background task: collect PCM chunks and enqueue on Flushed."""
         chunks: list[bytes] = []
         try:
             async for msg in tts_ws:
@@ -126,23 +194,41 @@ async def run_demo_session(websocket: WebSocket):
                     if ev.get("type") == "Flushed":
                         await _tts_results.put(b"".join(chunks))
                         chunks = []
-                    # Metadata / Cleared — ignore
+                    # KeepAlive ack / Cleared / Metadata — ignore
         except Exception:
-            pass  # connection closed or session ended
+            pass  # Connection closed or session ended
 
     tts_reader_task = asyncio.create_task(_tts_reader())
 
+    # ── TTS keepalive ─────────────────────────────────────────────────────────
+    # Deepgram TTS WebSockets silently time out after ~30–60 s of inactivity.
+    # A user who takes >30 s to ask their first question would trigger speak()
+    # to block on a dead socket until the 5 s timeout fires (was 8 s before).
+    # Sending KeepAlive every 10 s prevents silent disconnections entirely.
+    async def _tts_keepalive():
+        try:
+            while state["active"]:
+                await asyncio.sleep(10)
+                if state["active"] and not tts_ws.closed:
+                    await tts_ws.send(json.dumps({"type": "KeepAlive"}))
+        except Exception:
+            pass  # Session ended or WS closed — expected
+
+    keepalive_task = asyncio.create_task(_tts_keepalive())
+
+    # ── speak() helper ────────────────────────────────────────────────────────
     async def speak(text: str):
         """Synthesise text, wait for audio, send WAV chunk to browser."""
         try:
             await tts_ws.send(json.dumps({"type": "Speak", "text": text}))
             await tts_ws.send(json.dumps({"type": "Flush"}))
-            pcm = await asyncio.wait_for(_tts_results.get(), timeout=8.0)
+            # Timeout: 5 s (was 8 s) — faster recovery if WS drops unexpectedly
+            pcm = await asyncio.wait_for(_tts_results.get(), timeout=5.0)
             if pcm:
                 wav = _pcm_to_wav(pcm)
                 await send({"type": "tts_audio", "data": base64.b64encode(wav).decode()})
         except asyncio.TimeoutError:
-            logger.warning("TTS Flush timed out — skipping sentence")
+            logger.warning("TTS Flush timed out (5 s) — skipping sentence")
         except Exception as e:
             logger.error(f"speak() error: {e}")
 
@@ -192,36 +278,7 @@ async def run_demo_session(websocket: WebSocket):
         finally:
             state["generating"] = False
 
-    # ── Deepgram STT WebSocket ────────────────────────────────────────────────
-    # Key parameters:
-    #   speech_final=True  — utterance boundary; this is when we trigger LLM.
-    #                         is_final=True fires for every finalized chunk
-    #                         (multiple times per sentence) — do NOT trigger LLM on it.
-    #   no_delay=true      — skip smart_format post-processing wait (~200ms saved)
-    #   utterance_end_ms   — backup: fire UtteranceEnd after 1s silence past
-    #                         last finalized word (catches edge cases)
-    STT_WS_URL = (
-        "wss://api.deepgram.com/v1/listen"
-        "?model=nova-2-general"
-        "&language=en-US"
-        "&interim_results=true"
-        "&endpointing=150"
-        "&utterance_end_ms=1000"
-        "&no_delay=true"
-    )
-    try:
-        stt_ws = await websockets.connect(
-            STT_WS_URL,
-            additional_headers={"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"},
-        )
-    except Exception as e:
-        logger.error(f"Demo STT WebSocket connect failed: {e}")
-        tts_reader_task.cancel()
-        await tts_ws.close()
-        await send({"type": "session_ended"})
-        return
-
-    # Track last triggered text to avoid duplicate LLM calls on the same utterance
+    # ── STT processing ────────────────────────────────────────────────────────
     last_triggered_text: str = ""
 
     async def _process_stt():
@@ -252,9 +309,7 @@ async def run_demo_session(websocket: WebSocket):
                             state["generating"] = False
                         continue
 
-                    # is_final but NOT speech_final = mid-utterance chunk
-                    # (e.g. Deepgram flushed a partial result without end-of-speech)
-                    # Do NOT trigger LLM here — wait for speech_final=True.
+                    # is_final but NOT speech_final = mid-utterance chunk — skip
                     if not data.get("speech_final", False):
                         continue
 
@@ -269,14 +324,9 @@ async def run_demo_session(websocket: WebSocket):
                     state["llm_task"] = asyncio.create_task(generate(text))
 
                 elif dtype == "UtteranceEnd":
-                    # Backup: utterance_end_ms fired after 1s silence.
-                    # Only act if there was no speech_final trigger (edge case).
-                    # last_word_end=-1 means condition met before finalization — skip.
+                    # Backup: utterance_end_ms fired after silence.
                     if data.get("last_word_end", -1) == -1:
                         continue
-                    # If we're not generating yet, something may have been missed
-                    if not state["generating"] and last_triggered_text:
-                        pass  # speech_final already handled it — nothing to do
 
         except websockets.exceptions.ConnectionClosed:
             logger.info("Demo STT connection closed")
@@ -286,8 +336,19 @@ async def run_demo_session(websocket: WebSocket):
     stt_task = asyncio.create_task(_process_stt())
 
     # ── Greeting ──────────────────────────────────────────────────────────────
+    # If pre-synthesized at startup → send cached WAV instantly (~0 ms synthesis).
+    # The browser receives audio the moment the WebSocket opens, so the caller
+    # hears Aria speak the instant they press the Start button.
+    # Fallback: real-time synthesis via speak() if cache was never populated.
     logger.info("Demo session started — sending greeting")
-    await speak("Hi! I'm Aria. What would you like to know about AIxCaller?")
+    if _CACHED_GREETING_WAV:
+        b64 = base64.b64encode(_CACHED_GREETING_WAV).decode()
+        await send({"type": "tts_audio", "data": b64})
+        conversation.append({"role": "assistant", "content": GREETING_TEXT})
+        logger.info("✅ Greeting delivered from cache (~0 ms synthesis latency)")
+    else:
+        logger.info("Greeting cache miss — synthesizing on demand")
+        await speak(GREETING_TEXT)
 
     # ── Audio forwarding loop ─────────────────────────────────────────────────
     async def _forward_audio():
@@ -313,10 +374,8 @@ async def run_demo_session(websocket: WebSocket):
         )
     finally:
         state["active"] = False
-        # Cancel background tasks
-        for t in (stt_task, tts_reader_task):
+        for t in (stt_task, tts_reader_task, keepalive_task):
             t.cancel()
-        # Close WebSocket connections
         for ws in (stt_ws, tts_ws):
             try:
                 await ws.close()

@@ -7,26 +7,35 @@ type State = "idle" | "connecting" | "active" | "ended";
 
 export function DemoCard({ wsUrl }: { wsUrl?: string }) {
   const WS_URL = wsUrl ? `${wsUrl}/demo` : "ws://localhost:8001/demo";
-  const [state, setState] = useState<State>("idle");
-  const [duration, setDuration] = useState("00:00");
-  const [lines, setLines] = useState<Line[]>([]);
+  const [state, setState]         = useState<State>("idle");
+  const [duration, setDuration]   = useState("00:00");
+  const [lines, setLines]         = useState<Line[]>([]);
   const [aiSpeaking, setAiSpeaking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]         = useState<string | null>(null);
   const [barHeights, setBarHeights] = useState<number[]>(Array(20).fill(3));
 
-  const wsRef    = useRef<WebSocket | null>(null);
-  const recRef   = useRef<MediaRecorder | null>(null);
-  const streamRef= useRef<MediaStream | null>(null);
-  const ctxRef   = useRef<AudioContext | null>(null);
-  const srcRef   = useRef<AudioBufferSourceNode | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const waveRef  = useRef<NodeJS.Timeout | null>(null);
-  const secsRef  = useRef(0);
-  const endRef   = useRef<HTMLDivElement | null>(null);
+  const wsRef     = useRef<WebSocket | null>(null);
+  const recRef    = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const ctxRef    = useRef<AudioContext | null>(null);
+  const srcRef    = useRef<AudioBufferSourceNode | null>(null);
+  const timerRef  = useRef<NodeJS.Timeout | null>(null);
+  const waveRef   = useRef<NodeJS.Timeout | null>(null);
+  const secsRef   = useRef(0);
+  const endRef    = useRef<HTMLDivElement | null>(null);
+
+  // ── Pre-connect state (greeting-on-button-press optimisation) ────────────
+  // When the demo card enters the viewport we open a WebSocket to the server
+  // in the background.  The server sends the pre-synthesized greeting WAV the
+  // instant the socket opens.  We buffer it here so that when the user clicks
+  // "Start" we can play the greeting with ~0 ms delay — no TTS synthesis wait.
+  const containerRef        = useRef<HTMLDivElement | null>(null);
+  const preConnWsRef        = useRef<WebSocket | null>(null);
+  const preloadedGreetingRef = useRef<string | null>(null); // base64 WAV
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [lines]);
 
-  // Animate waveform bars
+  // ── Waveform animation ────────────────────────────────────────────────────
   useEffect(() => {
     if (state === "active") {
       waveRef.current = setInterval(() => {
@@ -41,19 +50,9 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
     return () => { if (waveRef.current) clearInterval(waveRef.current); };
   }, [state, aiSpeaking]);
 
-  const cleanup = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (waveRef.current) clearInterval(waveRef.current);
-    recRef.current?.stop();
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    audioQueueRef.current = [];
-    isPlayingRef.current = false;
-    if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.close();
-    wsRef.current = null; recRef.current = null; streamRef.current = null;
-  }, []);
-
-  const audioQueueRef = useRef<AudioBuffer[]>([]);
-  const isPlayingRef = useRef(false);
+  // ── Audio playback queue ──────────────────────────────────────────────────
+  const audioQueueRef  = useRef<AudioBuffer[]>([]);
+  const isPlayingRef   = useRef(false);
 
   const playNextInQueue = useCallback(() => {
     if (audioQueueRef.current.length === 0) {
@@ -75,30 +74,145 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
 
   const playAudio = useCallback(async (b64: string) => {
     try {
-      if (!ctxRef.current) ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (!ctxRef.current) {
+        ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
       const ctx = ctxRef.current;
       if (ctx.state === "suspended") await ctx.resume();
-      
-      const raw = atob(b64); const buf = new ArrayBuffer(raw.length); const view = new Uint8Array(buf);
+
+      const raw = atob(b64);
+      const buf = new ArrayBuffer(raw.length);
+      const view = new Uint8Array(buf);
       for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
       const decoded = await ctx.decodeAudioData(buf);
-      
+
       audioQueueRef.current.push(decoded);
-      if (!isPlayingRef.current) {
-        playNextInQueue();
-      }
+      if (!isPlayingRef.current) playNextInQueue();
     } catch { setAiSpeaking(false); }
   }, [playNextInQueue]);
 
+  // ── Cleanup ───────────────────────────────────────────────────────────────
+  const cleanup = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (waveRef.current)  clearInterval(waveRef.current);
+    recRef.current?.stop();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    audioQueueRef.current = [];
+    isPlayingRef.current  = false;
+    if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.close();
+    wsRef.current = null; recRef.current = null; streamRef.current = null;
+  }, []);
 
+  // ── Pre-connect when card enters the viewport ────────────────────────────
+  // Fires once when the user scrolls to the demo section.  The server opens
+  // its Deepgram connections and sends the cached greeting WAV; we store it.
+  // When the user later clicks Start the greeting plays with zero delay.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const doPreConnect = () => {
+      if (preConnWsRef.current) return; // already pre-connecting
+      try {
+        const ws = new WebSocket(WS_URL);
+        ws.binaryType = "arraybuffer";
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data as string);
+            // Buffer the first tts_audio message (the greeting)
+            if (msg.type === "tts_audio" && !preloadedGreetingRef.current) {
+              preloadedGreetingRef.current = msg.data;
+            }
+            // session_ended during pre-warm (e.g. server timeout) — clear ref
+            if (msg.type === "session_ended") {
+              preConnWsRef.current = null;
+              preloadedGreetingRef.current = null;
+            }
+          } catch {}
+        };
+        ws.onerror = () => { preConnWsRef.current = null; };
+        preConnWsRef.current = ws;
+      } catch { /* WebSocket not available */ }
+    };
+
+    if (typeof IntersectionObserver !== "undefined" && containerRef.current) {
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) { doPreConnect(); obs.disconnect(); } },
+        { threshold: 0.3 }
+      );
+      obs.observe(containerRef.current);
+      return () => obs.disconnect();
+    } else {
+      // Fallback: pre-connect immediately (no IntersectionObserver support)
+      doPreConnect();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Cleanup pre-connect WS on component unmount ───────────────────────────
+  useEffect(() => {
+    return () => {
+      if (preConnWsRef.current) {
+        try { preConnWsRef.current.close(); } catch {}
+        preConnWsRef.current = null;
+      }
+    };
+  }, []);
+
+  // ── Start session ─────────────────────────────────────────────────────────
   const start = useCallback(async () => {
-    setError(null); setState("connecting"); setLines([]); secsRef.current = 0; setDuration("00:00");
+    setError(null); setState("connecting"); setLines([]);
+    secsRef.current = 0; setDuration("00:00");
+
+    // ── 1. AudioContext — create/resume on user gesture (button click) ───────
+    //    Doing this NOW (before getUserMedia) means the AudioContext is
+    //    already running when the first TTS audio arrives, eliminating the
+    //    ~100 ms ctx.resume() call inside playAudio on the first chunk.
+    if (!ctxRef.current) {
+      ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (ctxRef.current.state === "suspended") {
+      await ctxRef.current.resume();
+    }
+
+    // ── 2. Microphone ─────────────────────────────────────────────────────
     let stream: MediaStream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch { setError("Microphone access denied."); setState("idle"); return; }
     streamRef.current = stream;
-    const ws = new WebSocket(WS_URL); wsRef.current = ws; ws.binaryType = "arraybuffer";
-    ws.onopen = () => {
+
+    // ── 3. WebSocket — reuse pre-connect if available ──────────────────────
+    //    Best case: pre-connect WS is already OPEN and the greeting WAV is
+    //    buffered in preloadedGreetingRef.  We take ownership of the socket
+    //    and play the greeting immediately below — zero delay from button press.
+    let ws: WebSocket;
+    const preWs = preConnWsRef.current;
+    preConnWsRef.current = null; // take ownership
+
+    if (preWs && preWs.readyState === WebSocket.OPEN) {
+      // ✅ Instant path — WS already open, greeting likely buffered
+      ws = preWs;
+    } else if (preWs && preWs.readyState === WebSocket.CONNECTING) {
+      // WS is still in handshake — wait up to 3 s for it to open
+      ws = preWs;
+      await new Promise<void>(resolve => {
+        const orig = ws.onopen as ((ev: Event) => void) | null;
+        ws.onopen = (ev) => { orig?.(ev); resolve(); };
+        ws.onerror = () => resolve();       // let it fail gracefully below
+        setTimeout(resolve, 3000);
+      });
+      if (ws.readyState !== WebSocket.OPEN) {
+        try { ws.close(); } catch {}
+        ws = new WebSocket(WS_URL); ws.binaryType = "arraybuffer";
+      }
+    } else {
+      // No pre-connect or it closed — fresh connection
+      if (preWs) try { preWs.close(); } catch {}
+      ws = new WebSocket(WS_URL); ws.binaryType = "arraybuffer";
+    }
+
+    wsRef.current = ws;
+
+    // ── 4. Shared activation logic ────────────────────────────────────────
+    const activateSession = () => {
       setState("active");
       timerRef.current = setInterval(() => {
         secsRef.current++;
@@ -106,16 +220,28 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
         const s = String(secsRef.current % 60).padStart(2, "0");
         setDuration(`${m}:${s}`);
       }, 1000);
-      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-      const rec = new MediaRecorder(stream, { mimeType: mime }); recRef.current = rec;
-      rec.ondataavailable = e => { if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) ws.send(e.data); };
-      rec.start(250);
+
+      // ── 100 ms MediaRecorder chunks (was 250 ms) ─────────────────────────
+      // Smaller chunks reach Deepgram STT faster, reducing the window between
+      // the user stopping speech and speech_final firing by up to ~150 ms.
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const rec = new MediaRecorder(stream, { mimeType: mime });
+      recRef.current = rec;
+      rec.ondataavailable = e => {
+        if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) ws.send(e.data);
+      };
+      rec.start(100); // 100 ms chunks (was 250 ms)
     };
+
+    // ── 5. Message handler ────────────────────────────────────────────────
     ws.onmessage = async e => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.type === "tts_audio") await playAudio(msg.data);
-        else if (msg.type === "interrupt") {
+        if (msg.type === "tts_audio") {
+          await playAudio(msg.data);
+        } else if (msg.type === "interrupt") {
           audioQueueRef.current = [];
           isPlayingRef.current = false;
           if (srcRef.current) {
@@ -123,30 +249,57 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
             srcRef.current = null;
           }
           setAiSpeaking(false);
+        } else if (msg.type === "transcript" && msg.final) {
+          setLines(p => {
+            const last = p[p.length - 1];
+            if (last?.role === msg.role) return [...p.slice(0, -1), { role: msg.role, text: msg.text }];
+            return [...p, { role: msg.role, text: msg.text }];
+          });
+        } else if (msg.type === "session_ended") {
+          setState("ended"); cleanup();
         }
-        else if (msg.type === "transcript" && msg.final)
-          setLines(p => { const last = p[p.length - 1]; if (last?.role === msg.role) return [...p.slice(0, -1), { role: msg.role, text: msg.text }]; return [...p, { role: msg.role, text: msg.text }]; });
-        else if (msg.type === "session_ended") { setState("ended"); cleanup(); }
       } catch {}
-
     };
     ws.onerror = () => { setError("Connection failed. Please try again."); setState("idle"); cleanup(); };
-    ws.onclose  = () => { setState("ended"); cleanup(); };
+    ws.onclose = () => { setState("ended"); cleanup(); };
+
+    if (ws.readyState === WebSocket.OPEN) {
+      // WS already open (pre-connect path)
+      activateSession();
+
+      // ── 6. Play buffered greeting instantly ──────────────────────────────
+      //    Greeting was received during pre-connect and stored in the ref.
+      //    AudioContext is already running (step 1) so decodeAudioData fires
+      //    synchronously.  User hears Aria speak the moment they pressed Start.
+      const greetingData = preloadedGreetingRef.current;
+      preloadedGreetingRef.current = null;
+      if (greetingData) {
+        await playAudio(greetingData);
+      }
+      // If no cached greeting: server will send it through onmessage shortly
+    } else {
+      // Fresh WS — activate when it opens; greeting arrives through onmessage
+      ws.onopen = () => activateSession();
+    }
   }, [cleanup, playAudio]);
 
   const end = useCallback(() => { setState("ended"); cleanup(); }, [cleanup]);
   useEffect(() => () => cleanup(), [cleanup]);
 
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{
-      width: "100%", maxWidth: 400,
-      background: "#fff",
-      borderRadius: 24,
-      border: "var(--border)",
-      boxShadow: "8px 8px 0 var(--accent-pink)",
-      overflow: "hidden",
-      position: "relative",
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%", maxWidth: 400,
+        background: "#fff",
+        borderRadius: 24,
+        border: "var(--border)",
+        boxShadow: "8px 8px 0 var(--accent-pink)",
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
       {/* Top gradient bar */}
       <div style={{ height: 6, background: "var(--accent-green)", borderBottom: "var(--border)" }} />
 
@@ -209,8 +362,6 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
             }} />
           ))}
         </div>
-
-
 
         {/* Error */}
         {error && <div style={{ fontSize: "0.78rem", color: "#EF4444", textAlign: "center", background: "#FEF2F2", padding: "8px 12px", borderRadius: 8, width: "100%" }}>{error}</div>}
