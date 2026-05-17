@@ -273,6 +273,9 @@ class AgentUpdateRequest(BaseModel):
     human_transfer_hours: Optional[dict] = None
     auto_callback_enabled: Optional[bool] = None
     tools_config: Optional[dict] = None
+    # Legacy number forwarding (Option B): existing marketing number the carrier
+    # forwards to the Telnyx number. Stored for display; no routing logic here.
+    legacy_number: Optional[str] = None
 
 
 @router.patch("/agents/{agent_id}", response_model=Agent)

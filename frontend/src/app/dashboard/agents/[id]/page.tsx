@@ -101,6 +101,14 @@ export default function AgentDetailsPage() {
 
   const [autoCallbackEnabled, setAutoCallbackEnabled] = useState(false);
 
+  // Legacy number forwarding
+  const [legacyNumber, setLegacyNumber]             = useState("");
+  const [legacySaving, setLegacySaving]             = useState(false);
+  const [legacySaveMsg, setLegacySaveMsg]           = useState("");
+  const [legacyTestBusy, setLegacyTestBusy]         = useState(false);
+  const [legacyTestMsg, setLegacyTestMsg]           = useState("");
+  const [showForwardingInstr, setShowForwardingInstr] = useState(false);
+
   // Tab
   const [tab, setTab] = useState<"settings" | "kb">("settings");
 
@@ -133,6 +141,7 @@ export default function AgentDetailsPage() {
           setForwardingNumber(found.forwarding_number || "");
           setTransferEnabled(!!found.human_transfer_enabled);
           setAutoCallbackEnabled(!!found.auto_callback_enabled);
+          setLegacyNumber(found.legacy_number || "");
           // Detect browser timezone for first-time users
           const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
           setTransferTz(found.human_transfer_timezone || browserTz);
@@ -200,6 +209,37 @@ export default function AgentDetailsPage() {
       mon: ["00:00-23:59"], tue: ["00:00-23:59"], wed: ["00:00-23:59"],
       thu: ["00:00-23:59"], fri: ["00:00-23:59"], sat: ["00:00-23:59"], sun: ["00:00-23:59"],
     });
+  };
+
+  // ── Legacy Number Forwarding ───────────────────────────────────────────────
+  const saveLegacyNumber = async () => {
+    setLegacySaving(true); setLegacySaveMsg("");
+    try {
+      await updateAgent(agentId, { legacy_number: legacyNumber.trim() || null });
+      // Sync local agent state so the test-call button works immediately
+      setAgent((prev: any) => ({ ...prev, legacy_number: legacyNumber.trim() || null }));
+      setLegacySaveMsg("✓ Saved");
+    } catch {
+      setLegacySaveMsg("✗ Failed to save");
+    }
+    setLegacySaving(false);
+    setTimeout(() => setLegacySaveMsg(""), 3000);
+  };
+
+  const sendForwardingTestCall = async () => {
+    setLegacyTestBusy(true); setLegacyTestMsg("");
+    const tid = getTenantId();
+    try {
+      await apiPost("/numbers/test-forwarding", { agent_id: agentId, tenant_id: tid });
+      setLegacyTestMsg(
+        `📞 Test call sent to ${legacyNumber}. ` +
+        "If forwarding is active, your AI agent will answer. " +
+        "If not, you'll hear a setup reminder."
+      );
+    } catch (e: any) {
+      setLegacyTestMsg("✗ Could not place test call. Check Telnyx configuration.");
+    }
+    setLegacyTestBusy(false);
   };
 
   const ingestText = async () => {
@@ -732,18 +772,204 @@ export default function AgentDetailsPage() {
             </div>
             {agent.phone_number ? (
               <>
+                {/* ── Your AI Number ─────────────────────────────────────── */}
                 <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 12, padding: "1.5rem", textAlign: "center", marginBottom: "1.75rem" }}>
                   <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9CA3AF", letterSpacing: 1, marginBottom: 6 }}>YOUR AI PHONE NUMBER</div>
                   <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#064E3B", letterSpacing: 2, fontFamily: "monospace" }}>{agent.phone_number}</div>
                 </div>
-                {[["📱 Option A — Direct Line", "Use this number directly in your marketing — put it on your website, Google My Business, or ads."],
-                  ["🔄 Option B — Call Forwarding", "Keep your existing number. Forward missed calls to your AI so no lead is ever lost."]
-                ].map(([title, desc]) => (
-                  <div key={title} style={{ marginBottom: "1rem", padding: "1.25rem", background: "#F6FEFA", borderRadius: 12, border: "1px solid #D1FAE5" }}>
-                    <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "#064E3B", marginBottom: 6 }}>{title}</h3>
-                    <p style={{ color: "#6B7280", fontSize: "0.85rem", margin: 0 }}>{desc}</p>
+
+                {/* ── Option A ───────────────────────────────────────────── */}
+                <div style={{ marginBottom: "1rem", padding: "1.25rem", background: "#F6FEFA", borderRadius: 12, border: "1px solid #D1FAE5" }}>
+                  <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "#064E3B", marginBottom: 6 }}>📱 Option A — Direct Line</h3>
+                  <p style={{ color: "#6B7280", fontSize: "0.85rem", margin: 0 }}>
+                    Use this number directly in your marketing — put it on your website, Google My Business, or ads.
+                  </p>
+                </div>
+
+                {/* ── Option B — Legacy Number Forwarding ───────────────── */}
+                <div style={{ padding: "1.25rem", background: "#F6FEFA", borderRadius: 12, border: "1px solid #D1FAE5" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div>
+                      <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "#064E3B", margin: 0 }}>
+                        🔄 Option B — Keep Your Existing Number
+                      </h3>
+                      <p style={{ color: "#6B7280", fontSize: "0.82rem", margin: "4px 0 0", lineHeight: 1.5 }}>
+                        Already have a number on your marketing? Tell your carrier to
+                        forward it here — callers dial your old number and your AI answers.
+                      </p>
+                    </div>
+                    {agent.legacy_number && (
+                      <span style={{
+                        flexShrink: 0, marginLeft: 10,
+                        background: "#D1FAE5", color: "#059669",
+                        borderRadius: 99, padding: "2px 10px",
+                        fontSize: "0.68rem", fontWeight: 700, letterSpacing: 0.5,
+                      }}>● CONFIGURED</span>
+                    )}
                   </div>
-                ))}
+
+                  {/* ── Legacy number input ──────────────────────────────── */}
+                  <div style={{ marginTop: 12 }}>
+                    <label style={lbl}>Your Legacy / Marketing Number</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="tel"
+                        value={legacyNumber}
+                        onChange={e => setLegacyNumber(e.target.value)}
+                        placeholder="+12125550100"
+                        style={{ ...inp, flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={saveLegacyNumber}
+                        disabled={legacySaving}
+                        style={btn("#064E3B", { whiteSpace: "nowrap", opacity: legacySaving ? 0.7 : 1 })}
+                      >
+                        {legacySaving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                    {legacySaveMsg && (
+                      <div style={{
+                        marginTop: 6, fontSize: "0.78rem", fontWeight: 700,
+                        color: legacySaveMsg.startsWith("✓") ? "#059669" : "#DC2626",
+                      }}>{legacySaveMsg}</div>
+                    )}
+                    <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 5, marginBottom: 0 }}>
+                      E.164 format: <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>+12125550100</code>. This is the number you want to keep on billboards, ads, etc.
+                    </p>
+                  </div>
+
+                  {/* ── Setup instructions ──────────────────────────────── */}
+                  {legacyNumber.trim() && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowForwardingInstr(v => !v)}
+                        style={{
+                          marginTop: 14, width: "100%", textAlign: "left",
+                          background: "#fff", border: "1.5px solid #D1FAE5",
+                          borderRadius: 9, padding: "10px 14px",
+                          fontWeight: 700, fontSize: "0.82rem", color: "#064E3B",
+                          cursor: "pointer", display: "flex", justifyContent: "space-between",
+                        }}
+                      >
+                        <span>📋 How to set up forwarding on your carrier</span>
+                        <span>{showForwardingInstr ? "▲" : "▼"}</span>
+                      </button>
+
+                      {showForwardingInstr && (
+                        <div style={{
+                          marginTop: 4, border: "1.5px solid #D1FAE5", borderRadius: 9,
+                          background: "#fff", padding: "1rem 1.1rem",
+                          fontSize: "0.8rem", color: "#374151", lineHeight: 1.75,
+                        }}>
+                          {/* Forward-to number prominently shown */}
+                          <div style={{
+                            background: "#ECFDF5", border: "1px solid #A7F3D0",
+                            borderRadius: 8, padding: "8px 12px", marginBottom: 14,
+                          }}>
+                            <span style={{ fontWeight: 700, color: "#065F46" }}>Forward ALL calls to: </span>
+                            <code style={{
+                              fontFamily: "monospace", fontWeight: 900,
+                              fontSize: "1rem", color: "#064E3B", letterSpacing: 1,
+                            }}>{agent.phone_number}</code>
+                          </div>
+
+                          {/* Carrier instructions */}
+                          {[
+                            {
+                              carrier: "📱 AT&T / T-Mobile / Verizon (mobile)",
+                              steps: [
+                                `Dial *72${agent.phone_number} and press Call — forwarding activates immediately.`,
+                                "To cancel forwarding later, dial *73 and press Call.",
+                              ],
+                            },
+                            {
+                              carrier: "🏢 Business Landline / PBX",
+                              steps: [
+                                "Log in to your carrier's business portal.",
+                                'Navigate to Phone Numbers → select your legacy number → Call Forwarding.',
+                                `Set "Unconditional Forward To": ${agent.phone_number}`,
+                                "Save and apply the change.",
+                              ],
+                            },
+                            {
+                              carrier: "🌐 VoIP / Twilio / RingCentral / Vonage",
+                              steps: [
+                                "Log in to your VoIP provider dashboard.",
+                                "Find your number under Phone Numbers or Lines.",
+                                `Set the "Forward to" or "SIP Forward" destination to: ${agent.phone_number}`,
+                                "For Twilio: set the Voice webhook URL to forward calls or use TwiML Redirect.",
+                              ],
+                            },
+                            {
+                              carrier: "📞 Google Voice",
+                              steps: [
+                                "Open voice.google.com → Settings → Calls.",
+                                'Enable "Forward to linked numbers" and add your AI number.',
+                                `Add ${agent.phone_number} as a forwarding destination.`,
+                              ],
+                            },
+                          ].map(({ carrier, steps }) => (
+                            <div key={carrier} style={{ marginBottom: 14 }}>
+                              <div style={{ fontWeight: 800, color: "#064E3B", marginBottom: 5 }}>{carrier}</div>
+                              <ol style={{ margin: 0, paddingLeft: "1.2rem" }}>
+                                {steps.map((s, i) => <li key={i} style={{ marginBottom: 3 }}>{s}</li>)}
+                              </ol>
+                            </div>
+                          ))}
+
+                          <div style={{
+                            marginTop: 8, background: "#FEF9C3", border: "1px solid #FDE68A",
+                            borderRadius: 8, padding: "8px 12px", fontSize: "0.75rem", color: "#78350F",
+                          }}>
+                            💡 Not sure which carrier you have? Search your carrier name + "unconditional call forwarding" for exact steps. Most carriers support it at no extra cost.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Test call button ─────────────────────────────── */}
+                      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={sendForwardingTestCall}
+                          disabled={legacyTestBusy}
+                          style={{
+                            background: legacyTestBusy ? "#9CA3AF" : "#0D9488",
+                            color: "#fff", border: "none", borderRadius: 9,
+                            padding: "10px 18px", fontWeight: 700, fontSize: "0.85rem",
+                            cursor: legacyTestBusy ? "not-allowed" : "pointer",
+                            display: "flex", alignItems: "center", gap: 8,
+                          }}
+                        >
+                          {legacyTestBusy ? "Placing test call…" : "📞 Send Test Call to Legacy Number"}
+                        </button>
+
+                        {legacyTestMsg && (
+                          <div style={{
+                            padding: "10px 14px", borderRadius: 9, fontSize: "0.8rem", fontWeight: 600,
+                            background: legacyTestMsg.startsWith("✗") ? "#FEF2F2" : "#ECFDF5",
+                            color: legacyTestMsg.startsWith("✗") ? "#DC2626" : "#065F46",
+                            border: `1px solid ${legacyTestMsg.startsWith("✗") ? "#FECACA" : "#A7F3D0"}`,
+                          }}>
+                            {legacyTestMsg}
+                          </div>
+                        )}
+
+                        <div style={{
+                          background: "#F0FDF4", border: "1px solid #D1FAE5",
+                          borderRadius: 9, padding: "10px 14px", fontSize: "0.77rem",
+                          color: "#065F46", lineHeight: 1.6,
+                        }}>
+                          <strong>How the test works:</strong><br />
+                          We call your legacy number from {agent.phone_number}.<br />
+                          ✅ <strong>Forwarding active</strong> — your AI agent picks up the call (it gets forwarded to this AI number).<br />
+                          ⚠️ <strong>Forwarding not set up</strong> — you'll hear a recorded instruction on your legacy phone.
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </>
             ) : provisioning ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

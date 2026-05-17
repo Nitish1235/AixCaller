@@ -94,6 +94,11 @@ class Agent(SQLModel, table=True):
     template_id: Optional[str] = None      # Marketplace template used (clinic, ecommerce, etc.)
     tools_config: dict = Field(default_factory=dict, sa_column=Column(JSON))
     auto_callback_enabled: bool = Field(default=False)
+    # ── Legacy Number Forwarding (Option B) ──────────────────────────────────
+    # legacy_number: the client's existing marketing number (E.164). Callers ring
+    #   this number; the carrier forwards it to phone_number (the Telnyx number).
+    #   We store it purely for display + instructions — no routing logic needed.
+    legacy_number: Optional[str] = None
     
 class CallRecord(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

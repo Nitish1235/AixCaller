@@ -184,6 +184,40 @@ async def dial_recovery_endpoint(request: Request, data: dict):
     await execute_missed_call(uuid.UUID(call_record_id))
     return {"status": "executed"}
 
+@app.post("/forwarding-test-answer")
+async def handle_forwarding_test_answer(request: Request):
+    """
+    TeXML response delivered when a legacy-number forwarding test call is answered
+    DIRECTLY on the legacy phone (i.e. forwarding is not yet configured).
+
+    If forwarding IS set up the carrier never sends this call here — it routes
+    the call to the Telnyx number instead and the AI agent answers normally,
+    which is the proof that forwarding works.
+    """
+    form = await request.form()
+    to_number = form.get("To", "your new AI number")
+
+    # Last 4 digits only — friendly, avoids leaking full E.164
+    last4 = to_number[-4:] if to_number and len(to_number) >= 4 else "your AI number"
+
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>
+        Hello! This is an AixCaller forwarding test.
+        You are hearing this message because call forwarding has not been
+        configured on this number yet.
+        To activate forwarding, please contact your phone carrier and ask them
+        to forward all calls to your AixCaller number ending in {last4}.
+        Once forwarding is active, callers will be answered by your AI agent
+        automatically.
+        Goodbye!
+    </Say>
+    <Hangup/>
+</Response>"""
+
+    return PlainTextResponse(texml, media_type="application/xml")
+
+
 @app.post("/outbound-answer")
 async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)):
     """

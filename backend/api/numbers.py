@@ -1,4 +1,5 @@
 import os
+import uuid
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -149,3 +150,78 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return {"status": "success", "phone_number": req.phone_number}
+
+
+# ── Legacy Number Forwarding — Test Call ─────────────────────────────────────
+
+class TestForwardingRequest(BaseModel):
+    agent_id: str
+    tenant_id: str
+
+
+@router.post("/test-forwarding")
+async def test_forwarding(req: TestForwardingRequest, db: Session = Depends(get_db)):
+    """
+    Places a short test call FROM the agent's Telnyx number TO the legacy number.
+
+    Two outcomes:
+      • Forwarding NOT configured — the legacy phone rings; the owner hears an
+        instructional message telling them forwarding is not active yet.
+      • Forwarding IS configured — the carrier redirects the call back to the
+        Telnyx number; the AI agent answers, proving end-to-end routing works.
+
+    Uses the dedicated /forwarding-test-answer TeXML endpoint so Telnyx knows
+    what to say when the test call is picked up directly.
+    """
+    api_key = os.environ.get("TELNYX_API_KEY")
+    server_host = os.environ.get("SERVER_HOST")
+
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Telnyx API key not configured")
+    if not server_host:
+        raise HTTPException(status_code=500, detail="SERVER_HOST env var not configured")
+
+    agent_uuid = uuid.UUID(req.agent_id)
+    tenant_uuid = uuid.UUID(req.tenant_id)
+
+    agent = db.exec(
+        select(Agent).where(Agent.id == agent_uuid, Agent.tenant_id == tenant_uuid)
+    ).first()
+
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if not agent.legacy_number:
+        raise HTTPException(status_code=400, detail="No legacy number saved for this agent")
+    if not agent.phone_number:
+        raise HTTPException(status_code=400, detail="Agent has no Telnyx number assigned yet")
+
+    # The TeXML for this test call lives at /forwarding-test-answer
+    answer_url = f"https://{server_host}/forwarding-test-answer"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.telnyx.com/v2/texml/calls",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "to":  agent.legacy_number,
+                "from": agent.phone_number,
+                "url": answer_url,
+            },
+        )
+
+    if response.status_code not in [200, 201]:
+        logger.error(f"Telnyx test-forwarding call failed: {response.text}")
+        raise HTTPException(status_code=500, detail="Failed to place test call via Telnyx")
+
+    logger.info(
+        f"Forwarding test call placed: {agent.phone_number} → {agent.legacy_number} "
+        f"(agent {agent.id})"
+    )
+    return {
+        "status": "test_call_placed",
+        "from": agent.phone_number,
+        "to": agent.legacy_number,
+    }
