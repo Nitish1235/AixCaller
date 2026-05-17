@@ -410,7 +410,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
 
       {/* Bottom trust bar */}
       <div style={{ background: "var(--bg)", borderTop: "var(--border)", padding: "10px 20px", display: "flex", justifyContent: "space-around" }}>
-        {[["🔒", "Secure"], ["⚡", "<1s latency"], ["🌍", "30+ langs"]].map(([icon, label]) => (
+        {[["🔒", "Secure"], ["⚡", "<4s response"], ["🌍", "30+ langs"]].map(([icon, label]) => (
           <div key={label as string} style={{ textAlign: "center" }}>
             <div style={{ fontSize: "0.85rem" }}>{icon}</div>
             <div style={{ fontSize: "0.65rem", color: "#9CA3AF", fontWeight: 600 }}>{label}</div>

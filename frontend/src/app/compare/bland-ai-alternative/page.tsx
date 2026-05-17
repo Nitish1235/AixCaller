@@ -12,7 +12,7 @@ export default function BlandAIAlternativePage() {
         The Premier Bland AI Alternative
       </h1>
       <p style={{ fontSize: "1.2rem", lineHeight: 1.6, color: "#475569", marginBottom: "2rem" }}>
-        If you are looking for a reliable, highly customizable, and transparently priced voice AI platform, AIxCaller is the superior alternative to Bland AI. We built our infrastructure from the ground up for sub-second latency and flawless enterprise integrations.
+        If you are looking for a reliable, highly customizable, and transparently priced voice AI platform, AIxCaller is the superior alternative to Bland AI. We built our infrastructure from the ground up for fast AI responses and flawless enterprise integrations.
       </p>
       
       <h2 style={{ fontSize: "2rem", fontWeight: 800, marginTop: "3rem", marginBottom: "1rem" }}>Why Choose AIxCaller over Bland AI?</h2>

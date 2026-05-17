@@ -42,7 +42,7 @@ export default function TermsOfService() {
         <section style={{ marginBottom: "2.5rem" }}>
           <h2 style={{ fontSize: "1.8rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem" }}>4. Service Availability & SLA</h2>
           <p style={{ fontSize: "1.1rem", lineHeight: 1.6, fontWeight: 500, marginBottom: "1rem" }}>
-            While we guarantee sub-second latency and high availability through our infrastructure providers (Telnyx, Supabase), we do not warrant that the Service will be 100% uninterrupted. We are not liable for business losses incurred due to temporary API outages or telecom network failures.
+            While we target low-latency responses and high availability through our infrastructure providers (Telnyx, Supabase), we do not warrant that the Service will be 100% uninterrupted or that specific response time thresholds will always be met. We are not liable for business losses incurred due to temporary API outages or telecom network failures.
           </p>
         </section>
 

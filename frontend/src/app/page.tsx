@@ -144,7 +144,7 @@ export default function Home() {
               Experience Our <br />AI Call Handler Live
             </h2>
             <div style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "2rem", color: "#cbd5e1" }}>
-              Test the sub-second latency for yourself. Choose a persona and dial the number or test via browser.
+              Test the under-4-second response time for yourself. Choose a persona and dial the number or test via browser.
             </div>
             
             <div className="mono" style={{ display: "flex", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>

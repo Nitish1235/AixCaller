@@ -22,7 +22,7 @@ export default function CobaltTheme() {
         </div>
       </section>
       <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", flexWrap: "wrap", padding: "0 2rem 6rem" }}>
-        {[["500+", "Businesses"], ["100%", "Calls Answered"], ["<1s", "Latency"], ["30+", "Languages"]].map(([n, l]) => (
+        {[["500+", "Businesses"], ["100%", "Calls Answered"], ["<4s", "Response"], ["30+", "Languages"]].map(([n, l]) => (
           <div key={l} style={{ background: cobalt, borderRadius: 14, padding: "2rem 2.5rem", textAlign: "center", color: "#fff", minWidth: 140 }}>
             <div style={{ fontWeight: 900, fontSize: "2rem", color: yellow }}>{n}</div>
             <div style={{ fontSize: "0.8rem", opacity: 0.8, marginTop: 4 }}>{l}</div>

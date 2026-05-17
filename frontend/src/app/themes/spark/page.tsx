@@ -30,7 +30,7 @@ export default function SparkTheme() {
       {/* Big number stats */}
       <div style={{ background: "linear-gradient(135deg, #F59E0B, #EF4444)", padding: "4rem 2rem", margin: "4rem 0 0" }}>
         <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "2rem", color: "#fff" }}>
-          {[["500+", "Businesses live"], ["100%", "Calls answered"], ["<1s", "Response time"], ["$0", "To get started"]].map(([n, l]) => (
+          {[["500+", "Businesses live"], ["100%", "Calls answered"], ["<4s", "Response time"], ["$0", "To get started"]].map(([n, l]) => (
             <div key={l} style={{ textAlign: "center" }}><div style={{ fontWeight: 900, fontSize: "2.5rem", letterSpacing: -1 }}>{n}</div><div style={{ opacity: 0.85, fontSize: "0.85rem", fontWeight: 600 }}>{l}</div></div>
           ))}
         </div>

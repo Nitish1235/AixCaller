@@ -41,7 +41,7 @@ export default function NovaTheme() {
 
       <div style={{ background: `linear-gradient(135deg, ${indigo}, ${orange})`, padding: "3rem 2rem" }}>
         <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "2rem", color: "#fff" }}>
-          {[["500+", "Businesses"], ["99.9%", "Uptime"], ["<1s", "Latency"], ["30+", "Languages"]].map(([n, l]) => (
+          {[["500+", "Businesses"], ["99.9%", "Uptime"], ["<4s", "Response"], ["30+", "Languages"]].map(([n, l]) => (
             <div key={l} style={{ textAlign: "center" }}><div style={{ fontWeight: 900, fontSize: "2rem" }}>{n}</div><div style={{ opacity: 0.85, fontSize: "0.82rem" }}>{l}</div></div>
           ))}
         </div>

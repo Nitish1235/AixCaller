@@ -25,7 +25,7 @@ export default function AuroraTheme() {
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "6rem 2rem 4rem", textAlign: "center" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 999, padding: "5px 16px", fontSize: "0.8rem", fontWeight: 700, color: "#0284C7", marginBottom: "2rem" }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22C55E", display: "inline-block" }} />
-          Trusted by 500+ businesses · &lt;1s response latency
+          Trusted by 500+ businesses · &lt;4s response time
         </div>
         <h1 style={{ fontSize: "clamp(2.8rem, 5vw, 4.5rem)", fontWeight: 900, lineHeight: 1.05, letterSpacing: -2, margin: "0 auto 1.5rem", maxWidth: 800 }}>
           Hire a 24/7 AI Voice Agent<br />

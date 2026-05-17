@@ -36,7 +36,7 @@ export default function SteelTheme() {
         </div>
         {/* Right: Metric cards */}
         <div style={{ display: "grid", gap: "1rem" }}>
-          {[["📈", "Calls Handled", "400K+/month", teal], ["⚡", "Response Latency", "<1 second", steel], ["🌍", "Languages", "30+ supported", teal], ["🔒", "Security", "SOC2 Type II", steel]].map(([icon, label, val, color]) => (
+          {[["📈", "Calls Handled", "400K+/month", teal], ["⚡", "Response Latency", "<4 seconds", steel], ["🌍", "Languages", "30+ supported", teal], ["🔒", "Security", "SOC2 Type II", steel]].map(([icon, label, val, color]) => (
             <div key={label as string} style={{ display: "flex", alignItems: "center", gap: 16, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "1.2rem 1.5rem" }}>
               <div style={{ width: 44, height: 44, borderRadius: 10, background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>{icon}</div>
               <div><div style={{ fontSize: "0.78rem", color: "#94A3B8", fontWeight: 600 }}>{label}</div><div style={{ fontWeight: 800, color: color as string, fontSize: "1.05rem" }}>{val}</div></div>

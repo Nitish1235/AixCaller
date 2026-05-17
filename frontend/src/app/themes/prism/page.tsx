@@ -66,7 +66,7 @@ export default function PrismTheme() {
       {/* Stats */}
       <div style={{ background: "linear-gradient(135deg, #7C3AED, #06B6D4)", padding: "3rem 2rem", margin: "0 0 0 0" }}>
         <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "2rem" }}>
-          {[["500+", "Active businesses"], ["99.9%", "Uptime SLA"], ["<1s", "Response time"], ["30+", "Languages"]].map(([n, l]) => (
+          {[["500+", "Active businesses"], ["99.9%", "Uptime SLA"], ["<4s", "Response time"], ["30+", "Languages"]].map(([n, l]) => (
             <div key={l} style={{ textAlign: "center", color: "#fff" }}>
               <div style={{ fontWeight: 900, fontSize: "2rem" }}>{n}</div>
               <div style={{ opacity: 0.8, fontSize: "0.85rem", fontWeight: 500 }}>{l}</div>
