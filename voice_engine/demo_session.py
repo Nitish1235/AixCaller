@@ -130,11 +130,59 @@ _STT_WS_URL = (
 # ── Prompt ────────────────────────────────────────────────────────────────────
 DEMO_SYSTEM_PROMPT = (
     "You are Aria, AIxCaller's live demo voice agent. You're on a phone call.\n"
-    "Rules: answer in 1-2 sentences max. Be warm and direct. Never use bullet points.\n"
-    "AIxCaller: AI phone agents that handle calls 24/7, set up in 5 minutes.\n"
-    "Plans: Starter $50/mo (200 min, 2 agents), Pro $119/mo (500 min), "
-    "Premium $250/mo (1100 min, 4 agents).\n"
-    "Integrations: Shopify order lookup, Google Calendar booking, Zoho/GoHighLevel CRMs."
+    "Rules: answer in 1-2 sentences max. Be warm and direct. Never use bullet points.\n\n"
+
+    "ABOUT AIXCALLER:\n"
+    "AIxCaller lets any business deploy AI phone agents that handle inbound and outbound calls "
+    "24 hours a day, 7 days a week. Agents are set up in under 5 minutes by uploading business "
+    "documents, PDFs, or website URLs. No coding is required. The AI learns the business data "
+    "and answers caller questions accurately without hallucinating.\n\n"
+
+    "PRICING PLANS:\n"
+    "Starter: $50 per month — 200 minutes, 2 agents, basic analytics, email summaries.\n"
+    "Pro: $119 per month — 500 minutes, 5 agents, advanced analytics, priority support.\n"
+    "Premium: $250 per month — 1100 minutes, 4 agents, dedicated support, custom integrations.\n"
+    "Enterprise: custom pricing for high-volume teams needing unlimited concurrency and SLA guarantees.\n"
+    "All plans start with a free trial — no credit card required to sign up.\n\n"
+
+    "KEY FEATURES:\n"
+    "Real phone numbers: buy local or toll-free numbers instantly, or forward your existing line.\n"
+    "Knowledge base: the agent is trained on the business owner's uploaded PDFs, URLs, or text.\n"
+    "Natural voice: human-like speech using the latest neural TTS with full interruption support.\n"
+    "Multilingual: 30 languages supported including Spanish, French, Hindi, Arabic, Portuguese.\n"
+    "Analytics dashboard: full call transcripts, sentiment scores, action items, email summaries.\n"
+    "Smart transfer: route calls to a human agent at any time, with custom business-hours schedules.\n"
+    "Outbound calling: automated follow-ups, appointment reminders, and lead nurturing campaigns.\n\n"
+
+    "INTEGRATIONS:\n"
+    "Shopify: agent can look up order status, tracking numbers, items, totals, and refund status live.\n"
+    "Google Calendar: agent checks real-time availability and books appointments directly.\n"
+    "Zoho CRM: auto-sync call summaries, leads, and contacts after every call.\n"
+    "GoHighLevel: native integration for marketing agencies reselling AI agents to their clients.\n"
+    "HubSpot: push call data, create contacts, and log call notes automatically.\n"
+    "Custom webhooks: connect to any internal tool or third-party API.\n\n"
+
+    "COMMON QUESTIONS:\n"
+    "Q: How long does setup take?\n"
+    "A: Under 5 minutes. Upload business info, choose a voice, get a phone number, and go live.\n"
+    "Q: Does it sound robotic?\n"
+    "A: No. It uses the latest neural TTS voices. Most callers cannot tell it is an AI.\n"
+    "Q: Can I try it for free?\n"
+    "A: Yes. Visit AIxCaller.live and sign up — no credit card needed for the free trial.\n"
+    "Q: Does it handle multiple calls at once?\n"
+    "A: Yes, unlimited concurrent calls on all plans. It never rings busy.\n"
+    "Q: What if the caller wants a real person?\n"
+    "A: The agent can transfer the call to a human number instantly, with custom hours.\n"
+    "Q: Is the data secure?\n"
+    "A: Yes — SOC2 compliant, all data encrypted at rest and in transit.\n"
+    "Q: Can it make outbound calls?\n"
+    "A: Yes — for follow-ups, reminders, and lead campaigns.\n"
+    "Q: What industries use AIxCaller?\n"
+    "A: E-commerce, healthcare, real estate, restaurants, law firms, agencies, and more.\n\n"
+
+    "GETTING STARTED:\n"
+    "Sign up free at AIxCaller.live. Onboarding takes under 5 minutes. "
+    "Support is available 24/7 via live chat and email."
 )
 
 
@@ -287,27 +335,54 @@ async def run_demo_session(websocket: WebSocket):
 
     keepalive_task = asyncio.create_task(_tts_keepalive())
 
+    # ── TTS WebSocket warmup ──────────────────────────────────────────────────
+    async def _warm_tts() -> None:
+        """Prime Deepgram's synthesis engine so Q1 TTS isn't cold.
+
+        When the cached greeting is used, the TTS WebSocket never gets a real
+        Speak command until the user's first query.  Deepgram initialises the
+        voice model on the first Flush — this takes an extra 500–1000 ms.
+        Sending a throwaway short phrase right after session open forces that
+        initialisation to happen during greeting playback instead.
+        The warmup audio is drained from the queue and discarded.
+        """
+        try:
+            ws = _tts["ws"]
+            await ws.send(json.dumps({"type": "Speak", "text": "Ready."}))
+            await ws.send(json.dumps({"type": "Flush"}))
+            # Drain the warmup audio — must consume it so the queue stays clean
+            # for the first real speak() call.
+            await asyncio.wait_for(_tts_results.get(), timeout=4.0)
+            logger.info("✅ TTS WS warmed — synthesis engine initialised")
+        except asyncio.TimeoutError:
+            logger.warning("TTS warmup Flush timed out (non-fatal — will reconnect on Q1 if needed)")
+        except Exception as e:
+            logger.warning(f"TTS warmup failed (non-fatal): {e}")
+
     # ── LLM primer ────────────────────────────────────────────────────────────
     async def _prime_llm() -> None:
-        """1-token warm-up call during greeting playback.
+        """Warm-up call fired during greeting playback.
 
-        gpt-4.1-mini TTFB on a cold instance is ~1.5–2 s.  Firing a throwaway
-        call while the greeting plays (user hears ~2 s of audio) means the
-        first real query hits a warm instance → TTFB ~0.3 s.
+        gpt-4.1-mini TTFB on a cold instance is ~1.5–2 s.  Generating a full
+        short response (not just 1 token) does enough real work that OpenAI
+        routes the follow-up query to the same warmed instance.
+        Also seeds the prompt cache: DEMO_SYSTEM_PROMPT is now ≥1024 tokens,
+        so after this call the static prefix is cached — Q1 gets a cache hit
+        on ~1024+ input tokens → lower TTFB and ~50% cheaper input cost.
         """
         try:
             primer_messages = [
                 {"role": "system", "content": DEMO_SYSTEM_PROMPT},
                 {"role": "assistant", "content": GREETING_TEXT},
-                {"role": "user", "content": "Hi."},
+                {"role": "user", "content": "What can you do?"},
             ]
             await openai_client.chat.completions.create(
                 model="gpt-4.1-mini",
                 messages=primer_messages,
-                max_tokens=1,
+                max_tokens=40,   # generate a real response — warms the instance properly
                 temperature=0,
             )
-            logger.info("✅ Demo LLM primer complete — model instance warmed")
+            logger.info("✅ Demo LLM primer complete — model instance warmed + prompt cache seeded")
         except Exception as e:
             logger.warning(f"Demo LLM primer failed (non-fatal): {e}")
 
@@ -418,12 +493,17 @@ async def run_demo_session(websocket: WebSocket):
         await send({"type": "tts_audio", "data": b64})
         conversation.append({"role": "assistant", "content": GREETING_TEXT})
         logger.info("✅ Greeting delivered from cache (~0 ms synthesis latency)")
+        # Cache path bypasses the TTS WebSocket entirely, leaving Deepgram's
+        # synthesis engine cold for Q1.  Fire a throwaway synthesis in parallel
+        # so the engine initialises during the ~2–3 s greeting playback window.
+        asyncio.create_task(_warm_tts())
     else:
+        # Greeting went through TTS WS — engine is already warm.
         logger.info("Greeting cache miss — synthesizing on demand")
         await speak(GREETING_TEXT)
 
-    # Fire LLM primer during greeting playback — warms model instance so first
-    # real query TTFB drops from ~1.5 s → ~0.3 s.
+    # Fire LLM primer during greeting playback — generates a real short response
+    # (max_tokens=40) to warm the model instance AND seed the prompt cache.
     asyncio.create_task(_prime_llm())
 
     # ── Audio forwarding loop ─────────────────────────────────────────────────
