@@ -109,6 +109,40 @@ class VoiceAgent:
         self._transfer_off_hours_reason: Optional[str] = None  # set in start()
         self._hangup_triggered = False  # guard against double-hangup (GoodbyeDetector + end_call)
 
+    # ── LLM Cache Primer (background task) ───────────────────────────────────
+    async def _prime_llm_cache(self, system_messages: list):
+        """Seed the OpenAI prompt cache during greeting playback.
+
+        Makes one cheap call to gpt-4.1-mini with the full system prompt +
+        a minimal dummy user message.  This achieves two things:
+          1. Warms the model instance (eliminates cold-start latency)
+          2. Seeds the prompt cache for the static system prefix (≥1024 tokens)
+
+        By the time the caller finishes their first sentence the cache is hot,
+        so the first real LLM call drops from ~3 s TTFB → ~0.5 s.
+
+        Runs as asyncio.create_task — never blocks the greeting or the pipeline.
+        Failures are silently swallowed (non-fatal).
+        """
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            primer_messages = system_messages + [{"role": "user", "content": "Hello."}]
+            resp = await client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=primer_messages,
+                max_tokens=1,       # We only need the cache seeded — discard the reply
+                temperature=0,
+            )
+            cached = getattr(resp.usage, "prompt_tokens_details", None)
+            cached_tokens = getattr(cached, "cached_tokens", 0) if cached else 0
+            logger.info(
+                f"✅ LLM cache primer complete "
+                f"(prompt={resp.usage.prompt_tokens} tokens, cached={cached_tokens})"
+            )
+        except Exception as e:
+            logger.warning(f"LLM cache primer failed (non-fatal): {e}")
+
     # ── Hot KB Pre-warm (background task) ────────────────────────────────────
     async def _prewarm_hot_kb_safe(self):
         """Pre-warm hot KB cache at call start. Failures are non-fatal."""
@@ -890,6 +924,24 @@ class VoiceAgent:
             # By the time the user asks their first question, results are ready (5-10ms vs 700ms).
             # Runs as a background task — does NOT block the greeting.
             asyncio.create_task(self._prewarm_hot_kb_safe())
+
+            # 4. LLM PRIMER — seed OpenAI prompt cache during greeting playback
+            #
+            # Problem observed in logs: the very first LLM call of every call has
+            # a 3+ second TTFB because:
+            #   a) The model instance is cold (no prior request in this session)
+            #   b) The prompt cache is empty (no prior request with the same prefix)
+            #   Subsequent calls in the same session are 0.5–0.8 s (cache warm).
+            #
+            # Fix: immediately after the greeting is queued, fire a cheap background
+            # call to OpenAI with the current system messages + a dummy user message.
+            # This runs DURING the ~3 s greeting playback, so it costs zero extra
+            # latency from the user's perspective.  By the time the user finishes
+            # their first question the cache is seeded and the model instance is warm.
+            #
+            # Expected improvement: first real query LLM TTFB 3.0 s → 0.5 s,
+            # cutting total first-response latency from ~8 s to ~5 s.
+            asyncio.create_task(self._prime_llm_cache(messages))
 
         @transport.event_handler("on_client_disconnected")
         async def on_disconnected(transport, client):
