@@ -15,6 +15,7 @@ if not _JWT_SECRET:
     raise RuntimeError("JWT_SECRET env var is required — refusing to start without it")
 
 _INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+_DEMO_PHONE_NUMBER = os.environ.get("DEMO_PHONE_NUMBER", "+13322446316")
 
 _ALLOWED_ORIGINS = [
     o.strip() for o in
@@ -89,12 +90,14 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
 
     # 3. Create a Secure One-Time Token (JWT)
     # This prevents anyone from spoofing your voice engine
+    is_demo = (to_number == _DEMO_PHONE_NUMBER)
     token_payload = {
         "tenant_id": str(agent.tenant_id),
         "agent_id": str(agent.id),
         "voice_id": agent.voice_id,
         "from_number": from_number,
         "to_number": to_number,
+        "is_demo": is_demo,
         "exp": time.time() + 300
     }
     signed_token = jwt.encode(token_payload, _JWT_SECRET, algorithm="HS256")

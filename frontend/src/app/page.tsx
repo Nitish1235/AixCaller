@@ -1,5 +1,7 @@
 import Link from "next/link";
 import ClaimNumberSection from "@/components/ClaimNumberSection";
+import DemoCallSection from "@/components/DemoCallSection";
+import IntegrationsSection from "@/components/IntegrationsSection";
 
 export const dynamic = "force-dynamic";
 
@@ -222,6 +224,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── INTEGRATIONS ── */}
+      <IntegrationsSection />
+
       {/* ── STEPS ── */}
       <section id="how-it-works" style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
         <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Deploy Your Custom AI Caller in 3 Steps</h2>
@@ -335,6 +340,9 @@ export default function Home() {
         </div>
       </section>
       
+      {/* ── LIVE DEMO CALL ── */}
+      <DemoCallSection />
+
       {/* ── CLAIM NUMBER ── */}
       <ClaimNumberSection />
 

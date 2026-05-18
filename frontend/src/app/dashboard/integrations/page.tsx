@@ -95,7 +95,7 @@ export default function IntegrationsPage() {
   const [cfg, setCfg]     = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [modal, setModal] = useState<"zoho" | "email" | "shopify" | "google" | null>(null);
+  const [modal, setModal] = useState<"zoho" | "email" | "shopify" | "google" | "customapi" | null>(null);
 
   // Zoho connect form
   const [zohoDC, setZohoDC] = useState("us");
@@ -279,6 +279,13 @@ export default function IntegrationsPage() {
           onConnect={() => setModal("google")}
           onDisconnect={() => disconnect("google")}
         />
+
+        <IntCard
+          icon="🔗" title="Custom URL / Webhook" connected={false}
+          description="Connect any REST API or internal system. Your AI calls your endpoint mid-conversation to fetch live inventory, bookings, customer data, or trigger any business logic."
+          onConnect={() => setModal("customapi")}
+          onDisconnect={() => {}}
+        />
       </div>
 
       {/* Shopify Modal */}
@@ -395,6 +402,40 @@ export default function IntegrationsPage() {
             onClick={() => save({ email_summary_enabled: emailEnabled })}
             className="btn-brutal" style={{ width: "100%" }}>
             {saving ? "Updating..." : "Save Preferences"}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Custom URL Modal */}
+      <Modal open={modal === "customapi"} onClose={() => setModal(null)} title="🔗 Custom URL / Webhook">
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", fontSize: "0.9rem", color: "var(--text)", lineHeight: 1.6, fontWeight: 600 }}>
+            <strong>Per-agent configuration.</strong> Custom URL is set individually on each AI agent so different agents can connect to different systems.
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div style={{ fontWeight: 900, fontSize: "0.85rem", textTransform: "uppercase", color: "var(--text)" }}>How it works</div>
+            {[
+              ["🌐", "Any REST endpoint", "Your AI hits your GET or POST endpoint with the caller's query as a parameter."],
+              ["🔑", "Auth headers", "Pass Bearer tokens, API keys, or custom headers — stored securely per-agent."],
+              ["⚡", "Mid-call, real-time", "The AI fetches data live during the conversation and reads back the result to the caller."],
+              ["🛠️", "No-code config", "Just paste a URL — no webhooks to register, no infrastructure to manage."],
+            ].map(([icon, title, desc]) => (
+              <div key={title as string} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>{icon}</span>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>{title}</div>
+                  <div style={{ fontSize: "0.82rem", color: "#475569", fontWeight: 600 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => { setModal(null); window.location.href = "/dashboard/agents"; }}
+            className="btn-brutal" style={{ width: "100%", padding: "14px", background: "var(--accent-yellow)", marginTop: "0.5rem" }}
+          >
+            Configure on My Agent →
           </button>
         </div>
       </Modal>

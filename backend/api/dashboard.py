@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from sqlalchemy import text
 from typing import List, Optional
 import uuid, json, os
+from datetime import datetime, timezone
 from pydantic import BaseModel
 from shared.database import engine, get_db
 from shared.models import Agent, VoiceOption, CallRecord, Tenant
@@ -422,13 +423,13 @@ async def process_call_data(request: Request, data: dict, db: Session = Depends(
                     "sentiment":        new_call.sentiment or "neutral",
                     "action_items":     new_call.action_items or "None",
                     "transcript":       transcript or "",
-                    # enriched fields from extended analytics
                     "call_type":        analysis.get("call_type", "general") if analysis else "general",
                     "lead_info":        analysis.get("lead_info") if analysis else None,
                     "booking_info":     analysis.get("booking_info") if analysis else None,
                     "issue_info":       analysis.get("issue_info") if analysis else None,
                     "agent_name":       agent_name,
                     "duration_seconds": duration_sec,
+                    "call_timestamp":   datetime.now(timezone.utc).strftime("%b %d, %Y · %I:%M %p UTC"),
                 }
             )
         except Exception as e:

@@ -163,13 +163,24 @@ async def websocket_endpoint(websocket: WebSocket):
                             await websocket.close()
                             return
                             
+                        is_demo = decoded.get("is_demo", False)
+
                         # ── Credit Gate ───────────────────────────────────────────────
-                        minutes_used = tenant.minutes_used or 0.0
-                        minutes_included = tenant.minutes_included or 0
-                        if minutes_used >= minutes_included:
-                            logger.warning(f"Tenant {tenant_id} out of minutes ({minutes_used}/{minutes_included}). Blocking call.")
-                            await websocket.close()
-                            return
+                        # Exempt demo calls — the demo number is a system account with
+                        # no paid plan; blocking it would break the demo experience.
+                        if not is_demo:
+                            minutes_used = tenant.minutes_used or 0.0
+                            minutes_included = tenant.minutes_included or 0
+                            # Only gate when the tenant actually has a plan (minutes_included > 0).
+                            # A brand-new free account with minutes_included=0 would otherwise
+                            # be blocked immediately, which is wrong.
+                            if minutes_included > 0 and minutes_used >= minutes_included:
+                                logger.warning(
+                                    f"Tenant {tenant_id} out of minutes "
+                                    f"({minutes_used:.1f}/{minutes_included}). Blocking call."
+                                )
+                                await websocket.close()
+                                return
                         # ──────────────────────────────────────────────────────────────
 
                         agent = db.get(Agent, agent_id)
@@ -177,21 +188,43 @@ async def websocket_endpoint(websocket: WebSocket):
                             logger.error(f"Agent {agent_id} not found in DB")
                             await websocket.close()
                             return
-                        
+
+                        _DEMO_SYSTEM_PROMPT = (
+                            "You are Alex, an enthusiastic AI demo agent for AIxCaller — the AI voice calling platform. "
+                            "This is a LIVE 1-MINUTE demo call. Show visitors exactly what AIxCaller can do.\n\n"
+                            "WHAT YOU KNOW — answer these confidently:\n"
+                            "- AIxCaller lets businesses deploy AI voice agents that answer inbound and outbound calls 24/7, no staff needed.\n"
+                            "- PRICING: Starter $50/mo (200 min, 1 agent) · Pro $119/mo (500 min, 2 agents) · Premium $250/mo (1100 min, 4 agents). All plans include a free trial.\n"
+                            "- SETUP: Takes under 5 minutes — pick a country, provision a real phone number, write your agent's system prompt, go live.\n"
+                            "- PHONE NUMBERS: 31+ countries supported (US, UK, CA, AU, DE, FR, JP, SG and more). Numbers start from $1.15/mo.\n"
+                            "- FEATURES: Appointment booking via Google Calendar, Shopify order lookups, human call transfer, missed-call auto-recovery, knowledge base (upload PDFs/URLs), Zoho CRM sync.\n"
+                            "- AFTER CALLS: Full transcript, AI-generated summary, sentiment score, and action items — all emailed instantly.\n"
+                            "- INDUSTRIES: Works for dental clinics, real estate, e-commerce, restaurants, law firms, SaaS support — any business that receives calls.\n"
+                            "- TECH: Powered by Deepgram (voice), OpenAI (brain), Telnyx (telephony). Sub-second response latency.\n"
+                            "- TO SIGN UP: Visit AIxCaller.com and click 'Start Building Free' — no credit card required.\n\n"
+                            "DEMO RULES:\n"
+                            "- This call auto-ends after 1 minute — be efficient and impressive.\n"
+                            "- Keep every answer to 1-2 punchy sentences — it's a phone call.\n"
+                            "- Be warm, natural, and confident. You ARE the product — show it off.\n"
+                            "- If they ask to sign up or learn more: 'Just visit AIxCaller.com and click Start Building Free — takes under 5 minutes!'\n"
+                            "- When they say goodbye or the conversation winds down, say a warm farewell and call end_call."
+                        )
+
                         agent_config = {
-                            "name": agent.name,
-                            "business_name": getattr(agent, "business_name", None),
-                            "system_prompt": agent.system_prompt,
+                            "name": "Alex" if is_demo else agent.name,
+                            "business_name": "AIxCaller" if is_demo else getattr(agent, "business_name", None),
+                            "system_prompt": _DEMO_SYSTEM_PROMPT if is_demo else agent.system_prompt,
                             "voice_id": agent.voice_id,
                             "agent_id": str(agent.id),
-                            "idle_timeout": agent.idle_timeout or 15,
+                            "idle_timeout": 70 if is_demo else (agent.idle_timeout or 15),
                             "llm_temperature": agent.llm_temperature or 0.7,
                             "language": agent.language or "en",
                             "is_recovery": decoded.get("is_recovery", False),
-                            # Human Transfer settings
-                            "forwarding_number":        agent.forwarding_number,
-                            "agent_phone_number":       agent.phone_number,  # Telnyx number — "from" on transfer
-                            "human_transfer_enabled":   getattr(agent, "human_transfer_enabled", False),
+                            "is_demo": is_demo,
+                            # Human Transfer settings — disabled for demo
+                            "forwarding_number":        None if is_demo else agent.forwarding_number,
+                            "agent_phone_number":       agent.phone_number,
+                            "human_transfer_enabled":   False if is_demo else getattr(agent, "human_transfer_enabled", False),
                             "human_transfer_timezone":  getattr(agent, "human_transfer_timezone", "UTC"),
                             "human_transfer_hours":     getattr(agent, "human_transfer_hours", {}) or {},
                             # Telephony
@@ -200,7 +233,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             # Caller's incoming phone (for Shopify caller-ID verification)
                             "from_number":     decoded.get("from_number", "unknown"),
                             "to_number":       decoded.get("to_number", "unknown"),
-                            "tools_config": agent.tools_config or {}
+                            "tools_config": {} if is_demo else (agent.tools_config or {})
                         }
                         # Inject tenant-level integration status
                         agent_config["tools_config"]["google_connected"] = getattr(tenant, "google_connected", False)

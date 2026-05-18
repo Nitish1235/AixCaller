@@ -108,6 +108,57 @@ class VoiceAgent:
         self._last_filler_time = 0.0  # for filler debounce
         self._transfer_off_hours_reason: Optional[str] = None  # set in start()
         self._hangup_triggered = False  # guard against double-hangup (GoodbyeDetector + end_call)
+        self._call_started_at: Optional[float] = None  # wall-clock when audio connected
+        self._billing_sent = False  # prevent double-billing from on_disconnect + finally
+
+    # ── Billing: send call duration + transcript to backend ──────────────────
+    async def _send_billing(self, call_id: str, context, call_started_at: Optional[float]):
+        """
+        POST call data to backend for minute deduction + analytics.
+        Guarded by _billing_sent so it can be called from both on_client_disconnected
+        (user-initiated hangup, fires first) and the start() finally block
+        (bot-initiated hangup, pipeline exits before Telnyx sends disconnect).
+        """
+        # Demo calls don't consume tenant minutes and don't need a call record.
+        if self.agent_config.get("is_demo"):
+            return
+
+        # Exactly-once guard — whichever path fires first wins.
+        if self._billing_sent:
+            return
+        self._billing_sent = True
+
+        duration_seconds = 0
+        if call_started_at:
+            duration_seconds = max(0, int(time.time() - call_started_at))
+
+        try:
+            transcript = context.get_messages() if context else []
+            internal_key = os.environ.get("INTERNAL_API_KEY", "")
+            backend_url = os.environ.get("BACKEND_URL", "http://localhost:8000")
+            async with httpx.AsyncClient(timeout=15.0) as http:
+                resp = await http.post(
+                    f"{backend_url}/api/v1/process-call-data",
+                    headers={"X-Internal-Key": internal_key},
+                    json={
+                        "call_id":          call_id,
+                        "transcript":       transcript,
+                        "tenant_id":        self.tenant_id,
+                        "agent_id":         self.agent_config.get("agent_id"),
+                        "duration_seconds": duration_seconds,
+                        "from_number":      self.agent_config.get("from_number", "unknown"),
+                        "to_number":        self.agent_config.get("to_number", "unknown"),
+                    },
+                )
+            if resp.status_code == 200:
+                logger.info(f"📞 Billing sent — call {call_id}, duration {duration_seconds}s")
+            else:
+                logger.error(
+                    f"Billing POST failed — HTTP {resp.status_code}: {resp.text[:200]}. "
+                    "Minutes NOT deducted. Check INTERNAL_API_KEY in both services."
+                )
+        except Exception as e:
+            logger.error(f"Billing POST exception: {e}")
 
     # ── LLM Cache Primer (background task) ───────────────────────────────────
     async def _prime_llm_cache(self, system_messages: list):
@@ -696,14 +747,18 @@ class VoiceAgent:
             ]
 
         if "custom_api" in tools_config:
+            custom_desc = (
+                tools_config["custom_api"].get("description")
+                or "Searches the business's custom system or database for real-time information relevant to the caller's query."
+            )
             standard_tools.append(
                 FunctionSchema(
                     name="search_internal_database",
-                    description="Searches an external database or API for custom information based on the user's query.",
+                    description=custom_desc,
                     properties={
                         "query": {
                             "type": "string",
-                            "description": "The query to search in the internal database."
+                            "description": "The query to search in the custom system."
                         }
                     },
                     required=["query"]
@@ -917,8 +972,6 @@ class VoiceAgent:
         self.task = task
 
         # Track call start so we can compute duration on disconnect
-        call_started_at = {"value": None}
-
         # 10. Event Handlers
         @transport.event_handler("on_client_connected")
         async def on_connected(transport, client):
@@ -928,7 +981,7 @@ class VoiceAgent:
                 f"vad=silero | audio_passthrough=ON | "
                 f"Sending TTS greeting."
             )
-            call_started_at["value"] = time.time()
+            self._call_started_at = time.time()
 
             agent_name = self.agent_config.get("name", "our assistant")
             business_name = self.agent_config.get("business_name")
@@ -977,7 +1030,21 @@ class VoiceAgent:
             # 2. QUIET MEMORY UPDATE: Tell the LLM what it just said
             context.add_message({"role": "assistant", "content": greeting_text})
 
-            # 3. PRE-WARM HOT KB IN BACKGROUND
+            # 3. DEMO AUTO-CUT — end call at exactly 60 seconds
+            # Only fires when is_demo=True (set in backend only for +13322446316).
+            # trigger_hangup() has a built-in 2.5s delay that covers TTS playback.
+            if self.agent_config.get("is_demo"):
+                async def _demo_timer():
+                    await asyncio.sleep(50)  # 50s — goodbye + cut
+                    if not self._hangup_triggered:
+                        await self.task.queue_frames([
+                            TTSSpeakFrame(text="That's our one-minute demo! Visit AIxCaller.com to build your own agent. Goodbye!")
+                        ])
+                        await self.trigger_hangup()  # internal 2.5s delay lets TTS finish
+                asyncio.create_task(_demo_timer())
+                logger.info("⏱️  Demo mode: auto-cut timer started (50s)")
+
+            # 4. PRE-WARM HOT KB IN BACKGROUND
             # Fires 3 broad KB queries in parallel and caches the top chunks in Redis.
             # By the time the user asks their first question, results are ready (5-10ms vs 700ms).
             # Runs as a background task — does NOT block the greeting.
@@ -1002,43 +1069,15 @@ class VoiceAgent:
             asyncio.create_task(self._prime_llm_cache(messages))
 
         @transport.event_handler("on_client_disconnected")
-        async def on_disconnected(transport, client):
-            logger.info(f"Call {call_id} disconnected. Cancelling pipeline and sending transcript...")
+        async def on_disconnected(transport, _telnyx_client):
+            logger.info(f"Call {call_id}: Telnyx disconnected — cancelling pipeline.")
 
-            # Official Pipecat pattern: task.cancel() on disconnect (not EndFrame).
-            # EndFrame is for graceful *bot-initiated* shutdown (e.g. end_call tool).
-            # When Telnyx disconnects first we should cancel immediately so no frames
-            # keep being processed on a dead socket.
+            # Official Pipecat pattern: task.cancel() on remote disconnect.
             await task.cancel()
 
-            # Compute call duration in seconds
-            duration_seconds = 0
-            if call_started_at["value"]:
-                duration_seconds = int(time.time() - call_started_at["value"])
-
-            # Send transcript + duration to backend for analytics + minute tracking
-            try:
-                transcript = context.get_messages()
-                internal_key = os.environ.get("INTERNAL_API_KEY", "")
-                async with httpx.AsyncClient() as client:
-                    backend_url = os.environ.get("BACKEND_URL", "http://localhost:8000")
-                    await client.post(
-                        f"{backend_url}/api/v1/process-call-data",
-                        headers={"X-Internal-Key": internal_key},
-                        json={
-                            "call_id":          call_id,
-                            "transcript":       transcript,
-                            "tenant_id":        self.tenant_id,
-                            "agent_id":         self.agent_config.get("agent_id"),
-                            "duration_seconds": duration_seconds,
-                            "from_number":      self.agent_config.get("from_number", "unknown"),
-                            "to_number":        self.agent_config.get("to_number", "unknown"),
-                        },
-                        timeout=10.0
-                    )
-                logger.info(f"📞 Call duration: {duration_seconds}s — sent to backend")
-            except Exception as e:
-                logger.error(f"Failed to send post-call hook: {e}")
+            # Fire billing immediately (user-initiated hangup path).
+            # _send_billing is guarded — if finally block fires first, this is a no-op.
+            await self._send_billing(call_id, context, self._call_started_at)
 
         # 11. Idle-timeout handler — log a clear message instead of silent pipeline death
         @task.event_handler("on_idle_timeout")
@@ -1051,6 +1090,10 @@ class VoiceAgent:
             # being cancelled by cancel_on_idle_timeout=True (the default).
             await self.trigger_hangup()
 
-        # 12. Run
+        # 12. Run — billing fires in finally to cover bot-initiated hangups where
+        # on_client_disconnected may arrive after runner.run() has already returned.
         runner = PipelineRunner()
-        await runner.run(task)
+        try:
+            await runner.run(task)
+        finally:
+            await self._send_billing(call_id, context, self._call_started_at)

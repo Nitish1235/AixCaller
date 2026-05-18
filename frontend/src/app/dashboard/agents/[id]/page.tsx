@@ -91,6 +91,15 @@ export default function AgentDetailsPage() {
   const [shopifyBusy, setShopifyBusy] = useState(false);
   const [shopifyMsg, setShopifyMsg] = useState<string>("");
 
+  // Custom URL / Webhook state
+  const [customApiEnabled, setCustomApiEnabled] = useState(false);
+  const [customApiEndpoint, setCustomApiEndpoint] = useState("");
+  const [customApiMethod, setCustomApiMethod] = useState<"GET" | "POST">("GET");
+  const [customApiAuth, setCustomApiAuth] = useState("");
+  const [customApiDesc, setCustomApiDesc] = useState("");
+  const [customApiSaving, setCustomApiSaving] = useState(false);
+  const [customApiMsg, setCustomApiMsg] = useState("");
+
   // Telephony
   const [provisioning, setProvisioning] = useState(false);
   const [countryCode, setCountryCode] = useState("US");
@@ -148,6 +157,14 @@ export default function AgentDetailsPage() {
           const savedHours = found.human_transfer_hours;
           if (savedHours && Object.keys(savedHours).length > 0) {
             setTransferHours({ ...DEFAULT_HOURS, ...savedHours });
+          }
+          const ca = found.tools_config?.custom_api;
+          if (ca) {
+            setCustomApiEnabled(true);
+            setCustomApiEndpoint(ca.endpoint || "");
+            setCustomApiMethod((ca.method || "GET") as "GET" | "POST");
+            setCustomApiAuth(ca.auth_header || "");
+            setCustomApiDesc(ca.description || "");
           }
         }
       } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -378,6 +395,37 @@ export default function AgentDetailsPage() {
       setShopifyMsg(data.ok ? `✓ ${data.message}` : `✗ ${data.message}`);
     } catch { setShopifyMsg("✗ Test failed."); }
     setShopifyBusy(false);
+  };
+
+  // ── Custom URL / Webhook ────────────────────────────────────────────────
+  const saveCustomApi = async () => {
+    setCustomApiSaving(true); setCustomApiMsg("");
+    try {
+      const existing = agent.tools_config || {};
+      let tools_config: Record<string, any>;
+      if (!customApiEnabled) {
+        const { custom_api: _removed, ...rest } = existing;
+        tools_config = rest;
+      } else {
+        if (!customApiEndpoint.trim()) {
+          setCustomApiMsg("✗ Endpoint URL is required.");
+          setCustomApiSaving(false);
+          return;
+        }
+        tools_config = {
+          ...existing,
+          custom_api: {
+            endpoint: customApiEndpoint.trim(),
+            method: customApiMethod,
+            auth_header: customApiAuth.trim(),
+            description: customApiDesc.trim(),
+          },
+        };
+      }
+      await updateAgent(agentId, { tools_config });
+      setCustomApiMsg(customApiEnabled ? "✓ Custom URL saved." : "✓ Custom URL disabled.");
+    } catch { setCustomApiMsg("✗ Failed to save."); }
+    setCustomApiSaving(false);
   };
 
   if (loading) return <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Loading...</div>;
@@ -759,6 +807,130 @@ export default function AgentDetailsPage() {
                   </ul>
                 </div>
               </div>
+
+              {/* ── Custom URL / Webhook ──────────────────────────────────── */}
+              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
+                  <div>
+                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "#064E3B", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                      🔗 Custom URL / Webhook
+                      {customApiEnabled && (
+                        <span style={{ fontSize: "0.65rem", padding: "2px 8px", background: "#EDE9FE", color: "#7C3AED", borderRadius: 99, fontWeight: 700, letterSpacing: 0.5 }}>
+                          ENABLED
+                        </span>
+                      )}
+                    </h3>
+                    <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: "4px 0 0", lineHeight: 1.5 }}>
+                      Connect any REST API or webhook. Your AI calls this endpoint mid-conversation to fetch live data — inventory, bookings, customer info, or any business logic.
+                    </p>
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", flexShrink: 0 }}>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6B7280" }}>
+                      {customApiEnabled ? "On" : "Off"}
+                    </span>
+                    <div
+                      onClick={() => setCustomApiEnabled(v => !v)}
+                      style={{
+                        width: 40, height: 22, borderRadius: 99, cursor: "pointer",
+                        background: customApiEnabled ? "#7C3AED" : "#D1D5DB",
+                        position: "relative", transition: "background 0.2s",
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute", top: 3,
+                        left: customApiEnabled ? 21 : 3,
+                        width: 16, height: 16, borderRadius: "50%",
+                        background: "#fff", transition: "left 0.2s",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      }} />
+                    </div>
+                  </label>
+                </div>
+
+                {customApiEnabled && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Endpoint URL <span style={{ color: "#EF4444" }}>*</span></label>
+                      <input
+                        type="url"
+                        value={customApiEndpoint}
+                        onChange={e => setCustomApiEndpoint(e.target.value)}
+                        placeholder="https://api.yourapp.com/data"
+                        style={inp}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>HTTP Method</label>
+                        <select
+                          value={customApiMethod}
+                          onChange={e => setCustomApiMethod(e.target.value as "GET" | "POST")}
+                          style={{ ...inp, appearance: "none" }}
+                        >
+                          <option value="GET">GET</option>
+                          <option value="POST">POST</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Auth Header <span style={{ fontWeight: 400, color: "#9CA3AF", textTransform: "none" }}>(optional)</span></label>
+                        <input
+                          type="text"
+                          value={customApiAuth}
+                          onChange={e => setCustomApiAuth(e.target.value)}
+                          placeholder="Bearer sk-your-api-key"
+                          style={inp}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={lbl}>AI Tool Description <span style={{ fontWeight: 400, color: "#9CA3AF", textTransform: "none" }}>(tells AI when to call this)</span></label>
+                      <textarea
+                        value={customApiDesc}
+                        onChange={e => setCustomApiDesc(e.target.value)}
+                        placeholder="e.g. Searches the inventory database for product availability and pricing based on the caller's request."
+                        rows={3}
+                        style={{ ...inp, resize: "vertical", lineHeight: 1.5 }}
+                      />
+                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "4px 0 0" }}>
+                        This description is passed to the AI so it knows when and how to use your endpoint.
+                      </p>
+                    </div>
+
+                    <div style={{ marginTop: 4, background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 9, padding: "10px 14px", fontSize: "0.76rem", color: "#5B21B6", lineHeight: 1.6 }}>
+                      <strong>How it works:</strong> When a caller asks something your AI can't answer from its knowledge,
+                      it sends a <code style={{ background: "#EDE9FE", padding: "1px 4px", borderRadius: 4 }}>query</code> parameter
+                      to your endpoint and reads the response. GET requests use query params; POST requests send{" "}
+                      <code style={{ background: "#EDE9FE", padding: "1px 4px", borderRadius: 4 }}>{`{"query": "..."}`}</code>.
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
+                  <button
+                    type="button"
+                    onClick={saveCustomApi}
+                    disabled={customApiSaving}
+                    style={{
+                      background: "#7C3AED", color: "#fff", border: "none", borderRadius: 9,
+                      padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem",
+                      cursor: customApiSaving ? "not-allowed" : "pointer", opacity: customApiSaving ? 0.7 : 1,
+                    }}
+                  >
+                    {customApiSaving ? "Saving…" : "Save Custom URL"}
+                  </button>
+                  {customApiMsg && (
+                    <span style={{
+                      fontSize: "0.82rem", fontWeight: 600,
+                      color: customApiMsg.startsWith("✓") ? "#059669" : "#DC2626",
+                    }}>
+                      {customApiMsg}
+                    </span>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
 
