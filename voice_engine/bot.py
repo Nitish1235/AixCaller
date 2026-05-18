@@ -80,9 +80,24 @@ class STTDiagnosticsLogger(FrameProcessor):
     def __init__(self, agent=None):
         super().__init__()
         self.agent = agent
+        self._audio_frames_count = 0
+        self._last_log_time = time.time()
 
     async def process_frame(self, frame, direction):
         await super().process_frame(frame, direction)
+        
+        frame_type = frame.__class__.__name__
+        if frame_type == "AudioRawFrame":
+            self._audio_frames_count += 1
+            now = time.time()
+            if now - self._last_log_time >= 5.0:
+                logger.info(f"🎤 Diagnostics: Received {self._audio_frames_count} audio frames from transport in last 5s")
+                self._audio_frames_count = 0
+                self._last_log_time = now
+        else:
+            # Log all non-audio control frames for complete visibility of the pipeline sequence
+            logger.debug(f"🔍 Pipeline received control frame: {frame_type} (direction={direction})")
+
         if isinstance(frame, TranscriptionFrame):
             logger.info(f"📝 STT final: '{frame.text}'")
             if self.agent and hasattr(self.agent, "start_speculative_search"):
