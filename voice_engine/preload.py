@@ -146,14 +146,17 @@ def create_phone_vad():
         #   stalled for 6.5 s after the caller stopped speaking and the LLM
         #   never fired.
         #
-        # min_volume=0.6 and confidence=0.7 are the official mic-audio defaults.
-        # If they prove too strict for quiet phone callers in production, tune
-        # ONLY those two — do NOT touch stop_secs again.
+        # min_volume tuned for PHONE audio (PCMU / G.711 8kHz narrowband).
+        # The Pipecat default of 0.6 is for close-talk mic audio; phone audio
+        # rarely exceeds normalized amplitude 0.3, so 0.6 silently swallows
+        # every caller utterance — VAD never fires, LLM never runs, the bot
+        # appears deaf after the greeting. 0.3 captures normal phone speech;
+        # confidence=0.7 still rejects line noise. Do NOT touch stop_secs.
         params=VADParams(
             confidence=0.7,
             start_secs=0.2,
             stop_secs=0.2,
-            min_volume=0.6,
+            min_volume=0.3,
         ),
     )
     vad._model = _SharedSessionSileroModel()
