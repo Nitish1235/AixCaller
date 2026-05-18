@@ -427,6 +427,12 @@ class VoiceAgent:
 
         stt = DeepgramSTTService(
             api_key=os.environ["DEEPGRAM_API_KEY"],
+            # audio_passthrough=True is REQUIRED.
+            # Without it, DeepgramSTTService consumes AudioRawFrames and does NOT
+            # pass them downstream. LLMUserAggregator (with vad_analyzer=phone_vad)
+            # never receives audio, VAD never fires, no user turn is ever detected,
+            # and the LLM is never triggered — the agent hears nothing after the greeting.
+            audio_passthrough=True,
             settings=DeepgramSTTService.Settings(
                 model="nova-2-phonecall",
                 language=language,

@@ -5,35 +5,35 @@ Architecture:
   Browser webm/opus (100ms chunks)
     → Deepgram STT WebSocket  (nova-2-general, speech_final trigger)
     → gpt-4.1-mini streaming  (max 80 tokens)
-    → Deepgram TTS WebSocket  (aura-2-thalia-en, linear16 PCM)
+    → Deepgram TTS REST API   (aura-2-thalia-en, linear16 PCM)
     → WAV-wrapped audio       → Browser (Web Audio decodeAudioData)
 
 Latency optimisations:
   • GREETING: pre-synthesised at server startup via Deepgram REST API.
               Stored as a cached WAV blob → sent to browser the instant the
-              WebSocket opens.  Eliminates ~700 ms of TTS WS setup + synthesis
-              on every demo session.
-  • WS OPEN:  TTS + STT Deepgram WebSockets opened in parallel (asyncio.gather)
-              instead of sequentially → saves ~300 ms per session.
-  • KEEPALIVE: KeepAlive sent to TTS WS every 5 s (was 10 s) to detect and
-              prevent silent disconnections before the user's first query.
-  • RECONNECT: speak() auto-reconnects the TTS WS on timeout and retries the
-              sentence once.  Previous behaviour was to silently skip the
-              sentence — the user heard nothing.
-  • TIMEOUT:  TTS Flush timeout 5 s first attempt; 8 s after reconnect.
+              WebSocket opens.  Eliminates ~700 ms of TTS latency on every session.
+  • TTS:      REST API per sentence (not WebSocket).  Deepgram's TTS WS silently
+              expires its synthesis session ~15 s after last Flush regardless of
+              KeepAlive messages, causing a 5 s timeout on first real query.
+              REST API is stateless — never expires, no connection to manage.
+              Per-sentence latency is ~300–450 ms, identical to a warm WS.
+              A persistent httpx.AsyncClient reuses the TLS connection across
+              sentences so there is no TLS handshake overhead after the first call.
   • STT:      endpointing 100 ms; utterance_end_ms 1000 ms (API min).
-  • CHUNKS:   MediaRecorder sends 100 ms chunks (frontend) instead of 250 ms,
-              reducing STT buffering latency by up to 150 ms.
+  • CHUNKS:   MediaRecorder sends 100 ms chunks (frontend), reducing buffering
+              latency by up to 150 ms vs 250 ms default.
   • MODEL:    gpt-4.1-mini (~30 % lower median TTFB than gpt-4o-mini).
-  • PRIMER:   1-token LLM warm-up call fired during greeting audio playback
-              so the model instance is hot before the first real user query.
-              Drops cold-start TTFB ~1.5 s → ~0.3 s on query 1.
+  • PRIMER:   LLM warm-up call fired during greeting playback (max_tokens=40)
+              to warm the model instance AND seed OpenAI's prompt cache.
+              DEMO_SYSTEM_PROMPT is ≥1024 tokens so the static prefix is cached
+              after the primer → Q1 gets a cache hit → TTFB ~0.3 s instead of ~1.5 s.
 """
 import asyncio
 import base64
 import json
 import os
 import struct
+import httpx
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 import websockets
@@ -67,27 +67,39 @@ def _pcm_to_wav(pcm: bytes, sample_rate: int = 24_000, channels: int = 1, bits: 
     return header + pcm
 
 
+# ── TTS REST endpoint ─────────────────────────────────────────────────────────
+_TTS_REST_URL = (
+    "https://api.deepgram.com/v1/speak"
+    "?model=aura-2-thalia-en"
+    "&encoding=linear16"
+    "&sample_rate=24000"
+)
+
+# ── STT WebSocket endpoint ────────────────────────────────────────────────────
+_STT_WS_URL = (
+    "wss://api.deepgram.com/v1/listen"
+    "?model=nova-2-general"
+    "&language=en-US"
+    "&interim_results=true"
+    "&endpointing=100"
+    "&utterance_end_ms=1000"
+)
+
+
 # ── Greeting pre-synthesis ───────────────────────────────────────────────────
 async def presynthesise_greeting() -> None:
     """Pre-synthesize the demo greeting WAV at server startup."""
     global _CACHED_GREETING_WAV
-    import httpx
 
     api_key = os.environ.get("DEEPGRAM_API_KEY", "")
     if not api_key:
         logger.warning("DEEPGRAM_API_KEY not set — greeting pre-synthesis skipped")
         return
 
-    url = (
-        "https://api.deepgram.com/v1/speak"
-        "?model=aura-2-thalia-en"
-        "&encoding=linear16"
-        "&sample_rate=24000"
-    )
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
-                url,
+                _TTS_REST_URL,
                 headers={
                     "Authorization": f"Token {api_key}",
                     "Content-Type": "application/json",
@@ -109,25 +121,7 @@ async def presynthesise_greeting() -> None:
         logger.warning(f"Greeting pre-synthesis failed (will synthesize on demand): {e}")
 
 
-# ── Deepgram endpoint URLs ────────────────────────────────────────────────────
-_TTS_WS_URL = (
-    "wss://api.deepgram.com/v1/speak"
-    "?model=aura-2-thalia-en"
-    "&encoding=linear16"
-    "&sample_rate=24000"
-)
-
-_STT_WS_URL = (
-    "wss://api.deepgram.com/v1/listen"
-    "?model=nova-2-general"
-    "&language=en-US"
-    "&interim_results=true"
-    "&endpointing=100"
-    "&utterance_end_ms=1000"
-)
-
-
-# ── Prompt ────────────────────────────────────────────────────────────────────
+# ── System prompt ─────────────────────────────────────────────────────────────
 DEMO_SYSTEM_PROMPT = (
     "You are Aria, AIxCaller's live demo voice agent. You're on a phone call.\n"
     "Rules: answer in 1-2 sentences max. Be warm and direct. Never use bullet points.\n\n"
@@ -195,7 +189,7 @@ async def run_demo_session(websocket: WebSocket):
     state = {"active": True, "generating": False, "llm_task": None}
 
     openai_client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    dg_auth = {"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"}
+    dg_key = os.environ["DEEPGRAM_API_KEY"]
 
     async def send(data: dict):
         """Safe send — silently drops if session has ended."""
@@ -205,184 +199,62 @@ async def run_demo_session(websocket: WebSocket):
         except Exception:
             pass
 
-    # ── Open TTS + STT WebSockets in PARALLEL ────────────────────────────────
+    # ── Open STT WebSocket ────────────────────────────────────────────────────
     try:
-        tts_ws, stt_ws = await asyncio.gather(
-            websockets.connect(_TTS_WS_URL, additional_headers=dg_auth),
-            websockets.connect(_STT_WS_URL, additional_headers=dg_auth),
+        stt_ws = await websockets.connect(
+            _STT_WS_URL,
+            additional_headers={"Authorization": f"Token {dg_key}"},
         )
     except Exception as e:
-        logger.error(f"Demo Deepgram WebSocket connect failed: {e}")
+        logger.error(f"Demo STT WebSocket connect failed: {e}")
         await send({"type": "session_ended"})
         return
 
-    # ── TTS connection manager ────────────────────────────────────────────────
-    # _tts holds the live WS and its reader task in a mutable dict so that
-    # speak(), keepalive, and reconnect all operate on the same reference.
-    # Replacing _tts["ws"] automatically affects every closure on the next call.
-    _tts_results: asyncio.Queue[bytes] = asyncio.Queue()
-    _tts: dict = {"ws": tts_ws, "reader": None}
-
-    def _launch_tts_reader(ws) -> asyncio.Task:
-        """Spawn a reader task for the given TTS WebSocket."""
-        async def _reader():
-            chunks: list[bytes] = []
-            try:
-                async for msg in ws:
-                    if isinstance(msg, bytes):
-                        chunks.append(msg)
-                    elif isinstance(msg, str):
-                        try:
-                            ev = json.loads(msg)
-                        except Exception:
-                            continue
-                        if ev.get("type") == "Flushed":
-                            await _tts_results.put(b"".join(chunks))
-                            chunks = []
-                        # KeepAlive ack / Cleared / Metadata — ignore
-            except Exception:
-                pass  # WS closed or session ended — expected
-        return asyncio.create_task(_reader())
-
-    _tts["reader"] = _launch_tts_reader(tts_ws)
-
-    async def _reconnect_tts() -> None:
-        """Close the dead TTS WS, open a fresh one, restart the reader.
-
-        Called by speak() on a 5 s Flush timeout.  The old WebSocket has
-        silently dropped (Deepgram closed the session server-side without
-        sending a TCP FIN, so tts_ws.closed stays False and sends appear to
-        succeed but no Flushed event ever arrives).
-
-        After reconnect speak() retries the sentence on the fresh connection.
-        """
-        logger.warning("🔄 TTS WS dead — reconnecting…")
-
-        # 1. Cancel stale reader (it's looping on a dead socket)
-        old_reader = _tts.get("reader")
-        if old_reader and not old_reader.done():
-            old_reader.cancel()
-
-        # 2. Close the dead socket (best-effort)
-        try:
-            await _tts["ws"].close()
-        except Exception:
-            pass
-
-        # 3. Drain any stale items from the queue (they'll never arrive anyway)
-        while not _tts_results.empty():
-            try:
-                _tts_results.get_nowait()
-            except asyncio.QueueEmpty:
-                break
-
-        # 4. Open a fresh TTS WebSocket
-        new_ws = await websockets.connect(_TTS_WS_URL, additional_headers=dg_auth)
-        _tts["ws"] = new_ws
-
-        # 5. Restart the reader on the new socket
-        _tts["reader"] = _launch_tts_reader(new_ws)
-        logger.info("✅ TTS WS reconnected — retrying sentence")
+    # ── Persistent TTS HTTP client ────────────────────────────────────────────
+    # Reuses the TLS connection across sentences (HTTP keep-alive).
+    # No session state, no expiry, no reconnect logic needed.
+    tts_client = httpx.AsyncClient(
+        timeout=10.0,
+        headers={
+            "Authorization": f"Token {dg_key}",
+            "Content-Type": "application/json",
+        },
+    )
 
     # ── speak() ───────────────────────────────────────────────────────────────
     async def speak(text: str) -> None:
-        """Synthesise text → send WAV chunk to browser.
-
-        On a Flush timeout (dead TTS WS) the function reconnects once and
-        retries the sentence instead of silently dropping it.
-        """
-        for attempt in range(2):
-            try:
-                ws = _tts["ws"]
-                await ws.send(json.dumps({"type": "Speak", "text": text}))
-                await ws.send(json.dumps({"type": "Flush"}))
-                timeout = 5.0 if attempt == 0 else 8.0
-                pcm = await asyncio.wait_for(_tts_results.get(), timeout=timeout)
-                if pcm:
-                    wav = _pcm_to_wav(pcm)
-                    await send({"type": "tts_audio", "data": base64.b64encode(wav).decode()})
-                return  # success — exit the retry loop
-
-            except asyncio.TimeoutError:
-                if attempt == 0:
-                    # First timeout → reconnect, then loop back for attempt 1
-                    try:
-                        await _reconnect_tts()
-                    except Exception as re:
-                        logger.error(f"TTS reconnect failed: {re}")
-                        return
-                else:
-                    logger.error("TTS Flush timed out after reconnect — skipping sentence")
-
-            except Exception as e:
-                logger.error(f"speak() error: {e}")
-                return
-
-    # ── TTS keepalive ─────────────────────────────────────────────────────────
-    # 5 s interval (was 10 s).  Deepgram silently expires TTS WS sessions that
-    # receive no Speak command.  KeepAlive resets the expiry timer.  We halved
-    # the interval because empirical logs showed the WS dying before the 10 s
-    # keepalive fired when the cached greeting skips all TTS WS traffic.
-    async def _tts_keepalive() -> None:
+        """Synthesise text via Deepgram REST → send WAV to browser."""
         try:
-            while state["active"]:
-                await asyncio.sleep(5)
-                ws = _tts["ws"]
-                if state["active"] and not ws.closed:
-                    await ws.send(json.dumps({"type": "KeepAlive"}))
-        except Exception:
-            pass
-
-    keepalive_task = asyncio.create_task(_tts_keepalive())
-
-    # ── TTS WebSocket warmup ──────────────────────────────────────────────────
-    async def _warm_tts() -> None:
-        """Prime Deepgram's synthesis engine so Q1 TTS isn't cold.
-
-        When the cached greeting is used, the TTS WebSocket never gets a real
-        Speak command until the user's first query.  Deepgram initialises the
-        voice model on the first Flush — this takes an extra 500–1000 ms.
-        Sending a throwaway short phrase right after session open forces that
-        initialisation to happen during greeting playback instead.
-        The warmup audio is drained from the queue and discarded.
-        """
-        try:
-            ws = _tts["ws"]
-            await ws.send(json.dumps({"type": "Speak", "text": "Ready."}))
-            await ws.send(json.dumps({"type": "Flush"}))
-            # Drain the warmup audio — must consume it so the queue stays clean
-            # for the first real speak() call.
-            await asyncio.wait_for(_tts_results.get(), timeout=4.0)
-            logger.info("✅ TTS WS warmed — synthesis engine initialised")
-        except asyncio.TimeoutError:
-            logger.warning("TTS warmup Flush timed out (non-fatal — will reconnect on Q1 if needed)")
+            resp = await tts_client.post(_TTS_REST_URL, json={"text": text})
+            if resp.status_code == 200 and resp.content:
+                wav = _pcm_to_wav(resp.content)
+                await send({"type": "tts_audio", "data": base64.b64encode(wav).decode()})
+            else:
+                logger.error(f"TTS REST {resp.status_code}: {resp.text[:120]}")
         except Exception as e:
-            logger.warning(f"TTS warmup failed (non-fatal): {e}")
+            logger.error(f"speak() error: {e}")
 
     # ── LLM primer ────────────────────────────────────────────────────────────
     async def _prime_llm() -> None:
         """Warm-up call fired during greeting playback.
 
-        gpt-4.1-mini TTFB on a cold instance is ~1.5–2 s.  Generating a full
-        short response (not just 1 token) does enough real work that OpenAI
-        routes the follow-up query to the same warmed instance.
-        Also seeds the prompt cache: DEMO_SYSTEM_PROMPT is now ≥1024 tokens,
-        so after this call the static prefix is cached — Q1 gets a cache hit
-        on ~1024+ input tokens → lower TTFB and ~50% cheaper input cost.
+        Generates a real short response (max_tokens=40) so the model instance
+        does enough work for OpenAI to route Q1 to the same warmed instance.
+        DEMO_SYSTEM_PROMPT is ≥1024 tokens → static prefix is cached after
+        this call, so Q1 gets a prompt-cache hit → TTFB ~0.3 s.
         """
         try:
-            primer_messages = [
-                {"role": "system", "content": DEMO_SYSTEM_PROMPT},
-                {"role": "assistant", "content": GREETING_TEXT},
-                {"role": "user", "content": "What can you do?"},
-            ]
             await openai_client.chat.completions.create(
                 model="gpt-4.1-mini",
-                messages=primer_messages,
-                max_tokens=40,   # generate a real response — warms the instance properly
+                messages=[
+                    {"role": "system",    "content": DEMO_SYSTEM_PROMPT},
+                    {"role": "assistant", "content": GREETING_TEXT},
+                    {"role": "user",      "content": "What can you do?"},
+                ],
+                max_tokens=40,
                 temperature=0,
             )
-            logger.info("✅ Demo LLM primer complete — model instance warmed + prompt cache seeded")
+            logger.info("✅ Demo LLM primer complete — model warmed + prompt cache seeded")
         except Exception as e:
             logger.warning(f"Demo LLM primer failed (non-fatal): {e}")
 
@@ -493,17 +365,11 @@ async def run_demo_session(websocket: WebSocket):
         await send({"type": "tts_audio", "data": b64})
         conversation.append({"role": "assistant", "content": GREETING_TEXT})
         logger.info("✅ Greeting delivered from cache (~0 ms synthesis latency)")
-        # Cache path bypasses the TTS WebSocket entirely, leaving Deepgram's
-        # synthesis engine cold for Q1.  Fire a throwaway synthesis in parallel
-        # so the engine initialises during the ~2–3 s greeting playback window.
-        asyncio.create_task(_warm_tts())
     else:
-        # Greeting went through TTS WS — engine is already warm.
         logger.info("Greeting cache miss — synthesizing on demand")
         await speak(GREETING_TEXT)
 
-    # Fire LLM primer during greeting playback — generates a real short response
-    # (max_tokens=40) to warm the model instance AND seed the prompt cache.
+    # Fire LLM primer in background during greeting playback.
     asyncio.create_task(_prime_llm())
 
     # ── Audio forwarding loop ─────────────────────────────────────────────────
@@ -530,14 +396,12 @@ async def run_demo_session(websocket: WebSocket):
         )
     finally:
         state["active"] = False
-        reader = _tts.get("reader")
-        for t in (stt_task, reader, keepalive_task):
-            if t and not t.done():
-                t.cancel()
-        for ws in (stt_ws, _tts["ws"]):
-            try:
-                await ws.close()
-            except Exception:
-                pass
+        if stt_task and not stt_task.done():
+            stt_task.cancel()
+        try:
+            await stt_ws.close()
+        except Exception:
+            pass
+        await tts_client.aclose()
         await send({"type": "session_ended"})
         logger.info("Demo session ended cleanly")
