@@ -14,18 +14,22 @@ import os
 import httpx
 from loguru import logger
 
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+
+# Split connect/read so a backend that accepts TCP but stalls doesn't
+# eat the entire timeout while the caller waits in silence.
+_HTTP_TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=5.0, pool=3.0)
 
 
 async def _post(path: str, payload: dict) -> dict:
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
         resp = await client.post(f"{BACKEND_URL}{path}", json=payload)
         resp.raise_for_status()
         return resp.json()
 
 
 async def _get(path: str, params: dict = None) -> dict:
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
         resp = await client.get(f"{BACKEND_URL}{path}", params=params or {})
         resp.raise_for_status()
         return resp.json()

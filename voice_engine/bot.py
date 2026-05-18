@@ -37,7 +37,17 @@ from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.openai.llm import OpenAILLMService
 
 # ── Pipecat: Frames ──────────────────────────────────────────────────────────
-from pipecat.frames.frames import EndFrame, LLMMessagesAppendFrame, LLMRunFrame, TTSSpeakFrame, TextFrame
+from pipecat.frames.frames import (
+    EndFrame,
+    LLMMessagesAppendFrame,
+    LLMRunFrame,
+    TTSSpeakFrame,
+    TextFrame,
+    TranscriptionFrame,
+    InterimTranscriptionFrame,
+    UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
+)
 
 # ── Pipecat: Transport ───────────────────────────────────────────────────────
 from pipecat.transports.websocket.fastapi import (
@@ -55,6 +65,31 @@ from voice_engine.tools import shopify, custom_api, google_calendar as gcal_tool
 
 
 # ── Custom Processors ────────────────────────────────────────────────────────
+class STTDiagnosticsLogger(FrameProcessor):
+    """Log every STT transcript + VAD turn event so 'bot can't hear me' bugs
+    are diagnosable from production logs.
+
+    Without this, when the bot goes silent we can't tell whether:
+      (a) Deepgram is hearing nothing       → no transcript logs at all
+      (b) Deepgram transcribes but VAD/turn → transcript logs but no
+          aggregator never commits             UserStoppedSpeakingFrame
+      (c) Aggregator commits but LLM stalls → both logs present but no
+                                                LLM activity downstream
+    Each branch points to a different fix, so visibility is essential.
+    """
+    async def process_frame(self, frame, direction):
+        await super().process_frame(frame, direction)
+        if isinstance(frame, TranscriptionFrame):
+            logger.info(f"📝 STT final: '{frame.text}'")
+        elif isinstance(frame, InterimTranscriptionFrame):
+            logger.debug(f"📝 STT interim: '{frame.text}'")
+        elif isinstance(frame, UserStartedSpeakingFrame):
+            logger.info("🎤 VAD: user started speaking")
+        elif isinstance(frame, UserStoppedSpeakingFrame):
+            logger.info("🎤 VAD: user stopped speaking — turn end")
+        await self.push_frame(frame, direction)
+
+
 class GoodbyeDetector(FrameProcessor):
     """
     Monitor's the assistant's text output. If it sees goodbye keywords,
@@ -945,6 +980,7 @@ class VoiceAgent:
         pipeline = Pipeline([
             transport.input(),
             stt,
+            STTDiagnosticsLogger(),  # Log every transcript + VAD turn event
             aggregators.user(),
             llm,
             GoodbyeDetector(self),  # Automatically detect goodbye and end call

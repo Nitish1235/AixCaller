@@ -43,7 +43,9 @@ SHOPIFY_REDIRECT_URI   = os.environ.get(
 DASHBOARD_URL          = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
 
 # State JWT uses the same JWT_SECRET as call tokens — short-lived (10 min)
-JWT_SECRET             = os.environ.get("JWT_SECRET", "super-secret-key")
+JWT_SECRET             = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET env var is required for Shopify OAuth state signing")
 STATE_TTL_SECONDS      = 600
 
 

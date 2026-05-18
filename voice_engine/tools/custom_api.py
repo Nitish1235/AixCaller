@@ -28,8 +28,11 @@ async def fetch_custom_data(query: str, config: dict) -> str:
     if isinstance(raw_auth, str) and raw_auth.strip():
         headers["Authorization"] = raw_auth.strip()
 
+    # User-supplied endpoint — keep total budget tight so a slow/hostile
+    # URL can't freeze the live call. Split connect/read for visibility.
+    _timeout = httpx.Timeout(connect=2.0, read=5.0, write=3.0, pool=2.0)
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=_timeout) as client:
             if method == "POST":
                 resp = await client.post(
                     endpoint,

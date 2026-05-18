@@ -59,7 +59,7 @@ def build_auth_url(tenant_id: str) -> str:
 
 async def exchange_code(code: str) -> dict:
     """Exchange authorization code for access + refresh tokens."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.post(GOOGLE_TOKEN_URL, data={
             "code":          code,
             "client_id":     os.environ["GOOGLE_CLIENT_ID"],
@@ -71,15 +71,26 @@ async def exchange_code(code: str) -> dict:
         return resp.json()
 
 
+class GoogleAuthRevokedError(RuntimeError):
+    """Refresh token rejected by Google (user revoked access or it expired)."""
+
+
 async def refresh_access_token(refresh_token: str) -> dict:
-    """Refresh a stale access token."""
-    async with httpx.AsyncClient() as client:
+    """Refresh a stale access token.
+
+    Raises GoogleAuthRevokedError on 400/401 so callers can surface a
+    "please reconnect Google" message instead of crashing mid-call.
+    """
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.post(GOOGLE_TOKEN_URL, data={
             "client_id":     os.environ["GOOGLE_CLIENT_ID"],
             "client_secret": os.environ["GOOGLE_CLIENT_SECRET"],
             "refresh_token": refresh_token,
             "grant_type":    "refresh_token",
         })
+        if resp.status_code in (400, 401):
+            logger.warning(f"Google refresh token rejected ({resp.status_code}): {resp.text[:200]}")
+            raise GoogleAuthRevokedError("Google access was revoked — tenant must reconnect.")
         resp.raise_for_status()
         return resp.json()
 
@@ -121,8 +132,6 @@ async def create_calendar_event(
 
     # Build datetime strings in ISO 8601
     start_dt = f"{date}T{time_str}:00"
-    # Simple duration addition
-    h, m = divmod(int(time_str.replace(":", "")[2:]) + duration_mins * (1 if ":" in time_str else 0), 60)
     start_h = int(time_str.split(":")[0])
     start_m = int(time_str.split(":")[1])
     end_total_m = start_h * 60 + start_m + duration_mins
@@ -130,16 +139,20 @@ async def create_calendar_event(
     end_m = end_total_m % 60
     end_dt = f"{date}T{end_h:02d}:{end_m:02d}:00"
 
+    # Use the tenant's configured timezone so events land at the local time
+    # the caller actually agreed to. Falls back to UTC only if unset.
+    tz_name = getattr(tenant, "human_transfer_timezone", None) or "UTC"
+
     body = {
         "summary":     title,
         "description": description,
-        "start":       {"dateTime": start_dt, "timeZone": "UTC"},
-        "end":         {"dateTime": end_dt,   "timeZone": "UTC"},
+        "start":       {"dateTime": start_dt, "timeZone": tz_name},
+        "end":         {"dateTime": end_dt,   "timeZone": tz_name},
     }
     if attendee_email:
         body["attendees"] = [{"email": attendee_email}]
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.post(
             f"{CALENDAR_API}/calendars/{calendar_id}/events",
             headers={"Authorization": f"Bearer {token}"},
@@ -157,10 +170,22 @@ async def get_calendar_availability(
     token       = await get_valid_token(tenant)
     calendar_id = tenant.google_calendar_id or "primary"
 
-    time_min = f"{date}T00:00:00Z"
-    time_max = f"{date}T23:59:59Z"
+    # Build day boundaries in the tenant's local timezone so the busy-slot
+    # window lines up with the local 9-17 filter used by check_availability.
+    tz_name = getattr(tenant, "human_transfer_timezone", None) or "UTC"
+    try:
+        from zoneinfo import ZoneInfo
+        from datetime import datetime, time as dtime
+        tz = ZoneInfo(tz_name)
+        start_local = datetime.combine(datetime.fromisoformat(date).date(), dtime(0, 0), tzinfo=tz)
+        end_local   = datetime.combine(datetime.fromisoformat(date).date(), dtime(23, 59, 59), tzinfo=tz)
+        time_min = start_local.isoformat()
+        time_max = end_local.isoformat()
+    except Exception:
+        time_min = f"{date}T00:00:00Z"
+        time_max = f"{date}T23:59:59Z"
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             f"{CALENDAR_API}/calendars/{calendar_id}/events",
             headers={"Authorization": f"Bearer {token}"},
@@ -198,7 +223,7 @@ async def ensure_sheet_headers(tenant: Tenant):
     if not sheet_id:
         return
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         # Check if A1 is empty
         resp = await client.get(
             f"{SHEETS_API}/{sheet_id}/values/{tab}!A1",
@@ -240,7 +265,7 @@ async def append_lead_to_sheet(tenant: Tenant, lead_data: dict) -> int:
         lead_data.get("agent_name", ""),
     ]
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.post(
             f"{SHEETS_API}/{sheet_id}/values/{tab}!A1:append",
             headers={"Authorization": f"Bearer {token}"},

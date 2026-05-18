@@ -37,7 +37,9 @@ ZOHO_REDIRECT_URI  = os.environ.get(
     "https://backend-597874469660.europe-west1.run.app/api/v1/zoho/callback",
 )
 DASHBOARD_URL      = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
-JWT_SECRET         = os.environ.get("JWT_SECRET", "super-secret-key")
+JWT_SECRET         = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET env var is required for Zoho OAuth state signing")
 STATE_TTL_SECONDS  = 600
 
 

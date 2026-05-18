@@ -146,17 +146,20 @@ def create_phone_vad():
         #   stalled for 6.5 s after the caller stopped speaking and the LLM
         #   never fired.
         #
-        # min_volume tuned for PHONE audio (PCMU / G.711 8kHz narrowband).
-        # The Pipecat default of 0.6 is for close-talk mic audio; phone audio
-        # rarely exceeds normalized amplitude 0.3, so 0.6 silently swallows
-        # every caller utterance — VAD never fires, LLM never runs, the bot
-        # appears deaf after the greeting. 0.3 captures normal phone speech;
-        # confidence=0.7 still rejects line noise. Do NOT touch stop_secs.
+        # PHONE-AUDIO TUNING (PCMU / G.711 8kHz narrowband):
+        #   confidence=0.7  → Silero model probability gate (rejects noise).
+        #   min_volume=0.0  → no amplitude gate. Phone audio level varies wildly
+        #     by carrier / handset / route; observed values on real calls span
+        #     0.05–0.4, so any non-zero gate intermittently silences callers.
+        #     The confidence threshold alone is enough to reject line noise.
+        #   start_secs=0.2  → ~200 ms of voiced audio to latch a turn start.
+        #   stop_secs=0.2   → must match Pipecat TurnAnalyzer's STT-latency
+        #     assumption; raising it breaks Smart Turn (see comment above).
         params=VADParams(
             confidence=0.7,
             start_secs=0.2,
             stop_secs=0.2,
-            min_volume=0.3,
+            min_volume=0.0,
         ),
     )
     vad._model = _SharedSessionSileroModel()
