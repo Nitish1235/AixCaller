@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DemoCard } from "@/components/DemoCard";
 
 export const dynamic = "force-dynamic";
 
@@ -135,42 +134,6 @@ export default function Home() {
         <Link href="/signup">
           <button className="btn-brutal" style={{ fontSize: "1.4rem", padding: "1.4rem 4rem" }}>Start Building Free</button>
         </Link>
-
-        {/* ── MEGA DEMO ── */}
-        <div style={{ background: "var(--text)", color: "#fff", border: "var(--border)", borderColor: "#fff", borderRadius: 32, padding: "clamp(2rem, 5vw, 4rem)", boxShadow: "15px 15px 0 var(--accent-yellow)", display: "flex", gap: "4rem", alignItems: "center", marginTop: "4rem", transform: "rotate(1deg)", flexWrap: "wrap" }}>
-          
-          <div style={{ flex: "1 1 400px", textAlign: "left" }}>
-            <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)", lineHeight: 1, margin: "0 0 1.5rem", textTransform: "uppercase", color: "var(--accent-yellow)", fontWeight: 900 }}>
-              Experience Our <br />AI Call Handler Live
-            </h2>
-            <div style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "2rem", color: "#cbd5e1" }}>
-              Test the under-4-second response time for yourself. Choose a persona and dial the number or test via browser.
-            </div>
-            
-            <div className="mono" style={{ display: "flex", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
-              <Link href="/use-cases/ecommerce-support-ai" style={{ textDecoration: "none" }}>
-                <div style={{ background: "var(--accent-pink)", color: "var(--text)", border: "2px solid var(--accent-pink)", padding: "0.8rem 1.5rem", borderRadius: 99, fontWeight: 800, fontSize: "1rem", cursor: "pointer", textTransform: "uppercase", boxShadow: "4px 4px 0 #fff" }}>
-                  🛍️ E-Com Support
-                </div>
-              </Link>
-              <div style={{ background: "transparent", color: "#fff", border: "2px solid #fff", padding: "0.8rem 1.5rem", borderRadius: 99, fontWeight: 800, fontSize: "1rem", cursor: "pointer", textTransform: "uppercase" }}>
-                💼 Aggressive Sales
-              </div>
-            </div>
-            
-            <div className="mono" style={{ background: "#1e293b", border: "2px solid #334155", padding: "1.5rem", borderRadius: 16, fontSize: "1rem", color: "#94a3b8", lineHeight: 1.6 }}>
-              <span style={{ color: "#fbcfe8", fontWeight: 700 }}>SYSTEM_PROMPT:</span><br />
-              "You are an empathetic customer support agent for Shopify. Your goal is to lookup order status and process refunds. <span style={{ color: "#fff", fontWeight: 700 }}>Never break character. Keep responses under 2 sentences.</span>"
-            </div>
-          </div>
-          
-          <div style={{ flex: "1 1 350px", display: "flex", justifyContent: "center", position: "relative", transform: "rotate(-2deg)" }}>
-             {/* Actual Functional WebRTC Demo Component */}
-             <div style={{ width: "100%", maxWidth: 400 }}>
-               <DemoCard wsUrl={process.env.NEXT_PUBLIC_VOICE_ENGINE_WS_URL || process.env.VOICE_ENGINE_URL} />
-             </div>
-          </div>
-        </div>
       </section>
 
       {/* ── PLATFORM ── */}

@@ -33,6 +33,7 @@ try:
     from backend.api import google as google_api
     from backend.api.auth import router as auth_router
     from backend.services.email import send_call_summary_email
+    from backend.api import demo_recordings
 except Exception as e:
     print(f"CRITICAL STARTUP CRASH: {traceback.format_exc()}")
     raise
@@ -48,6 +49,7 @@ app.add_middleware(
 )
 
 app.include_router(admin.router)
+app.include_router(demo_recordings.router)
 app.include_router(auth_router)
 app.include_router(dashboard.router)
 app.include_router(kb.router)
