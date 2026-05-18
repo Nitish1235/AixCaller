@@ -625,7 +625,8 @@ class VoiceAgent:
                 )
                 + "\n11. VOICE STYLE — always follow these on phone calls:\n"
                 "   - Use natural contractions: 'I'll', 'we're', 'that's', 'you've'.\n"
-                "   - Never read URLs, email addresses, or long codes aloud — ask the caller to check their email/account.\n"
+                "   - Never read URLs or email addresses aloud — ask the caller to check their email/account instead.\n"
+                "   - Phone numbers ARE fine to read aloud digit by digit — callers expect to hear them on a call.\n"
                 "   - Spell out numbers when natural: 'seven' not '7', 'twenty dollars' not '$20'.\n"
                 "   - Avoid filler sounds or phrases: never start with 'Great!', 'Absolutely!', 'Of course!' every turn.\n"
                 "   - Keep sentences short and punchy — callers cannot re-read what you said.\n"
@@ -1044,29 +1045,23 @@ class VoiceAgent:
                 asyncio.create_task(_demo_timer())
                 logger.info("⏱️  Demo mode: auto-cut timer started (50s)")
 
-            # 4. PRE-WARM HOT KB IN BACKGROUND
-            # Fires 3 broad KB queries in parallel and caches the top chunks in Redis.
-            # By the time the user asks their first question, results are ready (5-10ms vs 700ms).
-            # Runs as a background task — does NOT block the greeting.
-            asyncio.create_task(self._prewarm_hot_kb_safe())
-
-            # 4. LLM PRIMER — seed OpenAI prompt cache during greeting playback
+            # 4. PRE-WARM HOT KB + LLM CACHE PRIMER — deferred by 2.5 s
             #
-            # Problem observed in logs: the very first LLM call of every call has
-            # a 3+ second TTFB because:
-            #   a) The model instance is cold (no prior request in this session)
-            #   b) The prompt cache is empty (no prior request with the same prefix)
-            #   Subsequent calls in the same session are 0.5–0.8 s (cache warm).
+            # These tasks were previously launched immediately after queue_frames,
+            # which caused them to compete with TTS greeting synthesis for CPU and
+            # thread-pool time (ONNX embeddings + 3 Supabase queries), adding ~2 s
+            # to greeting latency on constrained Cloud Run instances.
             #
-            # Fix: immediately after the greeting is queued, fire a cheap background
-            # call to OpenAI with the current system messages + a dummy user message.
-            # This runs DURING the ~3 s greeting playback, so it costs zero extra
-            # latency from the user's perspective.  By the time the user finishes
-            # their first question the cache is seeded and the model instance is warm.
-            #
-            # Expected improvement: first real query LLM TTFB 3.0 s → 0.5 s,
-            # cutting total first-response latency from ~8 s to ~5 s.
-            asyncio.create_task(self._prime_llm_cache(messages))
+            # Delaying by 2.5 s lets the first greeting audio chunk reach the caller
+            # first, then warms up caches during the greeting playback tail.
+            # Timeline: greeting queued @0s → greeting starts streaming @~1s
+            # → background tasks start @2.5s → prewarm done @~3s
+            # → user speaks @~4-5s → KB/LLM caches already warm by then.
+            async def _deferred_warmup():
+                await asyncio.sleep(1.5)
+                asyncio.create_task(self._prewarm_hot_kb_safe())
+                asyncio.create_task(self._prime_llm_cache(messages))
+            asyncio.create_task(_deferred_warmup())
 
         @transport.event_handler("on_client_disconnected")
         async def on_disconnected(transport, _telnyx_client):
