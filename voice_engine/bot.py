@@ -77,10 +77,16 @@ class STTDiagnosticsLogger(FrameProcessor):
                                                 LLM activity downstream
     Each branch points to a different fix, so visibility is essential.
     """
+    def __init__(self, agent=None):
+        super().__init__()
+        self.agent = agent
+
     async def process_frame(self, frame, direction):
         await super().process_frame(frame, direction)
         if isinstance(frame, TranscriptionFrame):
             logger.info(f"📝 STT final: '{frame.text}'")
+            if self.agent and hasattr(self.agent, "start_speculative_search"):
+                self.agent.start_speculative_search(frame.text)
         elif isinstance(frame, InterimTranscriptionFrame):
             logger.debug(f"📝 STT interim: '{frame.text}'")
         elif isinstance(frame, UserStartedSpeakingFrame):
@@ -287,6 +293,30 @@ class VoiceAgent:
         except Exception as e:
             logger.warning(f"Context pruning skipped (non-fatal): {e}")
 
+    # ── Speculative search pre-fetch (background task) ───────────────────────
+    def start_speculative_search(self, query: str):
+        """Launch speculative KB search in background as soon as final STT transcript is ready."""
+        clean_query = query.strip()
+        if not clean_query:
+            return
+
+        logger.info(f"⚡ Launching speculative KB search for raw transcript: '{clean_query}'")
+        self._speculative_query = clean_query
+        
+        tenant_uuid = uuid.UUID(self.tenant_id)
+        agent_uuid = uuid.UUID(self.agent_config["agent_id"])
+
+        # Run with fast_only=False so it pre-fetches L4 if L1-L3 miss.
+        # This runs in the background while LLM-1 is thinking.
+        self._speculative_kb_task = asyncio.create_task(
+            search_knowledge_base(
+                query=clean_query,
+                tenant_id=tenant_uuid,
+                agent_id=agent_uuid,
+                fast_only=False,
+            )
+        )
+
     # ── Tool: Knowledge Base Search ──────────────────────────────────────────
     async def search_kb(self, params):
         """Semantic search via pgvector with smart filler logic.
@@ -313,8 +343,86 @@ class VoiceAgent:
             tenant_uuid = uuid.UUID(self.tenant_id)
             agent_uuid = uuid.UUID(self.agent_config["agent_id"])
 
-            # ── Step 1: Try the fast cache layers (L1 → L2 → L3) ────────────
-            # Returns None if all caches miss (no filler needed yet).
+            # ── Speculative Match Verification ──
+            used_speculation = False
+            result = None
+            
+            def _is_similar_query(q1: str, q2: str) -> bool:
+                words1 = set(w for w in q1.lower().split() if len(w) > 2)
+                words2 = set(w for w in q2.lower().split() if len(w) > 2)
+                if not words1 or not words2:
+                    return True
+                overlap = words1.intersection(words2)
+                return len(overlap) > 0
+
+            spec_query = getattr(self, "_speculative_query", None)
+            spec_task = getattr(self, "_speculative_kb_task", None)
+
+            if spec_task and spec_query and _is_similar_query(spec_query, query):
+                logger.info(f"⚡ Speculation match! Speculative query: '{spec_query}' | LLM query: '{query}'")
+                used_speculation = True
+                
+                try:
+                    result = await spec_task
+                except Exception as spec_err:
+                    logger.warning(f"Speculative KB task failed: {spec_err}, falling back")
+                    result = None
+                
+                # Cleanup speculative task tracking
+                self._speculative_kb_task = None
+                self._speculative_query = None
+                
+                if result is not None:
+                    logger.info(f"⚡ Speculative KB search HIT in {(time.time() - t0) * 1000:.0f}ms")
+                    await params.result_callback(result)
+                    return
+            else:
+                if spec_task:
+                    logger.info(f"🤐 Speculation mismatch or not found. Speculative query: '{spec_query}' | LLM query: '{query}'")
+                    spec_task.cancel()
+                    self._speculative_kb_task = None
+                    self._speculative_query = None
+
+            # ── OLD SEQUENTIAL CODE (Preserved as commented-out block) ──
+            # """
+            # # ── Step 1: Try the fast cache layers (L1 → L2 → L3) ────────────
+            # # Returns None if all caches miss (no filler needed yet).
+            # result = await search_knowledge_base(
+            #     query=query,
+            #     tenant_id=tenant_uuid,
+            #     agent_id=agent_uuid,
+            #     fast_only=True,
+            # )
+            #
+            # if result is not None:
+            #     # Fast cache hit — answer is ready in <50ms. NO filler needed.
+            #     logger.info(f"⚡ KB SEARCH fast-cache hit in {(time.time() - t0) * 1000:.0f}ms (no filler)")
+            #     await params.result_callback(result)
+            #     return
+            #
+            # # ── Step 2: Cache missed — going to slow L4 path. Play filler. ──
+            # now = time.time()
+            # if self.task and (now - self._last_filler_time) > self.FILLER_COOLDOWN_SECONDS:
+            #     self._last_filler_time = now
+            #     filler = random.choice(self.FILLER_PHRASES)
+            #     await self.task.queue_frames([TTSSpeakFrame(text=filler)])
+            #     logger.info(f"🗣️  Filler spoken (slow path): '{filler}'")
+            # else:
+            #     logger.info("🤐 Filler skipped (debounce — another just played)")
+            #
+            # # ── Step 3: Run the slow L4 search ──────────────────────────────
+            # result = await search_knowledge_base(
+            #     query=query,
+            #     tenant_id=tenant_uuid,
+            #     agent_id=agent_uuid,
+            #     fast_only=False,
+            # )
+            # logger.info(f"✅ KB SEARCH completed (L4 path) in {(time.time() - t0) * 1000:.0f}ms")
+            # await params.result_callback(result)
+            # """
+
+            # ── NEW FALLBACK CODE ──
+            # Step 1: Try fast cache layers first
             result = await search_knowledge_base(
                 query=query,
                 tenant_id=tenant_uuid,
@@ -323,12 +431,11 @@ class VoiceAgent:
             )
 
             if result is not None:
-                # Fast cache hit — answer is ready in <50ms. NO filler needed.
                 logger.info(f"⚡ KB SEARCH fast-cache hit in {(time.time() - t0) * 1000:.0f}ms (no filler)")
                 await params.result_callback(result)
                 return
 
-            # ── Step 2: Cache missed — going to slow L4 path. Play filler. ──
+            # Step 2: Cache missed — play filler
             now = time.time()
             if self.task and (now - self._last_filler_time) > self.FILLER_COOLDOWN_SECONDS:
                 self._last_filler_time = now
@@ -338,7 +445,7 @@ class VoiceAgent:
             else:
                 logger.info("🤐 Filler skipped (debounce — another just played)")
 
-            # ── Step 3: Run the slow L4 search ──────────────────────────────
+            # Step 3: Run slow pgvector search
             result = await search_knowledge_base(
                 query=query,
                 tenant_id=tenant_uuid,
@@ -980,7 +1087,7 @@ class VoiceAgent:
         pipeline = Pipeline([
             transport.input(),
             stt,
-            STTDiagnosticsLogger(),  # Log every transcript + VAD turn event
+            STTDiagnosticsLogger(self),  # Log every transcript + VAD turn event
             aggregators.user(),
             llm,
             GoodbyeDetector(self),  # Automatically detect goodbye and end call
