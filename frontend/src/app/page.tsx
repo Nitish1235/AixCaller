@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ClaimNumberSection from "@/components/ClaimNumberSection";
 
 export const dynamic = "force-dynamic";
 
@@ -334,6 +335,9 @@ export default function Home() {
         </div>
       </section>
       
+      {/* ── CLAIM NUMBER ── */}
+      <ClaimNumberSection />
+
       {/* ── FAQ ── */}
       <section id="faq" style={{ padding: "4rem 5%", maxWidth: 800, margin: "0 auto 4rem" }}>
         <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 3rem", textAlign: "center" }}>Frequently Asked Questions</h2>
