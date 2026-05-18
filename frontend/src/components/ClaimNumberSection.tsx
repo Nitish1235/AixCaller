@@ -291,19 +291,6 @@ export default function ClaimNumberSection() {
               </span>
             </div>
 
-            <div
-              style={{
-                background: "var(--accent-green)",
-                border: "2px solid #fff",
-                padding: "0.5rem 1.1rem",
-                borderRadius: 8,
-                fontWeight: 900,
-                fontSize: "0.88rem",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {flag(selected)} {country.price} / mo per number
-            </div>
           </div>
 
           {/* Numbers body */}
@@ -378,7 +365,7 @@ export default function ClaimNumberSection() {
                           }}
                         >
                           {i === 0 ? "⭐ Best match · " : `Option ${i + 1} · `}
-                          Voice-enabled · {country.price}/mo
+                          Voice-enabled
                         </div>
                       </div>
                     </div>
