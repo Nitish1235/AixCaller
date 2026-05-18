@@ -174,6 +174,73 @@ async def test_connection(agent_id: str, db: Session = Depends(get_db)):
     return {"ok": ok, "message": msg, "store_url": store_url}
 
 
+@router.get("/test-order")
+async def test_order(agent_id: str, order_number: str, db: Session = Depends(get_db)):
+    """Fetch a real order by number to verify the Shopify connection works end-to-end."""
+    try:
+        agent_uuid = uuid.UUID(agent_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid agent_id")
+
+    agent = db.get(Agent, agent_uuid)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    shopify_cfg = (agent.tools_config or {}).get("shopify", {})
+    store_url = shopify_cfg.get("store_url")
+    token = shopify_cfg.get("access_token")
+    if not store_url or not token:
+        return {"ok": False, "message": "Shopify is not connected for this agent."}
+
+    import re, httpx as _httpx
+    # Normalize order number — strip #, "order", etc.
+    num = re.sub(r"(order|number|#|no\.?|num)\s*", "", order_number.strip().lower()).strip()
+    if not num:
+        return {"ok": False, "message": "Please enter a valid order number."}
+
+    url = f"https://{store_url}/admin/api/2024-01/orders.json"
+    try:
+        async with _httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                url,
+                headers={"X-Shopify-Access-Token": token},
+                params={"name": num, "status": "any", "limit": 1},
+            )
+        if resp.status_code == 401:
+            return {"ok": False, "message": "Token rejected by Shopify — it may have been revoked."}
+        if resp.status_code != 200:
+            return {"ok": False, "message": f"Shopify returned HTTP {resp.status_code}."}
+
+        orders = resp.json().get("orders", [])
+        if not orders:
+            return {"ok": False, "message": f"No order found matching '{order_number}'. Check the number and try again."}
+
+        o = orders[0]
+        cust = o.get("customer") or {}
+        name = o.get("name", f"#{num}")
+        status = o.get("fulfillment_status") or "unfulfilled"
+        payment = o.get("financial_status") or "pending"
+        total = o.get("total_price", "?")
+        currency = o.get("currency", "")
+        item_count = sum(li.get("quantity", 0) for li in o.get("line_items", []))
+        customer_name = f"{cust.get('first_name', '')} {cust.get('last_name', '')}".strip() or "Unknown"
+
+        return {
+            "ok": True,
+            "message": f"Order {name} found!",
+            "order": {
+                "name": name,
+                "customer": customer_name,
+                "fulfillment_status": status,
+                "financial_status": payment,
+                "item_count": item_count,
+                "total": f"{total} {currency}".strip(),
+            },
+        }
+    except Exception as e:
+        return {"ok": False, "message": f"Request failed: {e}"}
+
+
 @router.post("/connect-direct")
 async def connect_direct(
     agent_id: str,

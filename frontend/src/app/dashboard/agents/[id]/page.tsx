@@ -92,6 +92,9 @@ export default function AgentDetailsPage() {
   const [shopifyMsg, setShopifyMsg] = useState<string>("");
   const [shopifyMode, setShopifyMode] = useState<"oauth" | "direct">("oauth");
   const [directToken, setDirectToken] = useState("");
+  const [testOrderNum, setTestOrderNum] = useState("");
+  const [testOrderBusy, setTestOrderBusy] = useState(false);
+  const [testOrderResult, setTestOrderResult] = useState<any>(null);
 
   // Custom URL / Webhook state
   const [customApiEnabled, setCustomApiEnabled] = useState(false);
@@ -422,6 +425,18 @@ export default function AgentDetailsPage() {
       setShopifyMsg(data.ok ? `✓ ${data.message}` : `✗ ${data.message}`);
     } catch { setShopifyMsg("✗ Test failed."); }
     setShopifyBusy(false);
+  };
+
+  const testOrder = async () => {
+    if (!testOrderNum.trim()) return;
+    setTestOrderBusy(true); setTestOrderResult(null);
+    try {
+      const params = new URLSearchParams({ agent_id: agentId, order_number: testOrderNum.trim() });
+      const res = await fetch(`${API_BASE_URL}/shopify/test-order?${params}`);
+      const data = await res.json();
+      setTestOrderResult(data);
+    } catch { setTestOrderResult({ ok: false, message: "Request failed. Check your connection." }); }
+    setTestOrderBusy(false);
   };
 
   // ── Custom URL / Webhook ────────────────────────────────────────────────
@@ -871,6 +886,64 @@ export default function AgentDetailsPage() {
                       >
                         Disconnect
                       </button>
+                    </div>
+
+                    {/* ── Test Order Lookup ── */}
+                    <div style={{ marginTop: 14, background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "14px" }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.78rem", color: "#064E3B", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        🧪 Test Order Lookup
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          type="text"
+                          value={testOrderNum}
+                          onChange={e => { setTestOrderNum(e.target.value); setTestOrderResult(null); }}
+                          onKeyDown={e => e.key === "Enter" && testOrder()}
+                          placeholder="e.g. 1001 or #1001"
+                          style={{ ...inp, flex: 1, padding: "8px 12px", fontSize: "0.85rem" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={testOrder}
+                          disabled={testOrderBusy || !testOrderNum.trim()}
+                          style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: testOrderNum.trim() ? "pointer" : "not-allowed", opacity: testOrderNum.trim() ? 1 : 0.6, whiteSpace: "nowrap" }}
+                        >
+                          {testOrderBusy ? "Fetching…" : "Fetch Order"}
+                        </button>
+                      </div>
+
+                      {testOrderResult && (
+                        <div style={{
+                          marginTop: 10, borderRadius: 8, padding: "10px 14px",
+                          background: testOrderResult.ok ? "#ECFDF5" : "#FEF2F2",
+                          border: `1px solid ${testOrderResult.ok ? "#A7F3D0" : "#FECACA"}`,
+                        }}>
+                          {testOrderResult.ok ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <div style={{ fontWeight: 700, color: "#059669", fontSize: "0.85rem" }}>✓ {testOrderResult.message}</div>
+                              {testOrderResult.order && (
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginTop: 6 }}>
+                                  {[
+                                    ["Order", testOrderResult.order.name],
+                                    ["Customer", testOrderResult.order.customer],
+                                    ["Fulfillment", testOrderResult.order.fulfillment_status],
+                                    ["Payment", testOrderResult.order.financial_status],
+                                    ["Items", testOrderResult.order.item_count],
+                                    ["Total", testOrderResult.order.total],
+                                  ].map(([label, value]) => (
+                                    <div key={label as string} style={{ fontSize: "0.78rem" }}>
+                                      <span style={{ color: "#6B7280", fontWeight: 600 }}>{label}: </span>
+                                      <span style={{ color: "#064E3B", fontWeight: 700 }}>{String(value)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ color: "#DC2626", fontWeight: 600, fontSize: "0.82rem" }}>✗ {testOrderResult.message}</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
