@@ -1052,10 +1052,10 @@ class VoiceAgent:
             # thread-pool time (ONNX embeddings + 3 Supabase queries), adding ~2 s
             # to greeting latency on constrained Cloud Run instances.
             #
-            # Delaying by 2.5 s lets the first greeting audio chunk reach the caller
+            # Delaying by 1.5 s lets the first greeting audio chunk reach the caller
             # first, then warms up caches during the greeting playback tail.
             # Timeline: greeting queued @0s → greeting starts streaming @~1s
-            # → background tasks start @2.5s → prewarm done @~3s
+            # → background tasks start @1.5s → prewarm done @~2.5s
             # → user speaks @~4-5s → KB/LLM caches already warm by then.
             async def _deferred_warmup():
                 await asyncio.sleep(1.5)
