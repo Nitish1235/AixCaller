@@ -90,6 +90,8 @@ export default function AgentDetailsPage() {
   const [shopInput, setShopInput] = useState("");
   const [shopifyBusy, setShopifyBusy] = useState(false);
   const [shopifyMsg, setShopifyMsg] = useState<string>("");
+  const [shopifyMode, setShopifyMode] = useState<"oauth" | "direct">("oauth");
+  const [directToken, setDirectToken] = useState("");
 
   // Custom URL / Webhook state
   const [customApiEnabled, setCustomApiEnabled] = useState(false);
@@ -384,6 +386,31 @@ export default function AgentDetailsPage() {
       setShopifyMsg("Shopify disconnected.");
       setShopifyStatus({ connected: false });
     } catch { setShopifyMsg("✗ Failed to disconnect."); }
+    setShopifyBusy(false);
+  };
+
+  const connectShopifyDirect = async () => {
+    if (!shopInput.trim() || !directToken.trim()) {
+      setShopifyMsg("Please enter both your store URL and access token.");
+      return;
+    }
+    setShopifyBusy(true); setShopifyMsg("");
+    try {
+      const params = new URLSearchParams({
+        agent_id: agentId,
+        store_url: shopInput.trim(),
+        access_token: directToken.trim(),
+      });
+      const res = await fetch(`${API_BASE_URL}/shopify/connect-direct?${params}`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setShopifyMsg(`✓ ${data.message}`);
+        loadShopifyStatus();
+        setDirectToken("");
+      } else {
+        setShopifyMsg(`✗ ${data.detail || data.message || "Connection failed"}`);
+      }
+    } catch { setShopifyMsg("✗ Connection failed."); }
     setShopifyBusy(false);
   };
 
@@ -728,6 +755,36 @@ export default function AgentDetailsPage() {
 
                 {!shopifyStatus?.connected ? (
                   <>
+                    {/* Mode toggle */}
+                    <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShopifyMode("oauth")}
+                        style={{
+                          padding: "5px 14px", borderRadius: 8, fontWeight: 700, fontSize: "0.78rem",
+                          border: "1.5px solid", cursor: "pointer",
+                          background: shopifyMode === "oauth" ? "#064E3B" : "#fff",
+                          color: shopifyMode === "oauth" ? "#fff" : "#064E3B",
+                          borderColor: "#064E3B",
+                        }}
+                      >
+                        OAuth (Public App)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShopifyMode("direct")}
+                        style={{
+                          padding: "5px 14px", borderRadius: 8, fontWeight: 700, fontSize: "0.78rem",
+                          border: "1.5px solid", cursor: "pointer",
+                          background: shopifyMode === "direct" ? "#064E3B" : "#fff",
+                          color: shopifyMode === "direct" ? "#fff" : "#064E3B",
+                          borderColor: "#064E3B",
+                        }}
+                      >
+                        Custom App Token
+                      </button>
+                    </div>
+
                     <label style={lbl}>Your Shopify Store URL</label>
                     <input
                       type="text"
@@ -736,23 +793,56 @@ export default function AgentDetailsPage() {
                       placeholder="mystore.myshopify.com"
                       style={inp}
                     />
-                    <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "5px 0 14px" }}>
-                      Enter <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>yourstore.myshopify.com</code> (or just the handle).
-                      You'll be redirected to Shopify to approve access.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={connectShopify}
-                      disabled={!shopInput.trim() || shopifyBusy}
-                      style={{
-                        background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
-                        padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem", cursor: shopInput.trim() ? "pointer" : "not-allowed",
-                        opacity: shopInput.trim() ? 1 : 0.6,
-                        display: "inline-flex", alignItems: "center", gap: 8,
-                      }}
-                    >
-                      🛍️ Connect with Shopify
-                    </button>
+
+                    {shopifyMode === "oauth" ? (
+                      <>
+                        <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "5px 0 14px" }}>
+                          You'll be redirected to Shopify to approve access.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={connectShopify}
+                          disabled={!shopInput.trim() || shopifyBusy}
+                          style={{
+                            background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
+                            padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem",
+                            cursor: shopInput.trim() ? "pointer" : "not-allowed",
+                            opacity: shopInput.trim() ? 1 : 0.6,
+                            display: "inline-flex", alignItems: "center", gap: 8,
+                          }}
+                        >
+                          🛍️ Connect with Shopify
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "5px 0 10px" }}>
+                          For dev stores or custom apps: create a legacy custom app in <em>Settings → Apps and sales channels → Develop apps</em>, then paste your <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>shpat_…</code> token below.
+                        </p>
+                        <label style={{ ...lbl, marginTop: 6 }}>Access Token</label>
+                        <input
+                          type="password"
+                          value={directToken}
+                          onChange={e => setDirectToken(e.target.value)}
+                          placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          style={{ ...inp, marginBottom: 14, fontFamily: "monospace" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={connectShopifyDirect}
+                          disabled={!shopInput.trim() || !directToken.trim() || shopifyBusy}
+                          style={{
+                            background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
+                            padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem",
+                            cursor: (shopInput.trim() && directToken.trim()) ? "pointer" : "not-allowed",
+                            opacity: (shopInput.trim() && directToken.trim()) ? 1 : 0.6,
+                            display: "inline-flex", alignItems: "center", gap: 8,
+                          }}
+                        >
+                          {shopifyBusy ? "Connecting…" : "🛍️ Connect with Token"}
+                        </button>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>

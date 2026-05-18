@@ -104,9 +104,7 @@ export default function IntegrationsPage() {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [contactEmail, setContactEmail] = useState("");
 
-  // Shopify
-  const [shopifyDomain, setShopifyDomain] = useState("");
-  const [shopifyToken, setShopifyToken] = useState("");
+  // Shopify — per-agent, not per-tenant (stored in agent.tools_config)
 
   // Google
   const [googleCalendarId, setGoogleCalendarId] = useState("primary");
@@ -121,8 +119,6 @@ export default function IntegrationsPage() {
         setCfg(data);
         setEmailEnabled(data.email_summary_enabled ?? true);
         setContactEmail(data.contact_email || "");
-        setShopifyDomain(data.shopify_domain || "");
-        setShopifyToken(data.shopify_token || "");
         setGoogleCalendarId(data.google_calendar_id || "primary");
         setGoogleSheetId(data.google_sheet_id || "");
         setGoogleSheetName(data.google_sheet_name || "Leads");
@@ -172,8 +168,6 @@ export default function IntegrationsPage() {
     try {
       if (key === "zoho") {
         await fetch(`${API_BASE_URL}/zoho/disconnect?tenant_id=${tid}`, { method: "DELETE" });
-      } else if (key === "shopify") {
-        await apiPatch(`/integrations?tenant_id=${tid}`, { shopify_domain: null, shopify_token: null });
       } else if (key === "google") {
         await fetch(`${API_BASE_URL}/google/disconnect?tenant_id=${tid}`, { method: "DELETE" });
       } else {
@@ -224,10 +218,11 @@ export default function IntegrationsPage() {
     setSaving(false);
   };
 
-  const zohoConnected  = !!(cfg.zoho_connected);
-  const emailConnected = !!(cfg.email_summary_enabled);
-  const shopifyConnected = !!(cfg.shopify_domain && cfg.shopify_token);
-  const googleConnected = !!(cfg.google_connected);
+  const zohoConnected    = !!(cfg.zoho_connected);
+  const emailConnected   = !!(cfg.email_summary_enabled);
+  const googleConnected  = !!(cfg.google_connected);
+  // Shopify is per-agent — status shown on each agent's settings page
+  const shopifyConnected = false;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 1200 }}>
@@ -254,9 +249,9 @@ export default function IntegrationsPage() {
 
         <IntCard
           icon="🛍️" title="Shopify" connected={shopifyConnected}
-          description="Allow your AI agent to check order statuses, process refunds, and answer specific product queries securely."
+          description="Allow your AI agent to look up order statuses, tracking info, and refunds in real-time during calls. Configured per-agent."
           onConnect={() => setModal("shopify")}
-          onDisconnect={() => disconnect("shopify")}
+          onDisconnect={() => {}}
         />
 
         <IntCard
@@ -289,27 +284,35 @@ export default function IntegrationsPage() {
       </div>
 
       {/* Shopify Modal */}
-      <Modal open={modal === "shopify"} onClose={() => setModal(null)} title="🛍️ Connect Shopify">
+      <Modal open={modal === "shopify"} onClose={() => setModal(null)} title="🛍️ Shopify Integration">
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "16px", fontSize: "0.9rem", color: "var(--text)", lineHeight: 1.6, fontWeight: 600 }}>
-            <strong>Instructions:</strong> Go to Shopify Admin → Apps → Develop Apps. Create an app, assign 'read_orders' and 'write_orders' scopes, and install it to get your Admin API Access Token.
+            <strong>Per-agent configuration.</strong> Shopify is connected individually on each AI agent, so different agents can access different stores.
           </div>
 
-          <div>
-            <label style={lbl}>Shopify Store Domain</label>
-            <input type="text" placeholder="your-store.myshopify.com" style={inp} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} />
-          </div>
-
-          <div>
-            <label style={lbl}>Admin API Access Token</label>
-            <input type="password" placeholder="shpat_..." style={inp} value={shopifyToken} onChange={e => setShopifyToken(e.target.value)} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div style={{ fontWeight: 900, fontSize: "0.85rem", textTransform: "uppercase", color: "var(--text)" }}>What your AI can do</div>
+            {[
+              ["📦", "Order status & tracking", "Answer 'Where is my order?' and 'When will it arrive?' in real-time."],
+              ["🧾", "Order details", "Look up items, totals, and payment info by order number."],
+              ["↩️", "Refund status", "Tell callers whether their refund has been processed."],
+              ["🛍️", "Any Shopify store", "Works with OAuth (public apps) or a custom app token (dev stores)."],
+            ].map(([icon, title, desc]) => (
+              <div key={title as string} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>{icon}</span>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>{title}</div>
+                  <div style={{ fontSize: "0.82rem", color: "#475569", fontWeight: 600 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <button
-            disabled={saving || !shopifyDomain || !shopifyToken}
-            onClick={() => save({ shopify_domain: shopifyDomain, shopify_token: shopifyToken })}
-            className="btn-brutal" style={{ width: "100%", padding: "14px", marginTop: "1rem" }}>
-            {saving ? "Saving..." : "Save Credentials"}
+            onClick={() => { setModal(null); window.location.href = "/dashboard/agents"; }}
+            className="btn-brutal" style={{ width: "100%", padding: "14px", background: "var(--accent-yellow)", marginTop: "0.5rem" }}
+          >
+            Configure on My Agent →
           </button>
         </div>
       </Modal>

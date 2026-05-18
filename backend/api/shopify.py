@@ -174,6 +174,47 @@ async def test_connection(agent_id: str, db: Session = Depends(get_db)):
     return {"ok": ok, "message": msg, "store_url": store_url}
 
 
+@router.post("/connect-direct")
+async def connect_direct(
+    agent_id: str,
+    store_url: str,
+    access_token: str,
+    db: Session = Depends(get_db),
+):
+    """Connect Shopify using a direct access token (legacy custom apps, dev stores).
+    Validates the token works before saving by hitting /shop.json."""
+    try:
+        agent_uuid = uuid.UUID(agent_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid agent_id")
+
+    agent = db.get(Agent, agent_uuid)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    from backend.services.shopify_oauth import normalize_shop_domain
+    shop_domain = normalize_shop_domain(store_url)
+    if not shop_domain:
+        raise HTTPException(status_code=400, detail=f"Invalid Shopify store URL: '{store_url}'")
+
+    ok, msg = await oauth_test_connection(shop_domain, access_token)
+    if not ok:
+        raise HTTPException(status_code=400, detail=f"Token validation failed: {msg}")
+
+    current_tools = dict(agent.tools_config or {})
+    current_tools["shopify"] = {
+        "store_url":    shop_domain,
+        "access_token": access_token,
+        "scope":        "",
+        "connected_at": int(__import__("time").time()),
+    }
+    agent.tools_config = current_tools
+    db.add(agent)
+    db.commit()
+    logger.info(f"✅ Shopify (direct token) connected for agent {agent.id} → {shop_domain}")
+    return {"ok": True, "message": f"Connected to {shop_domain}"}
+
+
 @router.delete("/disconnect")
 async def disconnect(agent_id: str, db: Session = Depends(get_db)):
     """Removes Shopify credentials from this agent. Does NOT revoke the token
