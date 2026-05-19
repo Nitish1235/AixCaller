@@ -26,20 +26,20 @@ export default async function AgentsPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "#064E3B", margin: 0, letterSpacing: -0.5 }}>Agent Command Center</h1>
+          <h1 style={{ fontWeight: 900, fontSize: "clamp(1.3rem,4vw,1.6rem)", color: "#064E3B", margin: 0, letterSpacing: -0.5 }}>Agent Command Center</h1>
           <p style={{ color: "#9CA3AF", margin: "4px 0 0", fontSize: "0.9rem" }}>Manage your AI workforce, edit prompts, and configure phone numbers.</p>
         </div>
         <Link href="/dashboard/agents/create" style={{ textDecoration: "none" }}>
-          <button style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", boxShadow: "0 4px 14px rgba(6,78,59,0.3)" }}>
-            + Create New Agent
+          <button style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", boxShadow: "0 4px 14px rgba(6,78,59,0.3)", whiteSpace: "nowrap" }}>
+            + Create Agent
           </button>
         </Link>
       </div>
 
       {/* Stats bar */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "1rem" }}>
         {[
           { label: "Total Agents", value: agents.length, icon: "🤖" },
           { label: "Active Now",   value: agents.filter((a: any) => a.status !== "inactive").length, icon: "🟢" },
@@ -70,7 +70,7 @@ export default async function AgentsPage() {
           </Link>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.25rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.25rem" }}>
           {agents.map((agent: any) => (
             <div key={agent.id} style={card({ padding: "1.75rem", borderLeft: "4px solid #10B981" })}>
               {/* Card header */}

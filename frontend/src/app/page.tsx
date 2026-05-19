@@ -263,16 +263,16 @@ export default function Home() {
         <div style={{ display: "flex", gap: "3rem", animation: "scroll 30s linear infinite", width: "max-content" }}>
           {[1,2,3].map(k => (
             <div key={k} style={{ display: "flex", gap: "3rem" }}>
-              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-green)" }}>
-                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"The telephony integration is seamless. We provisioned 5 UK numbers and 3 US numbers in about two minutes."</p>
+              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: "clamp(280px, 40vw, 450px)", boxShadow: "6px 6px 0 var(--accent-green)", flexShrink: 0 }}>
+                <p style={{ fontSize: "clamp(1rem, 2vw, 1.3rem)", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"The telephony integration is seamless. We provisioned 5 UK numbers and 3 US numbers in about two minutes."</p>
                 <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— David Chen, CTO</div>
               </div>
-              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-pink)" }}>
-                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Knowledge retrieval is incredibly fast. The agent reads from our 50-page PDF policy manual in under a second while on the phone."</p>
+              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: "clamp(280px, 40vw, 450px)", boxShadow: "6px 6px 0 var(--accent-pink)", flexShrink: 0 }}>
+                <p style={{ fontSize: "clamp(1rem, 2vw, 1.3rem)", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Knowledge retrieval is incredibly fast. The agent reads from our 50-page PDF policy manual in under a second while on the phone."</p>
                 <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— Sarah J., Support Lead</div>
               </div>
-              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: 450, boxShadow: "6px 6px 0 var(--accent-yellow)" }}>
-                <p style={{ fontSize: "1.3rem", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Per-second billing makes this a no-brainer. We only pay exactly for what we use."</p>
+              <div style={{ background: "#fff", color: "var(--text)", border: "var(--border)", padding: "2rem", borderRadius: 16, width: "clamp(280px, 40vw, 450px)", boxShadow: "6px 6px 0 var(--accent-yellow)", flexShrink: 0 }}>
+                <p style={{ fontSize: "clamp(1rem, 2vw, 1.3rem)", fontWeight: 700, fontStyle: "italic", margin: "0 0 1rem" }}>"Per-second billing makes this a no-brainer. We only pay exactly for what we use."</p>
                 <div style={{ fontSize: "1rem", fontWeight: 900, textTransform: "uppercase" }}>— Marcus T., Operations</div>
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function Home() {
             </Link>
           </div>
           
-          <div className="card" style={{ padding: "4rem 2rem", textAlign: "center", background: "var(--text)", color: "#fff", borderColor: "#fff", boxShadow: "12px 12px 0 var(--accent-green)", transform: "scale(1.05)", zIndex: 10, flex: 1, minWidth: "300px" }}>
+          <div className="card" style={{ padding: "3rem 2rem", textAlign: "center", background: "var(--text)", color: "#fff", borderColor: "#fff", boxShadow: "12px 12px 0 var(--accent-green)", zIndex: 10, flex: 1, minWidth: "280px" }}>
             <div style={{ fontSize: "2.5rem", fontWeight: 900, textTransform: "uppercase", marginBottom: "1rem", color: "var(--accent-green)" }}>Pro Business</div>
             <div style={{ fontSize: "4.5rem", fontWeight: 900, marginBottom: "1rem", lineHeight: 1 }}>$119<span style={{ fontSize: "1.5rem", color: "#94a3b8" }}>/mo</span></div>
             <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#94a3b8", marginBottom: "2rem" }}>Includes 500 Minutes</div>

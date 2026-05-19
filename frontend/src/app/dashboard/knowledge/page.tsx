@@ -49,7 +49,7 @@ export default function KnowledgePage() {
       </div>
 
       {/* How it works banner */}
-      <div style={{ ...card, background: "linear-gradient(135deg,#064E3B,#059669)", color: "#fff", display: "flex", gap: "2rem", alignItems: "center" }}>
+      <div style={{ ...card, background: "linear-gradient(135deg,#064E3B,#059669)", color: "#fff", display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
         {[
           ["📝", "Add Content", "Paste text or upload .txt / .md files (website sync coming soon)"],
           ["🔍", "Semantic Search", "Queries are matched by meaning — not just keywords"],

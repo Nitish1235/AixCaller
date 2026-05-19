@@ -70,7 +70,7 @@ export default function BillingPage() {
   if (loading) return <div style={{ padding: "2rem", color: "#94a3b8" }}>Loading billing profile...</div>;
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div>
       <header style={{ marginBottom: "2rem" }}>
         <h1 style={{ fontWeight: 900, fontSize: "2rem", color: "var(--text)", textTransform: "uppercase", margin: 0 }}>
           Billing & Subscription
@@ -107,7 +107,7 @@ export default function BillingPage() {
           </div>
 
           {/* Usage Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem" }}>
             <div style={{ background: "#fff", borderRadius: 24, padding: "2rem", border: "2px solid var(--text)", boxShadow: "4px 4px 0 var(--text)" }}>
               <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "#64748b", textTransform: "uppercase", marginBottom: 8 }}>Minutes Used</div>
               <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--text)" }}>{Math.floor(sub.minutes_used)} <span style={{ fontSize: "1rem", color: "#94a3b8" }}>/ {sub.minutes_included}</span></div>

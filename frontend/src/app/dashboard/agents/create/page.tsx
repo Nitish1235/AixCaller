@@ -269,7 +269,7 @@ export default function CreateAgentPage() {
           <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Give your agent a name, define its persona, and pick a voice.</p>
 
           <form onSubmit={createAgent} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
               <div>
                 <label style={lbl}>Agent Name *</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)}
@@ -491,7 +491,7 @@ export default function CreateAgentPage() {
           <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B", marginBottom: "0.4rem" }}>Setup Phone Number</h2>
           <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Search by area code to get a local number for your AI agent.</p>
 
-          <form onSubmit={searchNumbers} style={{ display: "flex", gap: 10, marginBottom: "1.5rem" }}>
+          <form onSubmit={searchNumbers} style={{ display: "flex", gap: 10, marginBottom: "1.5rem", flexWrap: "wrap" }}>
             <select value={countryCode} onChange={e => setCountryCode(e.target.value)} style={{ ...inp, width: 200 }}>
               {SUPPORTED_COUNTRIES.map(c => (
                 <option key={c.code} value={c.code}>{c.name}</option>

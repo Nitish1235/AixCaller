@@ -33,6 +33,12 @@
 
 * { box-sizing: border-box; }
 
+/* Prevent horizontal scroll globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -125,3 +131,121 @@ a { color: inherit; text-decoration: none; }
 @keyframes eq { 0% { height: 8px; } 100% { height: 30px; } }
 @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
 @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+/* ════════════════════════════════════════════════
+   Mobile Responsive Utilities
+   ════════════════════════════════════════════════ */
+
+/* 4-col stat grid → 2-col on tablet/mobile */
+.grid-responsive-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+/* 2-col grid → 1-col on mobile */
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+/* Page header: space-between row that wraps on mobile */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Scrollable table wrapper */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Dashboard inner content area */
+.dash-content {
+  padding: 2rem;
+  flex: 1;
+}
+
+/* ── Tablet (≤ 1024px) ── */
+@media (max-width: 1024px) {
+  .grid-responsive-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Mobile (≤ 768px) ── */
+@media (max-width: 768px) {
+  .grid-responsive-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .grid-responsive-2 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .dash-content {
+    padding: 1rem;
+    padding-bottom: 5rem; /* room for bottom nav bar */
+  }
+
+  .card, .feature-card {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .btn-brutal {
+    padding: 0.85rem 1.5rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* ── Small Mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  .grid-responsive-4 {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .card, .feature-card {
+    padding: 1rem;
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 var(--text);
+  }
+}
+
+/* ── Landing page section mobile padding ── */
+@media (max-width: 768px) {
+  /* Sections with large top padding become more compact */
+  section {
+    padding-top: 4rem !important;
+    padding-bottom: 4rem !important;
+  }
+
+  /* Hero padding top respects the fixed navbar */
+  main > section:first-of-type {
+    padding-top: 5rem !important;
+  }
+
+  /* Footer CTA compact */
+  main > footer {
+    padding: 4rem 5% !important;
+    margin-top: 2rem !important;
+  }
+
+  /* Pricing cards — remove scale effect */
+  #pricing .card {
+    transform: none !important;
+  }
+
+  /* Feature grid cards */
+  #features > div {
+    grid-template-columns: 1fr !important;
+  }
+}
