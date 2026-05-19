@@ -169,11 +169,20 @@ async def websocket_endpoint(websocket: WebSocket):
                         # Exempt demo calls — the demo number is a system account with
                         # no paid plan; blocking it would break the demo experience.
                         if not is_demo:
-                            minutes_used = tenant.minutes_used or 0.0
+                            minutes_used     = tenant.minutes_used or 0.0
                             minutes_included = tenant.minutes_included or 0
-                            # Only gate when the tenant actually has a plan (minutes_included > 0).
-                            # A brand-new free account with minutes_included=0 would otherwise
-                            # be blocked immediately, which is wrong.
+                            sub_status       = tenant.subscription_status or "inactive"
+
+                            # Block if tenant has no active paid plan at all
+                            if sub_status not in ("active",) and minutes_included == 0:
+                                logger.warning(
+                                    f"Tenant {tenant_id} has no active subscription "
+                                    f"(status={sub_status}, minutes=0). Blocking call."
+                                )
+                                await websocket.close()
+                                return
+
+                            # Block if plan is active but minutes are exhausted
                             if minutes_included > 0 and minutes_used >= minutes_included:
                                 logger.warning(
                                     f"Tenant {tenant_id} out of minutes "
