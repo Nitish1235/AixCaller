@@ -171,6 +171,40 @@ export default function Home() {
         </Link>
       </section>
 
+      {/* ── HOW IT WORKS (3 STEPS) ── */}
+      <section id="how-it-works" style={{ padding: "8rem 5%", maxWidth: 1000, margin: "0 auto" }}>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Set Up Your AI Phone Answering Service in 3 Steps</h2>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          <div className="card" style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-1deg)", flexWrap: "wrap" }}>
+            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>1</div>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Train Your AI Receptionist</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Write your agent&apos;s personality, pick a natural-sounding AI voice, and upload your business knowledge base — FAQs, policies, pricing.</p>
+            </div>
+          </div>
+          
+          <div className="card" style={{ background: "var(--accent-pink)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(1deg)", flexDirection: "row-reverse", flexWrap: "wrap-reverse" }}>
+            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>2</div>
+            <div style={{ flex: 1, textAlign: "right" }}>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Get Your Business Phone Number</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Provision a local or toll-free number in 31+ countries, or forward your existing business number — in under 2 minutes.</p>
+            </div>
+          </div>
+          
+          <div className="card" style={{ background: "var(--accent-yellow)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-0.5deg)", flexWrap: "wrap" }}>
+            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>3</div>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Go Live — Answer Every Call 24/7</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Your AI receptionist is active immediately. Monitor live call transcripts, sentiment scores, and minute usage from the dashboard.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── LIVE DEMO CALL ── */}
+      <DemoCallSection />
+
       {/* ── PLATFORM ── */}
       <section id="features" style={{ padding: "8rem 5%", maxWidth: 1300, margin: "0 auto" }}>
         <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>How the AI Phone Answering Service Works</h2>
@@ -259,36 +293,7 @@ export default function Home() {
       {/* ── INTEGRATIONS ── */}
       <IntegrationsSection />
 
-      {/* ── STEPS ── */}
-      <section id="how-it-works" style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Set Up Your AI Phone Answering Service in 3 Steps</h2>
-        
-        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-          <div className="card" style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-1deg)", flexWrap: "wrap" }}>
-            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>1</div>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Train Your AI Receptionist</h3>
-              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Write your agent's personality, pick a natural-sounding AI voice, and upload your business knowledge base — FAQs, policies, pricing.</p>
-            </div>
-          </div>
-          
-          <div className="card" style={{ background: "var(--accent-pink)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(1deg)", flexDirection: "row-reverse", flexWrap: "wrap-reverse" }}>
-            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>2</div>
-            <div style={{ flex: 1, textAlign: "right" }}>
-              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Get Your Business Phone Number</h3>
-              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Provision a local or toll-free number in 31+ countries, or forward your existing business number — in under 2 minutes.</p>
-            </div>
-          </div>
-          
-          <div className="card" style={{ background: "var(--accent-yellow)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-0.5deg)", flexWrap: "wrap" }}>
-            <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>3</div>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Go Live — Answer Every Call 24/7</h3>
-              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Your AI receptionist is active immediately. Monitor live call transcripts, sentiment scores, and minute usage from the dashboard.</p>
-            </div>
-          </div>
-        </div>
-      </section>
+
 
       {/* ── REVIEWS MARQUEE ── */}
       <div style={{ borderTop: "var(--border)", borderBottom: "var(--border)", background: "var(--text)", padding: "3rem 0", overflow: "hidden", margin: "8rem 0" }}>
@@ -373,8 +378,7 @@ export default function Home() {
         </div>
       </section>
       
-      {/* ── LIVE DEMO CALL ── */}
-      <DemoCallSection />
+
 
       {/* ── CLAIM NUMBER ── */}
       <ClaimNumberSection />
