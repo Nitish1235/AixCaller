@@ -80,26 +80,58 @@ const jsonLd = {
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "How do AI voice agents work for customer support?",
+          "name": "What is an AI receptionist and how does it work?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Our AI voice agents use natural language processing and voice synthesis to answer calls, process inquiries, and resolve customer issues 24/7 without human intervention."
+            "text": "An AI receptionist is an automated phone answering service that uses voice AI to greet callers, answer questions, book appointments, and transfer calls — exactly like a human receptionist, but available 24/7. AIxCaller's AI receptionist is trained on your business documents and responds in under one second."
           }
         },
         {
           "@type": "Question",
-          "name": "Can I use my own business phone number?",
+          "name": "How much does an AI phone answering service cost?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, you can easily port your existing number or provision new global virtual phone numbers directly through the AIxCaller dashboard."
+            "text": "AIxCaller's AI phone answering service starts at $50/month for the Starter plan (200 minutes, 1 agent). Pro is $119/month (500 minutes, 2 agents) and Premium is $250/month (1,100 minutes, 4 agents). No setup fees. Cancel anytime."
           }
         },
         {
           "@type": "Question",
-          "name": "What industries benefit most from AI voice agents?",
+          "name": "Can the AI answering service book appointments automatically?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Real estate, dental clinics, e-commerce, and B2B SaaS companies see the highest ROI by automating lead qualification and appointment scheduling."
+            "text": "Yes. AIxCaller connects to Google Calendar and books appointments in real-time during the call — checking availability and confirming bookings without any human involvement."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What businesses benefit most from an AI receptionist?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Dental offices, HVAC and plumbing companies, real estate agencies, law firms, restaurants, e-commerce stores, and healthcare clinics see the highest ROI. Any business that receives phone calls and wants to stop missing leads benefits from an AI receptionist."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does AIxCaller work with my existing phone number?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You can forward your existing business number to AIxCaller, or provision a new local or toll-free number in 31+ countries directly from the dashboard in under 2 minutes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can the AI receptionist transfer calls to a human?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You can set staffed hours, and AIxCaller will transfer callers to a live team member during business hours. Outside those hours, the AI handles calls fully on its own."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the AI phone answering service integrate with CRM software?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. AIxCaller integrates with Zoho CRM, HubSpot, Shopify, and Google Sheets. After every call, lead data is automatically synced to your CRM — no manual entry required."
           }
         }
       ]
@@ -128,10 +160,10 @@ export default function Home() {
         </div>
         
         <h1 style={{ fontSize: "clamp(3rem, 7vw, 6.5rem)", fontWeight: 900, lineHeight: 1, margin: "0 0 2rem", letterSpacing: -2, textTransform: "uppercase" }}>
-          The Ultimate <br />AI Call Assistant
+          AI Receptionist<br />That Answers Every Call
         </h1>
         <p style={{ fontSize: "clamp(1.1rem, 2vw, 1.5rem)", fontWeight: 600, maxWidth: 800, margin: "0 auto 4rem", lineHeight: 1.5 }}>
-          Deploy an intelligent AI virtual caller with a real phone number. Train your AI call handler on your documents, let it act as your 24/7 virtual assistant answering inbound queries, and automate outbound dialing.
+          The AI phone answering service that never misses a call. Book appointments, qualify leads, answer customer questions, and sync your CRM — 24 hours a day, 7 days a week. No receptionist required.
         </p>
         
         <Link href="/signup">
@@ -141,15 +173,15 @@ export default function Home() {
 
       {/* ── PLATFORM ── */}
       <section id="features" style={{ padding: "8rem 5%", maxWidth: 1300, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>How Our AI Voice Automation Works</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>How the AI Phone Answering Service Works</h2>
         
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "3rem" }}>
           
           {/* Telephony */}
           <div className="card" style={{ background: "var(--accent-pink)", gridRow: "span 2" }}>
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Deploy Global Virtual Phone Numbers</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Get a Real Business Phone Number in 2 Minutes</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
-              We instantly provide real local and toll-free phone numbers. No telecom setup required—just pick a country and area code, and your AI is ready to answer calls.
+              Provision local and toll-free numbers in 31+ countries — no telecom setup, no contracts. Pick a country and area code, and your AI receptionist starts answering calls instantly.
             </p>
             <div style={{ background: "var(--bg)", border: "2px solid var(--text)", borderRadius: 12, padding: "1.5rem", fontWeight: 700 }}>
               <div style={{ display: "flex", gap: "1rem" }}>
@@ -166,9 +198,9 @@ export default function Home() {
           
           {/* Knowledge Base */}
           <div className="card" style={{ background: "var(--accent-yellow)" }}>
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Train Voice AI on Your Proprietary Data</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Train Your AI Receptionist on Your Business</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
-              Upload your business policies, menus, or FAQs as PDFs. When a customer asks a question, the AI reads your documents and answers them accurately.
+              Upload PDFs, paste your website URL, or write your FAQs. Your AI phone agent reads your documents and answers callers accurately — every time.
             </p>
             <div style={{ background: "rgba(255,255,255,0.5)", border: "2px dashed var(--text)", borderRadius: 12, padding: "2rem", textAlign: "center", fontWeight: 700 }}>
               <div style={{ fontSize: "2rem", marginBottom: 10 }}>📄</div>
@@ -179,9 +211,9 @@ export default function Home() {
           
           {/* Marketplace */}
           <div className="card">
-            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Launch Pre-Trained AI Voice Personas</h3>
+            <h3 style={{ fontSize: "2.5rem", textTransform: "uppercase", margin: "0 0 1rem", lineHeight: 1.1, fontWeight: 900 }}>Ready-to-Use AI Receptionist Templates</h3>
             <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#475569", lineHeight: 1.5, margin: "0 0 2rem" }}>
-              Don't want to start from scratch? Use our pre-trained AI templates. Whether you need a Real Estate Lead Qualifier or a Dental Receptionist, it's a one-click setup.
+              Skip the setup. Launch a pre-configured AI receptionist built for your industry — dental, real estate, HVAC, law, and more. One click and you're live.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <Link href="/use-cases/dental-receptionist-ai" style={{ textDecoration: "none" }}>
@@ -229,30 +261,30 @@ export default function Home() {
 
       {/* ── STEPS ── */}
       <section id="how-it-works" style={{ padding: "4rem 5%", maxWidth: 1000, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Deploy Your Custom AI Caller in 3 Steps</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Set Up Your AI Phone Answering Service in 3 Steps</h2>
         
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
           <div className="card" style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-1deg)", flexWrap: "wrap" }}>
             <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>1</div>
             <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Build the Brain</h3>
-              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Write a system prompt, select a hyper-realistic voice, and upload your knowledge base.</p>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Train Your AI Receptionist</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Write your agent's personality, pick a natural-sounding AI voice, and upload your business knowledge base — FAQs, policies, pricing.</p>
             </div>
           </div>
           
           <div className="card" style={{ background: "var(--accent-pink)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(1deg)", flexDirection: "row-reverse", flexWrap: "wrap-reverse" }}>
             <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>2</div>
             <div style={{ flex: 1, textAlign: "right" }}>
-              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Claim a Number</h3>
-              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Select your country code and area code to instantly provision a global SIP trunk.</p>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Get Your Business Phone Number</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Provision a local or toll-free number in 31+ countries, or forward your existing business number — in under 2 minutes.</p>
             </div>
           </div>
           
           <div className="card" style={{ background: "var(--accent-yellow)", display: "flex", alignItems: "center", gap: "3rem", transform: "rotate(-0.5deg)", flexWrap: "wrap" }}>
             <div style={{ fontSize: "clamp(4rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1, color: "var(--text)" }}>3</div>
             <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Answer Calls</h3>
-              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Your agent is live 24/7. Monitor transcripts and track your per-second billing directly in the dashboard.</p>
+              <h3 style={{ fontSize: "clamp(1.5rem, 3vw, 2.2rem)", margin: "0 0 0.5rem", textTransform: "uppercase", fontWeight: 900 }}>Go Live — Answer Every Call 24/7</h3>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: 600 }}>Your AI receptionist is active immediately. Monitor live call transcripts, sentiment scores, and minute usage from the dashboard.</p>
             </div>
           </div>
         </div>
@@ -282,7 +314,8 @@ export default function Home() {
 
       {/* ── PRICING ── */}
       <section id="pricing" style={{ padding: "4rem 5%", maxWidth: 1200, margin: "0 auto" }}>
-        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 4rem", textAlign: "center" }}>Transparent AI Voice Agent Pricing</h2>
+        <h2 style={{ fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 1rem", textAlign: "center" }}>AI Receptionist Pricing</h2>
+        <p style={{ textAlign: "center", fontSize: "1.1rem", fontWeight: 600, color: "#64748b", marginBottom: "3rem" }}>No contracts. No setup fees. Cancel anytime.</p>
         
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem", alignItems: "start", width: "100%", padding: "1rem 0" }}>
           
@@ -348,33 +381,49 @@ export default function Home() {
 
       {/* ── FAQ ── */}
       <section id="faq" style={{ padding: "4rem 5%", maxWidth: 800, margin: "0 auto 4rem" }}>
-        <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 3rem", textAlign: "center" }}>Frequently Asked Questions</h2>
+        <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 1, margin: "0 0 3rem", textAlign: "center" }}>AI Receptionist FAQ</h2>
         
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div className="card" style={{ padding: "1.5rem" }}>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>How do AI voice agents work for customer support?</h3>
-            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Our AI voice agents use natural language processing and voice synthesis to answer calls, process inquiries, and resolve customer issues 24/7 without human intervention.</p>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>What is an AI receptionist and do I need one?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>An AI receptionist answers your business phone calls automatically — greeting callers, answering questions, booking appointments, and escalating urgent issues to a human. If your business misses calls, pays for a full-time receptionist, or needs 24/7 coverage, an AI answering service pays for itself immediately.</p>
           </div>
           
           <div className="card" style={{ padding: "1.5rem" }}>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>Can I use my own business phone number?</h3>
-            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Yes, you can easily port your existing number or provision new global virtual phone numbers directly through the AIxCaller dashboard.</p>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>How much does the AI phone answering service cost?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Plans start at $50/month (Starter — 200 minutes, 1 agent). Pro is $119/month (500 minutes, 2 agents). Premium is $250/month (1,100 minutes, 4 agents). All plans are billed monthly with no contracts or setup fees.</p>
           </div>
-          
+
           <div className="card" style={{ padding: "1.5rem" }}>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>What industries benefit most from AI voice agents?</h3>
-            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Real estate, dental clinics, e-commerce, and B2B SaaS companies see the highest ROI by automating lead qualification and appointment scheduling.</p>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>Can it automatically book appointments?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Yes. AIxCaller integrates with Google Calendar. Your AI agent checks real-time availability and confirms bookings during the call — no human needed.</p>
+          </div>
+
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>Does it work with my existing phone number?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Yes. Simply forward your existing business number to your AIxCaller number — no number porting required. Alternatively, provision a brand new local or toll-free number in 31+ countries from the dashboard in under 2 minutes.</p>
+          </div>
+
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>Which industries is AIxCaller best for?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Dental offices, HVAC companies, real estate agents, law firms, restaurants, plumbers, e-commerce brands, and healthcare clinics see the strongest results. Essentially any business that receives calls and cannot afford to miss them.</p>
+          </div>
+
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 900, margin: "0 0 0.5rem" }}>Can the AI transfer a call to a real person?</h3>
+            <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>Yes. You can configure your team's working hours, and AIxCaller automatically offers live transfer during business hours. Outside those hours, the AI handles the call independently.</p>
           </div>
         </div>
       </section>
 
       {/* ── FOOTER CTA ── */}
       <footer style={{ background: "var(--accent-green)", borderTop: "var(--border)", textAlign: "center", padding: "8rem 5%", marginTop: "6rem" }}>
-        <h2 style={{ fontSize: "clamp(3.5rem, 6vw, 6rem)", fontWeight: 900, textTransform: "uppercase", margin: "0 0 3rem", lineHeight: 1, letterSpacing: -2 }}>
-          Deploy Your First <br />Virtual Assistant Today
+        <h2 style={{ fontSize: "clamp(3.5rem, 6vw, 6rem)", fontWeight: 900, textTransform: "uppercase", margin: "0 0 1.5rem", lineHeight: 1, letterSpacing: -2 }}>
+          Stop Missing <br />Business Calls
         </h2>
+        <p style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "3rem", opacity: 0.85, maxWidth: 600, margin: "0 auto 3rem" }}>Your AI receptionist is ready to answer in under 60 seconds. No code, no contracts, no staff required.</p>
         <Link href="/signup">
-          <button className="btn-brutal white" style={{ fontSize: "1.5rem", padding: "1.5rem 4rem" }}>Deploy Your First Agent</button>
+          <button className="btn-brutal white" style={{ fontSize: "1.5rem", padding: "1.5rem 4rem" }}>Start Answering Calls Free</button>
         </Link>
       </footer>
     </main>
