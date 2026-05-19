@@ -83,8 +83,8 @@ async def sync_user(req: SyncUserRequest, db: Session = Depends(get_db)):
             contact_email=req.email,
             is_active=True,
             plan_tier="free",
-            minutes_included=30,           # 30-minute free trial
-            subscription_status="trial",
+            minutes_included=0,
+            subscription_status="inactive",
         )
         db.add(tenant)
         db.commit()
