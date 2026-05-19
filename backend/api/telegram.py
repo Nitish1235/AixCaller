@@ -75,3 +75,17 @@ async def send_telegram_message(chat_id: str, text: str):
             await client.post(url, json=payload)
         except Exception as e:
             logger.error(f"Failed to send Telegram message: {e}")
+
+async def alert_admin(text: str):
+    """
+    Sends a system alert (new signup, payment, etc.) to the admin's personal Telegram chat.
+    Requires ADMIN_TELEGRAM_CHAT_ID in environment variables.
+    """
+    admin_chat_id = os.environ.get("ADMIN_TELEGRAM_CHAT_ID")
+    if admin_chat_id:
+        # We don't await this everywhere to prevent blocking core logic, 
+        # but in FastAPI endpoints, we can use background tasks or just await it.
+        # Since send_telegram_message is async, we will await it when called.
+        await send_telegram_message(admin_chat_id, f"🚨 **ADMIN ALERT** 🚨\n\n{text}")
+    else:
+        logger.debug(f"Admin Telegram alert skipped (no ADMIN_TELEGRAM_CHAT_ID): {text}")

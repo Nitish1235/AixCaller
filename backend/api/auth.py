@@ -1,9 +1,11 @@
 import uuid
 import os
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from loguru import logger
+from backend.api.telegram import alert_admin
+
 from shared.database import get_db
 from shared.models import Tenant
 
@@ -63,7 +65,7 @@ async def email_login(req: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/sync-user")
-async def sync_user(req: SyncUserRequest, db: Session = Depends(get_db)):
+async def sync_user(req: SyncUserRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Called after every successful Google OAuth flow.
     Finds an existing tenant by email, or creates a new one.
@@ -90,6 +92,12 @@ async def sync_user(req: SyncUserRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(tenant)
         logger.info(f"Tenant created: {tenant.id} for {req.email}")
+        
+        # Fire Telegram alert for new signup
+        background_tasks.add_task(
+            alert_admin, 
+            f"👤 *New User Signup*\nEmail: `{req.email}`\nName: `{req.name or 'Unknown'}`"
+        )
     else:
         logger.info(f"Returning Google user: {req.email} | tenant={tenant.id}")
 

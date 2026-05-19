@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
 from loguru import logger
 from backend.services.payments import DodoPaymentsService
+from backend.api.telegram import alert_admin
+
 from shared.database import get_db
 from shared.models import Tenant
 import uuid
@@ -106,7 +108,7 @@ async def create_billing_checkout(
 
 
 @router.post("/webhook")
-async def dodo_webhook(request: Request, db: Session = Depends(get_db)):
+async def dodo_webhook(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     DodoPayments webhook — activates the tenant on successful payment.
     Verifies HMAC-SHA256 signature before processing any event.
@@ -172,6 +174,13 @@ async def dodo_webhook(request: Request, db: Session = Depends(get_db)):
         db.add(tenant)
         db.commit()
         logger.info(f"✅ Tenant {tenant_id} subscribed to {plan_tier} ({plan['minutes']} min)")
+        
+        # Fire Telegram alert for payment
+        background_tasks.add_task(
+            alert_admin, 
+            f"💰 *Payment Received*\nTenant: `{tenant.name} ({tenant.contact_email})`\nPlan: `{plan_tier.upper()}`\nAmount: `${plan['price_usd']}`"
+        )
+        
         return {"status": "subscription_activated", "plan": plan_tier}
 
     if event_type in ("subscription.cancelled", "subscription.failed"):
@@ -184,6 +193,13 @@ async def dodo_webhook(request: Request, db: Session = Depends(get_db)):
                 db.add(tenant)
                 db.commit()
                 logger.info(f"Tenant {tenant_id} subscription {event_type}")
+                
+                # Alert for failed/cancelled subscriptions
+                background_tasks.add_task(
+                    alert_admin, 
+                    f"⚠️ *Subscription {event_type.split('.')[1].title()}*\nTenant: `{tenant.name} ({tenant.contact_email})`\nStatus: `{tenant.subscription_status}`"
+                )
+                
                 return {"status": "subscription_updated"}
 
     return {"status": "event_ignored"}
