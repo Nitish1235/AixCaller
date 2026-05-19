@@ -22,10 +22,23 @@ class PurchaseRequest(BaseModel):
     agent_id: str
 
 @router.post("/search")
-async def search_numbers(req: SearchRequest):
+async def search_numbers(req: SearchRequest, tenant_id: str = "", db: Session = Depends(get_db)):
     """
     Search Telnyx API for available phone numbers by area code.
+    Blocked for free-plan tenants.
     """
+    # Block free-plan tenants from searching numbers
+    if tenant_id:
+        try:
+            tenant = db.get(Tenant, uuid.UUID(tenant_id))
+            if tenant and tenant.plan_tier in ("free", "") or (tenant and tenant.subscription_status not in ("active",)):
+                raise HTTPException(
+                    status_code=402,
+                    detail="Phone number provisioning requires an active paid plan. Please upgrade."
+                )
+        except (ValueError, AttributeError):
+            pass  # If UUID is invalid, let the purchase step catch it
+
     api_key = os.environ.get("TELNYX_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="Telnyx API key not configured")
@@ -93,15 +106,16 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
     agent_uuid = uuid.UUID(req.agent_id)
     tenant_uuid = uuid.UUID(req.tenant_id)
 
-    # ── Pre-flight: check subscription is active + agent limit ──────────────
+    # ── Pre-flight: check plan tier + subscription status + agent limit ─────
     tenant = db.get(Tenant, tenant_uuid)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    if tenant.subscription_status != "active":
+    # Block free-plan users entirely — they must upgrade first
+    if tenant.plan_tier in ("free", "") or tenant.subscription_status not in ("active",):
         raise HTTPException(
             status_code=402,
-            detail="Active subscription required to claim a phone number. Please subscribe to a plan."
+            detail="Phone number provisioning requires an active paid plan. Please upgrade to Starter, Pro, or Premium."
         )
 
     # Count agents that already have a phone number (only THOSE consume slots)

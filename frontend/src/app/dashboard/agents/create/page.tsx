@@ -135,6 +135,22 @@ export default function CreateAgentPage() {
   // Created agent id
   const [agentId, setAgentId] = useState<string | null>(null);
 
+  // Billing plan
+  const [planTier, setPlanTier] = useState<string>("free");
+  const [subStatus, setSubStatus] = useState<string>("inactive");
+
+  useEffect(() => {
+    const tid = getTenantId();
+    if (tid && tid !== "00000000-0000-0000-0000-000000000000") {
+      apiGet(`/billing/subscription?tenant_id=${tid}`)
+        .then((data: any) => {
+          setPlanTier(data?.plan_tier ?? "free");
+          setSubStatus(data?.subscription_status ?? "inactive");
+        })
+        .catch(() => {});
+    }
+  }, []);
+
   /* ── helpers ── */
   const addStatus = (msg: string) => setKbStatus(p => [...p, msg]);
 
@@ -489,42 +505,98 @@ export default function CreateAgentPage() {
           </div>
 
           <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B", marginBottom: "0.4rem" }}>Setup Phone Number</h2>
-          <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Search by area code to get a local number for your AI agent.</p>
 
-          <form onSubmit={searchNumbers} style={{ display: "flex", gap: 10, marginBottom: "1.5rem", flexWrap: "wrap" }}>
-            <select value={countryCode} onChange={e => setCountryCode(e.target.value)} style={{ ...inp, width: 200 }}>
-              {SUPPORTED_COUNTRIES.map(c => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </select>
-            <input type="text" value={areaCode} onChange={e => setAreaCode(e.target.value)}
-              placeholder="Area code (optional)" style={{ ...inp, flex: 1 }} />
-            <button type="submit" disabled={loading}
-              style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "10px 20px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-              {loading ? "Searching..." : "Search"}
-            </button>
-          </form>
-
-          {numbers.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-              <label style={lbl}>Available Numbers</label>
-              {numbers.map(n => (
-                <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 10 }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#064E3B", letterSpacing: 1 }}>{n.phone_number}</span>
+          {/* ── Free plan gate ── */}
+          {(planTier === "free" || subStatus !== "active") ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <div style={{ background: "#FEF3C7", border: "2px solid #F59E0B", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>🔒</span>
+                <div>
+                  <div style={{ fontWeight: 800, color: "#92400E", fontSize: "0.95rem", marginBottom: 4 }}>Phone numbers require a paid plan</div>
+                  <div style={{ fontSize: "0.85rem", color: "#78350F", lineHeight: 1.5 }}>
+                    Upgrade to Starter, Pro, or Premium to claim a real phone number and activate your AI agent.
                   </div>
-                  <button onClick={() => claimNumber(n.phone_number)} disabled={loading}
-                    style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>
-                    {loading ? "..." : "Claim"}
-                  </button>
                 </div>
-              ))}
+              </div>
+
+              {/* Plan cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
+                {[
+                  { name: "Starter", price: "$50", minutes: "200 min", tier: "starter" },
+                  { name: "Pro Business", price: "$119", minutes: "500 min", tier: "pro", highlight: true },
+                  { name: "Premium", price: "$250", minutes: "1100 min", tier: "premium" },
+                ].map(p => (
+                  <div key={p.tier} style={{
+                    border: p.highlight ? "2px solid #064E3B" : "1.5px solid #D1FAE5",
+                    borderRadius: 12, padding: "1.25rem",
+                    background: p.highlight ? "#064E3B" : "#F6FEFA",
+                    color: p.highlight ? "#fff" : "#064E3B",
+                    display: "flex", flexDirection: "column", gap: 6,
+                    boxShadow: p.highlight ? "0 4px 14px rgba(6,78,59,0.25)" : "none",
+                  }}>
+                    <div style={{ fontWeight: 900, fontSize: "1rem" }}>{p.name}</div>
+                    <div style={{ fontWeight: 900, fontSize: "1.6rem", lineHeight: 1 }}>{p.price}<span style={{ fontSize: "0.8rem", fontWeight: 600, opacity: 0.7 }}>/mo</span></div>
+                    <div style={{ fontSize: "0.78rem", opacity: 0.8 }}>{p.minutes} included</div>
+                    <a
+                      href={`/dashboard/billing`}
+                      style={{
+                        marginTop: 8, display: "block", textAlign: "center",
+                        background: p.highlight ? "#10B981" : "#064E3B",
+                        color: "#fff", borderRadius: 8, padding: "8px",
+                        fontWeight: 700, fontSize: "0.82rem", textDecoration: "none",
+                      }}
+                    >
+                      Choose {p.name} →
+                    </a>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => router.push(`/dashboard/agents/${agentId}`)} style={ghost}>
+                Skip — configure number later
+              </button>
+            </div>
+          ) : (
+            /* ── Paid plan: show normal number search ── */
+            <div>
+              <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Search by area code to get a local number for your AI agent.</p>
+
+              <form onSubmit={searchNumbers} style={{ display: "flex", gap: 10, marginBottom: "1.5rem", flexWrap: "wrap" }}>
+                <select value={countryCode} onChange={e => setCountryCode(e.target.value)} style={{ ...inp, width: 200 }}>
+                  {SUPPORTED_COUNTRIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.name}</option>
+                  ))}
+                </select>
+                <input type="text" value={areaCode} onChange={e => setAreaCode(e.target.value)}
+                  placeholder="Area code (optional)" style={{ ...inp, flex: 1 }} />
+                <button type="submit" disabled={loading}
+                  style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "10px 20px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  {loading ? "Searching..." : "Search"}
+                </button>
+              </form>
+
+              {numbers.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                  <label style={lbl}>Available Numbers</label>
+                  {numbers.map(n => (
+                    <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 10 }}>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#064E3B", letterSpacing: 1 }}>{n.phone_number}</span>
+                      </div>
+                      <button onClick={() => claimNumber(n.phone_number)} disabled={loading}
+                        style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>
+                        {loading ? "..." : "Claim"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button onClick={() => router.push(`/dashboard/agents/${agentId}`)} style={ghost}>
+                Skip for now — configure later
+              </button>
             </div>
           )}
-
-          <button onClick={() => router.push(`/dashboard/agents/${agentId}`)} style={ghost}>
-            Skip for now — configure later
-          </button>
         </div>
       )}
     </div>
