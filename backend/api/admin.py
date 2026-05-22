@@ -1,36 +1,55 @@
+"""
+Admin API — Protected management endpoints.
+All routes require HTTP Basic authentication (ADMIN_USER + ADMIN_PASS env vars).
+"""
 import os
-import asyncio
 import secrets
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import base64
-import httpx
-from typing import List, Optional
+from typing import Optional
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
-from shared.database import engine, get_db
-from shared.models import VoiceOption, Tenant
+
+from shared.database import get_db
+from shared.models import Tenant, SystemSettings
 from backend.api.billing import PLANS
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 security = HTTPBasic()
 
-# Admin Credentials — loaded from environment, never hardcoded
 ADMIN_USER = os.environ.get("ADMIN_USER", "Nitish165")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
 
-def get_admin_user(credentials: HTTPBasicCredentials = Depends(security)):
-    current_username_bytes = credentials.username.encode("utf8")
-    correct_username_bytes = ADMIN_USER.encode("utf8")
-    is_correct_username = secrets.compare_digest(
-        current_username_bytes, correct_username_bytes
+# Telnyx Ultra voice catalogue — presented in the dashboard voice selector
+TELNYX_VOICES = [
+    {"voice_id": "Telnyx.Ultra.Grace",    "name": "Grace",    "gender": "Female", "style": "Professional / Warm"},
+    {"voice_id": "Telnyx.Ultra.George",   "name": "George",   "gender": "Male",   "style": "Professional / Confident"},
+    {"voice_id": "Telnyx.Ultra.Ava",      "name": "Ava",      "gender": "Female", "style": "Friendly / Bright"},
+    {"voice_id": "Telnyx.Ultra.James",    "name": "James",    "gender": "Male",   "style": "Calm / Authoritative"},
+    {"voice_id": "Telnyx.Ultra.Emma",     "name": "Emma",     "gender": "Female", "style": "Empathetic / Sincere"},
+    {"voice_id": "Telnyx.Ultra.Daniel",   "name": "Daniel",   "gender": "Male",   "style": "Warm / Trustworthy"},
+    {"voice_id": "Telnyx.Ultra.Allie",    "name": "Allie",    "gender": "Female", "style": "Friendly / Expressive"},
+    {"voice_id": "Telnyx.Ultra.Benji",    "name": "Benji",    "gender": "Male",   "style": "Playful / High-energy"},
+    {"voice_id": "Telnyx.Ultra.Ronald",   "name": "Ronald",   "gender": "Male",   "style": "Mature / Reassuring"},
+    {"voice_id": "Telnyx.Ultra.Wesley",   "name": "Wesley",   "gender": "Male",   "style": "Clean / Clear"},
+    {"voice_id": "Telnyx.Ultra.Mia",      "name": "Mia",      "gender": "Female", "style": "Direct / Business"},
+    {"voice_id": "Telnyx.Ultra.Howard",   "name": "Howard",   "gender": "Male",   "style": "Deep / Narrative"},
+    {"voice_id": "Telnyx.Ultra.Harry",    "name": "Harry",    "gender": "Male",   "style": "Youthful / Casual"},
+    {"voice_id": "Telnyx.Ultra.Jasper",   "name": "Jasper",   "gender": "Male",   "style": "Smooth / Conversational"},
+    {"voice_id": "Telnyx.Ultra.Arvin",    "name": "Arvin",    "gender": "Male",   "style": "Energetic / Direct"},
+    {"voice_id": "Telnyx.Ultra.Callie",   "name": "Callie",   "gender": "Female", "style": "Bright / Engaging"},
+    {"voice_id": "Telnyx.Ultra.Skyler",   "name": "Skyler",   "gender": "Female", "style": "Natural / Conversational"},
+    {"voice_id": "Telnyx.Ultra.Darius",   "name": "Darius",   "gender": "Male",   "style": "Professional / Grounded"},
+    {"voice_id": "Telnyx.Ultra.Kelsey",   "name": "Kelsey",   "gender": "Female", "style": "Soft / Gentle"},
+]
+
+
+def get_admin_user(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+    ok = (
+        secrets.compare_digest(credentials.username.encode(), ADMIN_USER.encode())
+        and secrets.compare_digest(credentials.password.encode(), ADMIN_PASS.encode())
     )
-    current_password_bytes = credentials.password.encode("utf8")
-    correct_password_bytes = ADMIN_PASS.encode("utf8")
-    is_correct_password = secrets.compare_digest(
-        current_password_bytes, correct_password_bytes
-    )
-    if not (is_correct_username and is_correct_password):
+    if not ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect admin credentials",
@@ -38,156 +57,151 @@ def get_admin_user(credentials: HTTPBasicCredentials = Depends(security)):
         )
     return credentials.username
 
-# Comprehensive List of Aura-2 English voices with characteristics
-APPROVED_VOICES = {
-    "aura-2-thalia-en":    "Thalia (F - Energetic/Confident)",
-    "aura-2-amalthea-en":  "Amalthea (F - Engaging/Professional)",
-    "aura-2-andromeda-en": "Andromeda (F - Casual/Expressive)",
-    "aura-2-apollo-en":    "Apollo (M - Confident/Casual)",
-    "aura-2-arcas-en":     "Arcas (M - Smooth/Natural)",
-    "aura-2-aries-en":     "Aries (M - Warm/Caring)",
-    "aura-2-aurora-en":    "Aurora (F - Cheerful/Friendly)",
-    "aura-2-delia-en":     "Delia (F - Friendly/Approachable)",
-    "aura-2-electra-en":   "Electra (F - Professional/Authoritative)",
-    "aura-2-harmonia-en":  "Harmonia (F - Empathetic/Sincere)",
-    "aura-2-helena-en":    "Helena (F - Caring/Natural)",
-    "aura-2-hermes-en":    "Hermes (M - Professional/Knowledgeable)",
-    "aura-2-hyperion-en":  "Hyperion (M - Empathetic/Confident)",
-    "aura-2-juno-en":      "Juno (F - Melodic/Engaging)",
-    "aura-2-jupiter-en":   "Jupiter (M - Knowledgeable/Authoritative)",
-    "aura-2-mars-en":      "Mars (M - Trustworthy/Calm)",
-    "aura-2-neptune-en":   "Neptune (M - Polite/Professional)",
-    "aura-2-ophelia-en":   "Ophelia (F - Enthusiastic/Expressive)",
-    "aura-2-orion-en":     "Orion (M - Polite/Friendly)",
-    "aura-2-orpheus-en":   "Orpheus (M - Trustworthy/Warm)",
-    "aura-2-phoebe-en":    "Phoebe (F - Warm/Sincere)",
-    "aura-2-pluto-en":     "Pluto (M - Empathetic/Calm)",
-    "aura-2-saturn-en":    "Saturn (M - Confident/Authoritative)",
-    "aura-2-selene-en":    "Selene (F - Engaging/Clear)",
-    "aura-2-theia-en":     "Theia (F - Sincere/Professional)",
-    "aura-2-vesta-en":     "Vesta (F - Patient/Caring)",
-    "aura-2-luna-en":      "Luna (F - Expressive/Cheerful)",
-    "aura-2-odysseus-en":  "Odysseus (M - Strong/Direct)"
-}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VOICES — Return available Telnyx voice catalogue
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/voices")
+async def get_voices(admin: str = Depends(get_admin_user)):
+    """Returns the Telnyx Ultra voice catalogue for the agent creation UI."""
+    return {"voices": TELNYX_VOICES}
+
 
 @router.post("/generate-voice-previews")
-async def generate_voice_previews(admin: str = Depends(get_admin_user)):
-    """
-    Generates audio previews for all approved voices using Deepgram TTS
-    and uploads them to Google Cloud Storage (GCS) for public access.
-    """
-    from google.cloud import storage
-    
-    bucket_name = os.environ.get("GCS_BUCKET_NAME", "callerx-voice-previews")
-    deepgram_key = os.environ.get("DEEPGRAM_API_KEY")
-    preview_script = "Hi, I'm your AI assistant from AIxcaller. How can I help you today?"
-    
-    if not deepgram_key:
-        raise HTTPException(status_code=500, detail="DEEPGRAM_API_KEY environment variable is missing.")
-    
-    try:
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to initialize GCS: {e}")
-
-    results = {"success": [], "failed": []}
-
-    async with httpx.AsyncClient() as client:
-        with Session(engine) as session:
-            for voice_id, display_name in APPROVED_VOICES.items():
-                try:
-                    # 1. Call Deepgram TTS
-                    response = await client.post(
-                        f"https://api.deepgram.com/v1/speak?model={voice_id}",
-                        headers={"Authorization": f"Token {deepgram_key}"},
-                        json={"text": preview_script}
-                    )
-                    
-                    if response.status_code == 200:
-                        # 2. Upload to GCS
-                        blob_name = f"previews/{voice_id}.mp3"
-                        blob = bucket.blob(blob_name)
-                        blob.upload_from_string(response.content, content_type="audio/mpeg")
-                        
-                        # Since bucket is made public at bucket-level (Storage Object Viewer)
-                        public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
-                        
-                        # 3. Upsert into VoiceOption Table
-                        statement = select(VoiceOption).where(VoiceOption.voice_id == voice_id)
-                        voice_entry = session.exec(statement).first()
-                        
-                        if not voice_entry:
-                            voice_entry = VoiceOption(
-                                name=display_name.split(" (")[0],
-                                voice_id=voice_id,
-                                gender="Female" if "F - " in display_name else "Male"
-                            )
-                        
-                        voice_entry.preview_url = public_url
-                        session.add(voice_entry)
-                        session.commit()
-                        results["success"].append(voice_id)
-                    else:
-                        results["failed"].append({voice_id: f"Deepgram status {response.status_code}"})
-                        
-                except Exception as e:
-                    results["failed"].append({voice_id: str(e)})
-                    
-    return {"message": "Voice catalog updated with cloud previews.", "details": results}
-
-@router.get("/voices")
-async def get_voices(db: Session = Depends(get_db), admin: str = Depends(get_admin_user)):
-    """Returns all available voices for the frontend dropdown."""
-    statement = select(VoiceOption)
-    voices = db.exec(statement).all()
-    return voices
-
-@router.post("/assign-plan")
-async def assign_plan(
-    email: str, 
-    plan_tier: str, 
-    custom_minutes: Optional[int] = None,
+async def generate_voice_previews(
     db: Session = Depends(get_db),
     admin: str = Depends(get_admin_user)
 ):
     """
-    Manually assign a plan to a user by their email.
-    Bypasses payment and sets the user as active with the specified tier.
+    Synthesize high-quality speech preview samples for all 19 Telnyx Ultra voices
+    using Telnyx TTS API, and upload them to Google Cloud Storage.
     """
-    if plan_tier not in PLANS and plan_tier != "free":
-        raise HTTPException(status_code=400, detail=f"Invalid plan tier: {plan_tier}")
-
-    # Case-insensitive email lookup
-    statement = select(Tenant).where(Tenant.contact_email.ilike(email))
-    tenant = db.exec(statement).first()
+    import httpx
+    from loguru import logger
     
+    telnyx_api_key = os.environ.get("TELNYX_API_KEY")
+    if not telnyx_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Missing TELNYX_API_KEY environment variable on backend."
+        )
+        
+    bucket_name = os.environ.get("GCS_BUCKET_NAME", "aixcaller-assets")
+    
+    try:
+        from google.cloud import storage
+        gcs_client = storage.Client()
+        bucket = gcs_client.bucket(bucket_name)
+    except Exception as e:
+        logger.error(f"Failed to initialize GCS client: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to initialize GCS client: {str(e)}. Check GCP credentials."
+        )
+        
+    # Running bucket check in threadpool
+    from fastapi.concurrency import run_in_threadpool
+    bucket_exists = await run_in_threadpool(bucket.exists)
+    if not bucket_exists:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Google Cloud Storage bucket '{bucket_name}' not found."
+        )
+        
+    success_voices = []
+    failed_voices = []
+    
+    async with httpx.AsyncClient() as client:
+        for voice in TELNYX_VOICES:
+            v_id = voice["voice_id"]
+            v_name = voice["name"]
+            text = f"Hello! I am {v_name}, one of the ultra premium voices provided by Telnyx. I am ready to be used for your AI voice assistant."
+            
+            url = "https://api.telnyx.com/v2/text-to-speech"
+            headers = {
+                "Authorization": f"Bearer {telnyx_api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "text": text,
+                "voice": v_id,
+                "output_type": "binary_output"
+            }
+            
+            try:
+                response = await client.post(url, headers=headers, json=payload, timeout=30.0)
+                if response.status_code != 200:
+                    logger.error(f"Telnyx TTS failed for {v_name}: {response.status_code} - {response.text}")
+                    failed_voices.append(v_name)
+                    continue
+                    
+                audio_bytes = response.content
+                blob_name = f"voices/telnyx_ultra_{v_name.lower()}.mp3"
+                blob = bucket.blob(blob_name)
+                
+                # Running in a threadpool to avoid blocking event loop
+                await run_in_threadpool(blob.upload_from_string, audio_bytes, "audio/mpeg")
+                
+                try:
+                    await run_in_threadpool(blob.make_public)
+                    public_url = blob.public_url
+                except Exception as e:
+                    logger.warning(f"Could not make blob public: {e}")
+                    public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
+                    
+                logger.info(f"Uploaded preview for {v_name} to {public_url}")
+                success_voices.append({"name": v_name, "url": public_url})
+                
+            except Exception as e:
+                logger.error(f"Exception generating voice preview for {v_name}: {e}")
+                failed_voices.append(v_name)
+                
+    return {
+        "message": f"Voice previews generation completed: {len(success_voices)} succeeded, {len(failed_voices)} failed.",
+        "details": {
+            "success": success_voices,
+            "failed": failed_voices
+        }
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PLAN ASSIGNMENT — Manually assign a plan to a tenant
+# ─────────────────────────────────────────────────────────────────────────────
+@router.post("/assign-plan")
+async def assign_plan(
+    email: str,
+    plan_tier: str,
+    custom_minutes: Optional[int] = None,
+    db: Session = Depends(get_db),
+    admin: str = Depends(get_admin_user),
+):
+    """
+    Manually assign a subscription plan to a tenant.
+    Bypasses payment for testing or manual activation.
+    """
+    valid_tiers = list(PLANS.keys()) + ["free"]
+    if plan_tier not in valid_tiers:
+        raise HTTPException(status_code=400, detail=f"Invalid plan tier: {plan_tier}. Valid: {valid_tiers}")
+
+    tenant = db.exec(select(Tenant).where(Tenant.contact_email.ilike(email))).first()
     if not tenant:
-        raise HTTPException(status_code=404, detail=f"User with email '{email}' not found")
+        raise HTTPException(status_code=404, detail=f"No user found with email: {email}")
 
-    # Get plan config with explicit fallbacks for manual assignment
     plan_cfg = PLANS.get(plan_tier, {})
-    
-    # Robust minute selection logic
+    default_minutes = {"starter": 200, "pro": 500, "premium": 1100, "free": 0}
+
     if custom_minutes is not None and custom_minutes > 0:
         minutes = custom_minutes
     else:
-        # Explicit fallbacks if PLANS lookup is wonky
-        default_minutes = {
-            "starter": 200,
-            "pro": 500,
-            "premium": 1100,
-            "free": 0
-        }
         minutes = plan_cfg.get("minutes") or default_minutes.get(plan_tier, 0)
 
-    # Update tenant subscription info
     tenant.plan_tier = plan_tier
     tenant.is_active = True
     tenant.subscription_status = "active"
     tenant.subscription_id = f"admin_manual_{secrets.token_hex(4)}"
     tenant.minutes_included = int(minutes)
-    tenant.minutes_used = 0.0  # Reset usage for the new cycle
+    tenant.minutes_used = 0.0
     tenant.cycle_start = datetime.utcnow()
     tenant.cycle_end = datetime.utcnow() + timedelta(days=30)
 
@@ -196,9 +210,179 @@ async def assign_plan(
     db.refresh(tenant)
 
     return {
-        "message": f"Successfully assigned {plan_tier} plan to {email}",
-        "tenant_id": str(tenant.id),
-        "plan_tier": tenant.plan_tier,
+        "message":          f"Plan '{plan_tier}' assigned to {email}",
+        "tenant_id":        str(tenant.id),
+        "plan_tier":        tenant.plan_tier,
         "minutes_included": tenant.minutes_included,
-        "cycle_end": tenant.cycle_end.isoformat()
+        "cycle_end":        tenant.cycle_end.isoformat(),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TENANT LIST — Overview of all tenants
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/tenants")
+async def list_tenants(db: Session = Depends(get_db), admin: str = Depends(get_admin_user)):
+    """Returns a summary of all tenants for the admin dashboard."""
+    tenants = db.exec(select(Tenant).order_by(Tenant.created_at.desc())).all()
+    return {
+        "count": len(tenants),
+        "tenants": [
+            {
+                "id":                  str(t.id),
+                "name":                t.name,
+                "email":               t.contact_email,
+                "plan_tier":           t.plan_tier,
+                "subscription_status": t.subscription_status,
+                "minutes_used":        round(t.minutes_used, 2),
+                "minutes_included":    t.minutes_included,
+                "is_active":           t.is_active,
+                "created_at":          t.created_at.isoformat(),
+            }
+            for t in tenants
+        ],
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# USAGE RESET — Reset a tenant's minute usage for the current cycle
+# ─────────────────────────────────────────────────────────────────────────────
+@router.post("/reset-usage")
+async def reset_usage(
+    email: str,
+    db: Session = Depends(get_db),
+    admin: str = Depends(get_admin_user),
+):
+    """Reset a tenant's minutes_used to 0 (for manual cycle resets)."""
+    tenant = db.exec(select(Tenant).where(Tenant.contact_email.ilike(email))).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail=f"No user found with email: {email}")
+
+    tenant.minutes_used = 0.0
+    db.add(tenant)
+    db.commit()
+
+    return {"message": f"Usage reset for {email}", "minutes_used": 0.0}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GLOBAL SETTINGS — Get & update global model and API keys
+# ─────────────────────────────────────────────────────────────────────────────
+from pydantic import BaseModel
+import httpx
+from loguru import logger
+
+class AdminSettingsRequest(BaseModel):
+    global_model: str
+    api_key: Optional[str] = None
+
+
+@router.get("/settings")
+async def get_settings(
+    db: Session = Depends(get_db),
+    admin: str = Depends(get_admin_user),
+):
+    """Retrieve global system settings."""
+    settings = db.exec(select(SystemSettings).where(SystemSettings.id == 1)).first()
+    if not settings:
+        settings = SystemSettings(id=1, global_model="openai/gpt-4o-mini", api_key=None, telnyx_secret_id=None)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+
+    masked_key = None
+    if settings.api_key:
+        if len(settings.api_key) > 8:
+            masked_key = f"{settings.api_key[:4]}...{settings.api_key[-4:]}"
+        else:
+            masked_key = "********"
+
+    return {
+        "global_model": settings.global_model,
+        "api_key": masked_key,
+        "has_api_key": bool(settings.api_key),
+        "telnyx_secret_id": settings.telnyx_secret_id,
+        "updated_at": settings.updated_at.isoformat() if settings.updated_at else None,
+    }
+
+
+@router.post("/settings")
+async def update_settings(
+    req: AdminSettingsRequest,
+    db: Session = Depends(get_db),
+    admin: str = Depends(get_admin_user),
+):
+    """Update global system settings and sync with Telnyx Integration Secrets."""
+    settings = db.exec(select(SystemSettings).where(SystemSettings.id == 1)).first()
+    if not settings:
+        settings = SystemSettings(id=1, global_model="openai/gpt-4o-mini", api_key=None, telnyx_secret_id=None)
+
+    telnyx_api_key = os.environ.get("TELNYX_API_KEY")
+    if not telnyx_api_key:
+        raise HTTPException(status_code=500, detail="Missing TELNYX_API_KEY on backend server — cannot register secrets with Telnyx.")
+
+    # API key update logic
+    if req.api_key is not None:
+        is_placeholder = "..." in req.api_key or req.api_key == "********"
+        if not is_placeholder and req.api_key.strip():
+            new_key = req.api_key.strip()
+            if new_key != settings.api_key:
+                if settings.telnyx_secret_id:
+                    await delete_telnyx_integration_secret(telnyx_api_key, settings.telnyx_secret_id)
+                
+                secret_id = await create_telnyx_integration_secret(telnyx_api_key, new_key)
+                if not secret_id:
+                    raise HTTPException(status_code=500, detail="Failed to register custom API key with Telnyx Integration Secrets API.")
+                
+                settings.api_key = new_key
+                settings.telnyx_secret_id = secret_id
+        elif not req.api_key.strip():
+            if settings.telnyx_secret_id:
+                await delete_telnyx_integration_secret(telnyx_api_key, settings.telnyx_secret_id)
+            settings.api_key = None
+            settings.telnyx_secret_id = None
+    
+    settings.global_model = req.global_model
+    settings.updated_at = datetime.utcnow()
+
+    db.add(settings)
+    db.commit()
+    db.refresh(settings)
+
+    return {"status": "saved", "global_model": settings.global_model, "has_api_key": bool(settings.api_key)}
+
+
+async def create_telnyx_integration_secret(api_key: str, secret_value: str) -> Optional[str]:
+    url = "https://api.telnyx.com/v2/integration_secrets"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "identifier": f"aixcaller_global_api_key_{secrets.token_hex(4)}",
+        "value": secret_value
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload, timeout=15.0)
+            if response.status_code in [200, 201]:
+                resp_json = response.json()
+                return resp_json.get("data", {}).get("id")
+            else:
+                logger.error(f"Failed to create Telnyx secret: {response.status_code} - {response.text}")
+                return None
+        except Exception as e:
+            logger.error(f"Exception creating Telnyx secret: {e}")
+            return None
+
+
+async def delete_telnyx_integration_secret(api_key: str, secret_id: str):
+    url = f"https://api.telnyx.com/v2/integration_secrets/{secret_id}"
+    headers = {
+        "Authorization": f"Bearer {api_key}"
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.delete(url, headers=headers, timeout=10.0)
+        except Exception as e:
+            logger.error(f"Failed to delete old Telnyx secret: {e}")

@@ -24,11 +24,11 @@ export default function CallsPage() {
 
   return (
     <div style={{ padding: "1rem" }}>
-      <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "#064E3B", marginBottom: "1.5rem" }}>Call History</h1>
+      <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "var(--text)", marginBottom: "1.5rem" }}>Call History</h1>
       {loading ? (
         <p>Loading calls...</p>
       ) : calls.length === 0 ? (
-        <div style={{ padding: "4rem", textAlign: "center", background: "#fff", borderRadius: 16, border: "1.5px solid #D1FAE5" }}>
+        <div style={{ padding: "4rem", textAlign: "center", background: "#fff", borderRadius: 16, border: "1.5px solid var(--border)" }}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📞</div>
           <h3>No calls yet</h3>
           <p>Your call history will appear here once your agents start talking!</p>
@@ -44,22 +44,22 @@ export default function CallsPage() {
                 padding: "1.5rem", 
                 background: "#fff", 
                 borderRadius: 16, 
-                border: "1px solid #E5E7EB", 
+                border: "1.5px solid var(--border)", 
                 display: "flex", 
                 flexDirection: "column",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)",
+                transition: "var(--transition)",
                 cursor: "default"
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 8px 24px rgba(16, 185, 129, 0.1)";
-                e.currentTarget.style.borderColor = "#10B981";
+                e.currentTarget.style.boxShadow = "0 10px 25px -5px rgba(29, 78, 216, 0.08)";
+                e.currentTarget.style.borderColor = "var(--blue)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.03)";
-                e.currentTarget.style.borderColor = "#E5E7EB";
+                e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.02)";
+                e.currentTarget.style.borderColor = "var(--border)";
               }}
               >
                 {/* Card Header */}
@@ -67,7 +67,7 @@ export default function CallsPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                     <div style={{ 
                       width: 40, height: 40, borderRadius: "50%", 
-                      background: "#ECFDF5", color: "#10B981",
+                      background: "var(--blue-light)", color: "var(--blue)",
                       display: "flex", alignItems: "center", justifyContent: "center", 
                       fontSize: "1.2rem" 
                     }}>
@@ -112,7 +112,7 @@ export default function CallsPage() {
                   )}
 
                   {call.duration_seconds > 0 && (
-                    <span style={{ fontSize: "0.75rem", color: "#10B981", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--blue)", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
                       ⏱️ {Math.floor(call.duration_seconds / 60)}m {call.duration_seconds % 60}s
                     </span>
                   )}

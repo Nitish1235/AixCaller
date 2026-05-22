@@ -1,259 +1,213 @@
 """
-Google OAuth2 service — handles Calendar + Sheets integration.
+Google OAuth2 Service (Calendar + Sheets)
+==========================================
+Handles:
+  - Building the OAuth2 consent URL
+  - Exchanging the authorization code for tokens
+  - Refreshing expired access tokens (stored only the refresh token in DB)
+  - Creating Google Calendar events
+  - Checking Calendar availability (free/busy)
+  - Appending rows to Google Sheets
 
-OAuth Scopes requested:
-  - calendar.events           → create/read events
-  - spreadsheets              → read/write Google Sheets
-  - userinfo.email            → confirm account
-
-Environment variables required:
+Requires env vars:
   GOOGLE_CLIENT_ID
   GOOGLE_CLIENT_SECRET
-  SERVER_HOST  (e.g. https://api.callerx.ai)
+  GOOGLE_REDIRECT_URI   (e.g. https://api.callerx.ai/api/v1/google/callback)
 """
-
 import os
 import time
+import uuid
+from typing import Optional
 import httpx
 from loguru import logger
-from sqlmodel import Session
-from shared.database import engine
-from shared.models import Tenant
-import uuid
 
-GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token"
-GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
-CALENDAR_API      = "https://www.googleapis.com/calendar/v3"
-SHEETS_API        = "https://sheets.googleapis.com/v4/spreadsheets"
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://api.callerx.ai/api/v1/google/callback")
 
 SCOPES = " ".join([
-    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/userinfo.email",
     "openid",
+    "email",
 ])
 
-
-def get_oauth_redirect_uri() -> str:
-    host = os.environ.get("SERVER_HOST", "localhost:8000")
-    # Strip any existing scheme so we don't produce "https://https://..."
-    host = host.replace("https://", "").replace("http://", "").rstrip("/")
-    return f"https://{host}/api/v1/google/callback"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+REFRESH_BUFFER = 300  # refresh if token expires within 5 min
 
 
+# ─── OAuth URL ────────────────────────────────────────────────────────────────
 def build_auth_url(tenant_id: str) -> str:
-    client_id = os.environ["GOOGLE_CLIENT_ID"]
-    redirect  = get_oauth_redirect_uri()
-    params = (
-        f"?client_id={client_id}"
-        f"&redirect_uri={redirect}"
-        f"&response_type=code"
-        f"&scope={SCOPES.replace(' ', '%20')}"
-        f"&access_type=offline"
-        f"&prompt=consent"
-        f"&state={tenant_id}"
-    )
-    return GOOGLE_AUTH_URL + params
+    """Build the Google OAuth consent URL, encoding tenant_id in the state param."""
+    params = {
+        "client_id":     GOOGLE_CLIENT_ID,
+        "redirect_uri":  GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope":         SCOPES,
+        "access_type":   "offline",
+        "prompt":        "consent",
+        "state":         tenant_id,
+    }
+    from urllib.parse import urlencode
+    return f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
 
 
+# ─── Token exchange ───────────────────────────────────────────────────────────
 async def exchange_code(code: str) -> dict:
-    """Exchange authorization code for access + refresh tokens."""
+    """Exchange an authorization code for tokens. Returns the full token response."""
     async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(GOOGLE_TOKEN_URL, data={
+        resp = await client.post(TOKEN_URL, data={
             "code":          code,
-            "client_id":     os.environ["GOOGLE_CLIENT_ID"],
-            "client_secret": os.environ["GOOGLE_CLIENT_SECRET"],
-            "redirect_uri":  get_oauth_redirect_uri(),
+            "client_id":     GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri":  GOOGLE_REDIRECT_URI,
             "grant_type":    "authorization_code",
         })
         resp.raise_for_status()
         return resp.json()
 
 
-class GoogleAuthRevokedError(RuntimeError):
-    """Refresh token rejected by Google (user revoked access or it expired)."""
-
-
-async def refresh_access_token(refresh_token: str) -> dict:
-    """Refresh a stale access token.
-
-    Raises GoogleAuthRevokedError on 400/401 so callers can surface a
-    "please reconnect Google" message instead of crashing mid-call.
+# ─── Token refresh ────────────────────────────────────────────────────────────
+async def get_valid_token(tenant) -> Optional[str]:
     """
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(GOOGLE_TOKEN_URL, data={
-            "client_id":     os.environ["GOOGLE_CLIENT_ID"],
-            "client_secret": os.environ["GOOGLE_CLIENT_SECRET"],
-            "refresh_token": refresh_token,
-            "grant_type":    "refresh_token",
-        })
-        if resp.status_code in (400, 401):
-            logger.warning(f"Google refresh token rejected ({resp.status_code}): {resp.text[:200]}")
-            raise GoogleAuthRevokedError("Google access was revoked — tenant must reconnect.")
-        resp.raise_for_status()
-        return resp.json()
-
-
-async def get_valid_token(tenant: Tenant) -> str:
-    """Return a valid access token, refreshing it if close to expiry."""
+    Return a valid Google access token for the tenant.
+    Refreshes automatically if expired/missing.
+    Persists the new token expiry to the tenant object (caller must commit).
+    """
     now = int(time.time())
-    # Refresh if expired or expiring within 5 minutes
-    if not tenant.google_access_token or (tenant.google_token_expires_at and tenant.google_token_expires_at < now + 300):
-        if not tenant.google_refresh_token:
-            raise ValueError("Google not connected — no refresh token available")
-        data = await refresh_access_token(tenant.google_refresh_token)
-        # Update DB
-        with Session(engine) as db:
-            t = db.get(Tenant, tenant.id)
-            if t:
-                t.google_access_token     = data["access_token"]
-                t.google_token_expires_at = now + data.get("expires_in", 3600)
-                db.add(t)
-                db.commit()
-        return data["access_token"]
-    return tenant.google_access_token
+    if (
+        getattr(tenant, "google_access_token", None)
+        and (tenant.google_token_expires_at or 0) - now > REFRESH_BUFFER
+    ):
+        return tenant.google_access_token
+
+    if not tenant.google_refresh_token:
+        logger.warning(f"Tenant {tenant.id} has no Google refresh token")
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(TOKEN_URL, data={
+                "client_id":     GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "refresh_token": tenant.google_refresh_token,
+                "grant_type":    "refresh_token",
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            new_token = data.get("access_token")
+            if not new_token:
+                logger.error(f"Google refresh missing access_token: {data}")
+                return None
+
+            # Update in-memory; caller must db.add(tenant) + db.commit()
+            tenant._google_access_token_ephemeral = new_token
+            tenant.google_token_expires_at = now + data.get("expires_in", 3600)
+            logger.info(f"♻️ Google token refreshed for tenant {tenant.id}")
+            return new_token
+    except Exception as e:
+        logger.error(f"Google token refresh failed: {e}")
+        return None
 
 
-# ─── Google Calendar ─────────────────────────────────────────────────────────
-
+# ─── Calendar: Create Event ───────────────────────────────────────────────────
 async def create_calendar_event(
-    tenant: Tenant,
+    tenant,
     title: str,
-    date: str,        # "YYYY-MM-DD"
-    time_str: str,    # "HH:MM"
+    date: str,
+    time_str: str,
     duration_mins: int = 60,
     description: str = "",
-    attendee_email: str = None,
+    attendee_email: Optional[str] = None,
 ) -> dict:
-    """Create a Google Calendar event and return the event dict."""
-    token       = await get_valid_token(tenant)
-    calendar_id = tenant.google_calendar_id or "primary"
+    """
+    Create a Google Calendar event.
+    date: 'YYYY-MM-DD', time_str: 'HH:MM'
+    Returns the full event object from Google.
+    """
+    token = await get_valid_token(tenant)
+    if not token:
+        raise ValueError("No valid Google access token available")
 
-    # Build datetime strings in ISO 8601
-    start_dt = f"{date}T{time_str}:00"
-    start_h = int(time_str.split(":")[0])
-    start_m = int(time_str.split(":")[1])
-    end_total_m = start_h * 60 + start_m + duration_mins
-    end_h = end_total_m // 60
-    end_m = end_total_m % 60
-    end_dt = f"{date}T{end_h:02d}:{end_m:02d}:00"
+    from datetime import datetime, timedelta
+    dt_start = datetime.strptime(f"{date} {time_str}", "%Y-%m-%d %H:%M")
+    dt_end = dt_start + timedelta(minutes=duration_mins)
 
-    # Use the tenant's configured timezone so events land at the local time
-    # the caller actually agreed to. Falls back to UTC only if unset.
-    tz_name = getattr(tenant, "human_transfer_timezone", None) or "UTC"
-
-    body = {
-        "summary":     title,
+    event_body = {
+        "summary": title,
         "description": description,
-        "start":       {"dateTime": start_dt, "timeZone": tz_name},
-        "end":         {"dateTime": end_dt,   "timeZone": tz_name},
+        "start": {"dateTime": dt_start.isoformat(), "timeZone": "UTC"},
+        "end":   {"dateTime": dt_end.isoformat(),   "timeZone": "UTC"},
     }
     if attendee_email:
-        body["attendees"] = [{"email": attendee_email}]
+        event_body["attendees"] = [{"email": attendee_email}]
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    calendar_id = getattr(tenant, "google_calendar_id", "primary") or "primary"
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.post(
-            f"{CALENDAR_API}/calendars/{calendar_id}/events",
-            headers={"Authorization": f"Bearer {token}"},
-            json=body,
+            f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json=event_body,
         )
         resp.raise_for_status()
         return resp.json()
 
 
-async def get_calendar_availability(
-    tenant: Tenant,
-    date: str,     # "YYYY-MM-DD"
-) -> list[str]:
-    """Return list of busy HH:MM slots on a given date."""
-    token       = await get_valid_token(tenant)
-    calendar_id = tenant.google_calendar_id or "primary"
+# ─── Calendar: Availability Check ────────────────────────────────────────────
+async def get_calendar_availability(tenant, date: str) -> list[str]:
+    """
+    Return a list of busy HH:MM slots for the given date.
+    Checks in 30-minute intervals from 08:00 to 18:00.
+    """
+    token = await get_valid_token(tenant)
+    if not token:
+        raise ValueError("No valid Google access token available")
 
-    # Build day boundaries in the tenant's local timezone so the busy-slot
-    # window lines up with the local 9-17 filter used by check_availability.
-    tz_name = getattr(tenant, "human_transfer_timezone", None) or "UTC"
-    try:
-        from zoneinfo import ZoneInfo
-        from datetime import datetime, time as dtime
-        tz = ZoneInfo(tz_name)
-        start_local = datetime.combine(datetime.fromisoformat(date).date(), dtime(0, 0), tzinfo=tz)
-        end_local   = datetime.combine(datetime.fromisoformat(date).date(), dtime(23, 59, 59), tzinfo=tz)
-        time_min = start_local.isoformat()
-        time_max = end_local.isoformat()
-    except Exception:
-        time_min = f"{date}T00:00:00Z"
-        time_max = f"{date}T23:59:59Z"
+    from datetime import datetime
+    dt_start = datetime.strptime(f"{date} 00:00", "%Y-%m-%d %H:%M")
+    dt_end   = datetime.strptime(f"{date} 23:59", "%Y-%m-%d %H:%M")
+    calendar_id = getattr(tenant, "google_calendar_id", "primary") or "primary"
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(
-            f"{CALENDAR_API}/calendars/{calendar_id}/events",
-            headers={"Authorization": f"Bearer {token}"},
-            params={
-                "timeMin":      time_min,
-                "timeMax":      time_max,
-                "singleEvents": "true",
-                "orderBy":      "startTime",
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            "https://www.googleapis.com/calendar/v3/freeBusy",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={
+                "timeMin": dt_start.isoformat() + "Z",
+                "timeMax": dt_end.isoformat() + "Z",
+                "items": [{"id": calendar_id}],
             },
         )
-        if resp.status_code != 200:
-            return []
-        events = resp.json().get("items", [])
-        busy = []
-        for ev in events:
-            s = ev.get("start", {}).get("dateTime", "")
-            if "T" in s:
-                busy.append(s.split("T")[1][:5])   # "HH:MM"
-        return busy
+        resp.raise_for_status()
+        data = resp.json()
+
+    busy_periods = data.get("calendars", {}).get(calendar_id, {}).get("busy", [])
+    busy_slots = []
+    for period in busy_periods:
+        start_str = period.get("start", "")
+        if "T" in start_str:
+            busy_slots.append(start_str.split("T")[1][:5])
+    return busy_slots
 
 
-# ─── Google Sheets ───────────────────────────────────────────────────────────
-
-LEAD_HEADERS = [
-    "Timestamp", "Name", "Phone", "Email", "Intent", "Notes",
-    "Appointment Date", "Appointment Time", "Status", "Agent"
-]
-
-
-async def ensure_sheet_headers(tenant: Tenant):
-    """Write header row if the sheet is empty."""
-    token    = await get_valid_token(tenant)
-    sheet_id = tenant.google_sheet_id
-    tab      = tenant.google_sheet_name or "Leads"
+# ─── Sheets: Append Lead Row ──────────────────────────────────────────────────
+async def append_lead_to_sheet(tenant, lead_data: dict) -> Optional[int]:
+    """
+    Append a lead row to the tenant's configured Google Sheet.
+    Returns the row number or None on failure.
+    """
+    sheet_id = getattr(tenant, "google_sheet_id", None)
     if not sheet_id:
-        return
+        logger.warning("No Google Sheet configured for this tenant")
+        return None
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        # Check if A1 is empty
-        resp = await client.get(
-            f"{SHEETS_API}/{sheet_id}/values/{tab}!A1",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        if resp.status_code == 200 and resp.json().get("values"):
-            return   # headers already exist
+    token = await get_valid_token(tenant)
+    if not token:
+        return None
 
-        # Write headers
-        await client.put(
-            f"{SHEETS_API}/{sheet_id}/values/{tab}!A1",
-            headers={"Authorization": f"Bearer {token}"},
-            params={"valueInputOption": "USER_ENTERED"},
-            json={"values": [LEAD_HEADERS]},
-        )
-
-
-async def append_lead_to_sheet(tenant: Tenant, lead_data: dict) -> int:
-    """Append a lead row to Google Sheets. Returns the row number."""
-    token    = await get_valid_token(tenant)
-    sheet_id = tenant.google_sheet_id
-    tab      = tenant.google_sheet_name or "Leads"
-    if not sheet_id:
-        raise ValueError("No Google Sheet configured")
-
-    await ensure_sheet_headers(tenant)
-
-    from datetime import datetime as dt
+    sheet_name = getattr(tenant, "google_sheet_name", "Sheet1") or "Sheet1"
     row = [
-        dt.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
         lead_data.get("name", ""),
         lead_data.get("phone", ""),
         lead_data.get("email", ""),
@@ -261,23 +215,50 @@ async def append_lead_to_sheet(tenant: Tenant, lead_data: dict) -> int:
         lead_data.get("notes", ""),
         lead_data.get("appointment_date", ""),
         lead_data.get("appointment_time", ""),
-        lead_data.get("status", "new"),
+        lead_data.get("status", ""),
         lead_data.get("agent_name", ""),
     ]
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
-            f"{SHEETS_API}/{sheet_id}/values/{tab}!A1:append",
-            headers={"Authorization": f"Bearer {token}"},
-            params={"valueInputOption": "USER_ENTERED", "insertDataOption": "INSERT_ROWS"},
-            json={"values": [row]},
-        )
-        resp.raise_for_status()
-        updates = resp.json().get("updates", {})
-        # Parse row number from updatedRange like "Leads!A3:J3"
-        try:
-            rng = updates.get("updatedRange", "")
-            row_num = int(rng.split("!")[-1].split(":")[0][1:])
-        except Exception:
-            row_num = 0
-        return row_num
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!A1:append",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                params={"valueInputOption": "USER_ENTERED"},
+                json={"values": [row]},
+            )
+            resp.raise_for_status()
+            updated = resp.json().get("updates", {})
+            updated_range = updated.get("updatedRange", "")
+            if updated_range and ":" in updated_range:
+                row_num = int(updated_range.split("!")[-1].split(":")[0][1:])
+                return row_num
+    except Exception as e:
+        logger.error(f"Google Sheets append failed: {e}")
+    return None
+
+
+# ─── Sheets: Fetch Values for KB ─────────────────────────────────────────────
+async def fetch_sheet_values(tenant, sheet_id: str, range_name: str) -> Optional[list[list]]:
+    """
+    Fetch all cells in a sheet range (e.g. 'Sheet1!A1:Z500') from Google Sheets.
+    Used for ingesting tabular spreadsheets into the Knowledge Base.
+    """
+    token = await get_valid_token(tenant)
+    if not token:
+        logger.error(f"No valid Google access token available for tenant {tenant.id}")
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{range_name}"
+            resp = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {token}", "Accept": "application/json"}
+            )
+            resp.raise_for_status()
+            return resp.json().get("values", [])
+    except Exception as e:
+        logger.error(f"Google Sheets fetch failed for sheet {sheet_id}, range {range_name}: {e}")
+        raise e
+

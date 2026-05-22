@@ -45,7 +45,7 @@ export default function SparkTheme() {
             { icon: "🧠", title: "Trained On Your Data", desc: "Your AI knows your menu, services, prices, and FAQs. Accurate every time.", num: "03" },
             { icon: "🗣️", title: "Human-Like Voice", desc: "Natural speech with interruption support and context across the entire call.", num: "04" },
             { icon: "📊", title: "Live Analytics", desc: "Call transcripts, sentiment analysis, and performance dashboards in real time.", num: "05" },
-            { icon: "🔗", title: "Deep Integrations", desc: "Shopify, Calendly, HubSpot, Zapier, Slack and 50+ more.", num: "06" },
+            { icon: "🔗", title: "Deep Integrations", desc: "Shopify, Calendly, Zoho CRM, Google Workspace and more.", num: "06" },
           ].map(f => (
             <div key={f.title} style={{ background: "#FFFFFF", borderRadius: 18, padding: "2rem", border: "1px solid #FEF3C7", boxShadow: "0 2px 12px rgba(245,158,11,0.08)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

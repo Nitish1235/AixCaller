@@ -107,7 +107,11 @@ export default function ClaimNumberSection() {
   return (
     <section
       id="claim-number"
-      style={{ padding: "8rem 5%", background: "var(--bg)" }}
+      style={{
+        padding: "8rem 5%",
+        background: "radial-gradient(circle at 50% 0%, rgba(29, 78, 216, 0.03) 0%, transparent 80%), var(--bg)",
+        borderTop: "1.5px solid var(--border)",
+      }}
     >
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         {/* Header */}
@@ -117,24 +121,26 @@ export default function ClaimNumberSection() {
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "var(--accent-green)",
-              border: "var(--border)",
-              padding: "0.5rem 1.2rem",
+              background: "var(--green-light)",
+              border: "1.5px solid rgba(5, 150, 105, 0.15)",
+              padding: "0.5rem 1.4rem",
               borderRadius: 99,
               marginBottom: "1.5rem",
-              fontWeight: 900,
-              fontSize: "0.85rem",
+              fontWeight: 700,
+              fontSize: "0.82rem",
               textTransform: "uppercase",
               letterSpacing: 1,
+              color: "var(--green)",
             }}
           >
             <span
               style={{
-                width: 8,
-                height: 8,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
-                background: "var(--text)",
+                background: "var(--green)",
                 display: "inline-block",
+                boxShadow: "0 0 8px rgba(5, 150, 105, 0.4)",
               }}
             />
             Numbers Available Now in 31+ Countries
@@ -142,23 +148,26 @@ export default function ClaimNumberSection() {
 
           <h2
             style={{
-              fontSize: "clamp(2.5rem, 5vw, 4.5rem)",
-              fontWeight: 900,
+              fontSize: "clamp(2.5rem, 5vw, 4rem)",
+              fontWeight: 800,
               textTransform: "uppercase",
-              lineHeight: 1,
+              lineHeight: 1.1,
               margin: "0 0 1.5rem",
-              letterSpacing: -1,
+              letterSpacing: "-1px",
+              color: "var(--text)",
             }}
           >
-            Claim Your AI <br />Phone Number
+            Claim Your AI <br />
+            <span style={{ background: "linear-gradient(135deg, var(--green) 0%, var(--blue) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Phone Number</span>
           </h2>
           <p
             style={{
-              fontSize: "1.2rem",
-              fontWeight: 600,
-              color: "#475569",
+              fontSize: "1.1rem",
+              fontWeight: 500,
+              color: "var(--text-muted)",
               maxWidth: 580,
               margin: "0 auto",
+              lineHeight: 1.6,
             }}
           >
             Pick your country, see available numbers, and provision your AI
@@ -173,7 +182,7 @@ export default function ClaimNumberSection() {
             flexWrap: "wrap",
             gap: "0.6rem",
             justifyContent: "center",
-            marginBottom: "2rem",
+            marginBottom: "2.5rem",
           }}
         >
           {POPULAR.map((code) => {
@@ -187,18 +196,18 @@ export default function ClaimNumberSection() {
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: "0.45rem 1rem",
+                  padding: "0.5rem 1.25rem",
                   border: active
-                    ? "2px solid var(--text)"
-                    : "2px solid #e2e8f0",
+                    ? "1.5px solid var(--green)"
+                    : "1.5px solid var(--border)",
                   borderRadius: 99,
-                  background: active ? "var(--text)" : "#fff",
-                  color: active ? "#fff" : "var(--text)",
-                  fontWeight: 700,
-                  fontSize: "0.88rem",
+                  background: active ? "var(--green-light)" : "#ffffff",
+                  color: active ? "var(--green)" : "var(--text)",
+                  fontWeight: active ? 700 : 550,
+                  fontSize: "0.85rem",
                   cursor: "pointer",
-                  transition: "all 0.15s",
-                  boxShadow: active ? "3px 3px 0 var(--accent-green)" : "none",
+                  transition: "all 0.2s ease-in-out",
+                  boxShadow: active ? "0 4px 12px rgba(5, 150, 105, 0.08)" : "none",
                 }}
               >
                 {flag(code)} {c.name}
@@ -210,9 +219,9 @@ export default function ClaimNumberSection() {
               display: "flex",
               alignItems: "center",
               padding: "0.45rem 0.75rem",
-              fontWeight: 700,
-              fontSize: "0.88rem",
-              color: "#94a3b8",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+              color: "var(--text-muted)",
             }}
           >
             +21 more ↓
@@ -222,29 +231,30 @@ export default function ClaimNumberSection() {
         {/* Main panel */}
         <div
           style={{
-            background: "#fff",
-            border: "3px solid var(--text)",
-            borderRadius: 16,
-            boxShadow: "8px 8px 0 var(--text)",
+            background: "#ffffff",
+            border: "1.5px solid var(--border)",
+            borderRadius: 24,
+            boxShadow: "0 20px 40px rgba(15, 23, 42, 0.04)",
             overflow: "hidden",
           }}
         >
-          {/* Dark header bar */}
+          {/* header bar */}
           <div
             style={{
-              background: "var(--text)",
+              background: "var(--surface)",
               padding: "1.25rem 2rem",
               display: "flex",
               alignItems: "center",
-              gap: "1rem",
+              gap: "1.25rem",
               flexWrap: "wrap",
+              borderBottom: "1.5px solid var(--border)",
             }}
           >
             <span
               style={{
-                color: "#94a3b8",
+                color: "var(--text-muted)",
                 fontWeight: 700,
-                fontSize: "0.85rem",
+                fontSize: "0.8rem",
                 textTransform: "uppercase",
                 letterSpacing: 1,
                 whiteSpace: "nowrap",
@@ -259,19 +269,21 @@ export default function ClaimNumberSection() {
                 onChange={(e) => handleCountryChange(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "0.7rem 2.5rem 0.7rem 1rem",
-                  background: "#1e293b",
-                  color: "#fff",
-                  border: "2px solid #334155",
-                  borderRadius: 8,
-                  fontWeight: 700,
-                  fontSize: "0.95rem",
+                  padding: "0.65rem 2.5rem 0.65rem 1rem",
+                  background: "#ffffff",
+                  color: "var(--text)",
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  fontSize: "0.92rem",
                   cursor: "pointer",
                   appearance: "none",
+                  outline: "none",
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.01)",
                 }}
               >
                 {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>
+                  <option key={c.code} value={c.code} style={{ background: "#ffffff", color: "var(--text)" }}>
                     {flag(c.code)} {c.name} ({c.dial})
                   </option>
                 ))}
@@ -279,12 +291,12 @@ export default function ClaimNumberSection() {
               <span
                 style={{
                   position: "absolute",
-                  right: "0.75rem",
+                  right: "0.85rem",
                   top: "50%",
                   transform: "translateY(-50%)",
-                  color: "#94a3b8",
+                  color: "var(--text-muted)",
                   pointerEvents: "none",
-                  fontSize: "0.75rem",
+                  fontSize: "0.7rem",
                 }}
               >
                 ▼
@@ -294,14 +306,14 @@ export default function ClaimNumberSection() {
           </div>
 
           {/* Numbers body */}
-          <div style={{ padding: "1.75rem 2rem" }}>
+          <div style={{ padding: "2rem" }}>
             {searching ? (
               <div
                 style={{
                   textAlign: "center",
                   padding: "3.5rem 1rem",
-                  color: "#64748b",
-                  fontWeight: 700,
+                  color: "var(--text-muted)",
+                  fontWeight: 600,
                 }}
               >
                 <div
@@ -309,17 +321,17 @@ export default function ClaimNumberSection() {
                     display: "flex",
                     justifyContent: "center",
                     gap: 6,
-                    marginBottom: "1rem",
+                    marginBottom: "1.25rem",
                   }}
                 >
                   {[0, 1, 2].map((i) => (
                     <div
                       key={i}
                       style={{
-                        width: 10,
-                        height: 10,
+                        width: 8,
+                        height: 8,
                         borderRadius: "50%",
-                        background: "var(--text)",
+                        background: "var(--green)",
                         animation: `eq 0.6s infinite alternate ease-in-out`,
                         animationDelay: `${i * 0.15}s`,
                       }}
@@ -329,7 +341,7 @@ export default function ClaimNumberSection() {
                 Searching available numbers in {flag(selected)} {country.name}...
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {numbers.map((num, i) => (
                   <div
                     key={num}
@@ -337,34 +349,36 @@ export default function ClaimNumberSection() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      padding: "1.1rem 1.4rem",
-                      border: "2px solid var(--text)",
-                      borderRadius: 12,
-                      background: i === 0 ? "var(--accent-yellow)" : "#f8fafc",
+                      padding: "1.2rem 1.5rem",
+                      border: i === 0 ? "1.5px solid var(--green)" : "1.5px solid var(--border)",
+                      borderRadius: 16,
+                      background: i === 0 ? "var(--green-light)" : "#ffffff",
                       flexWrap: "wrap",
                       gap: "0.75rem",
+                      boxShadow: i === 0 ? "0 4px 20px rgba(5, 150, 105, 0.05)" : "none",
+                      transition: "var(--transition)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.9rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                       <span style={{ fontSize: "1.6rem", lineHeight: 1 }}>
                         {flag(selected)}
                       </span>
                       <div>
                         <div
                           className="mono"
-                          style={{ fontSize: "1.25rem", fontWeight: 900 }}
+                          style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--text)", letterSpacing: 0.5 }}
                         >
                           {num}
                         </div>
                         <div
                           style={{
-                            fontSize: "0.82rem",
-                            fontWeight: 700,
-                            color: "#64748b",
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                            color: i === 0 ? "var(--green)" : "var(--text-muted)",
                             marginTop: 3,
                           }}
                         >
-                          {i === 0 ? "⭐ Best match · " : `Option ${i + 1} · `}
+                          {i === 0 ? "⭐ Recommended choice · " : `Option ${i + 1} · `}
                           Voice-enabled
                         </div>
                       </div>
@@ -374,8 +388,8 @@ export default function ClaimNumberSection() {
                       onClick={handleClaim}
                       className="btn-brutal"
                       style={{
-                        fontSize: "0.9rem",
-                        padding: "0.65rem 1.5rem",
+                        fontSize: "0.85rem",
+                        padding: "0.6rem 1.5rem",
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -388,17 +402,17 @@ export default function ClaimNumberSection() {
 
             <div
               style={{
-                marginTop: "1.25rem",
-                padding: "0.9rem 1.1rem",
-                background: "#f1f5f9",
-                border: "2px solid #e2e8f0",
-                borderRadius: 8,
-                fontWeight: 600,
-                fontSize: "0.88rem",
-                color: "#64748b",
+                marginTop: "1.5rem",
+                padding: "1rem 1.25rem",
+                background: "var(--surface)",
+                border: "1.5px solid var(--border)",
+                borderRadius: 12,
+                fontWeight: 500,
+                fontSize: "0.82rem",
+                color: "var(--text-muted)",
                 display: "flex",
                 alignItems: "center",
-                gap: "0.5rem",
+                gap: "0.6rem",
               }}
             >
               <span>ℹ️</span>

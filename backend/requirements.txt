@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 sqlmodel
-telnyx==4.122.0
 loguru
 python-dotenv
 pgvector
@@ -12,13 +11,7 @@ PyJWT
 dodopayments
 beautifulsoup4
 requests
-google-cloud-storage
-langchain
-langchain_openai
-websockets
 python-multipart
 resend
 bcrypt
-redis>=5.0.0
-fastembed>=0.2.7
-google-cloud-tasks
+boto3

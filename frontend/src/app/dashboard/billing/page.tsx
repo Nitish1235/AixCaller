@@ -79,25 +79,25 @@ export default function BillingPage() {
       </header>
 
       {!sub ? (
-        <div style={{ padding: "3rem", background: "#f1f5f9", borderRadius: 24, textAlign: "center", border: "2px dashed #cbd5e1", marginBottom: "2rem" }}>
-          <p style={{ fontWeight: 700, color: "#64748b" }}>No active subscription found.</p>
-          <p style={{ fontSize: "0.85rem", color: "#94a3b8" }}>Select a plan below to get started.</p>
+        <div style={{ padding: "3rem", background: "var(--surface)", borderRadius: 24, textAlign: "center", border: "2px dashed var(--border)", marginBottom: "2rem" }}>
+          <p style={{ fontWeight: 700, color: "var(--text-muted)" }}>No active subscription found.</p>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Select a plan below to get started.</p>
         </div>
       ) : (
         <div style={{ display: "grid", gap: "2rem", marginBottom: "3rem" }}>
           {/* Active Plan Card */}
           <div style={{ 
-            background: "var(--text)", color: "#fff", borderRadius: 24, padding: "2.5rem",
-            position: "relative", overflow: "hidden", border: "4px solid #fff", boxShadow: "8px 8px 0 #3b82f6"
+            background: "linear-gradient(135deg, var(--blue), #3b82f6)", color: "#fff", borderRadius: 24, padding: "2.5rem",
+            position: "relative", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 10px 25px -5px rgba(29, 78, 216, 0.15), 0 8px 10px -6px rgba(29, 78, 216, 0.15)"
           }}>
             <div style={{ position: "relative", zIndex: 2 }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "#3b82f6", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "rgba(255, 255, 255, 0.8)", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>
                 Current Plan
               </div>
               <h2 style={{ fontSize: "2.5rem", fontWeight: 900, margin: "0 0 1rem", textTransform: "uppercase" }}>
                 {sub.plan_name}
               </h2>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(59, 130, 246, 0.2)", padding: "6px 16px", borderRadius: 999, border: "1px solid #3b82f6" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255, 255, 255, 0.15)", padding: "6px 16px", borderRadius: 999, border: "1px solid rgba(255, 255, 255, 0.3)" }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: sub.subscription_status === "active" ? "#10b981" : "#f59e0b" }}></div>
                 <span style={{ fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase" }}>{sub.subscription_status}</span>
               </div>
@@ -108,17 +108,17 @@ export default function BillingPage() {
 
           {/* Usage Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem" }}>
-            <div style={{ background: "#fff", borderRadius: 24, padding: "2rem", border: "2px solid var(--text)", boxShadow: "4px 4px 0 var(--text)" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "#64748b", textTransform: "uppercase", marginBottom: 8 }}>Minutes Used</div>
-              <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--text)" }}>{Math.floor(sub.minutes_used)} <span style={{ fontSize: "1rem", color: "#94a3b8" }}>/ {sub.minutes_included}</span></div>
+            <div style={{ background: "#fff", borderRadius: 24, padding: "2rem", border: "1.5px solid var(--border)", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)" }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8 }}>Minutes Used</div>
+              <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--text)" }}>{Math.floor(sub.minutes_used)} <span style={{ fontSize: "1rem", color: "var(--text-muted)" }}>/ {sub.minutes_included}</span></div>
             </div>
-            <div style={{ background: "#fff", borderRadius: 24, padding: "2rem", border: "2px solid var(--text)", boxShadow: "4px 4px 0 var(--text)" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "#3b82f6", textTransform: "uppercase", marginBottom: 8 }}>Minutes Remaining</div>
+            <div style={{ background: "#fff", borderRadius: 24, padding: "2rem", border: "1.5px solid var(--border)", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)" }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--blue)", textTransform: "uppercase", marginBottom: 8 }}>Minutes Remaining</div>
               <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--text)" }}>{Math.floor(sub.minutes_left)}</div>
             </div>
           </div>
 
-          <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 16, padding: "1rem 1.5rem", color: "#92400e", fontSize: "0.9rem" }}>
+          <div style={{ background: "rgba(245, 158, 11, 0.05)", border: "1.5px solid rgba(245, 158, 11, 0.2)", borderRadius: 16, padding: "1rem 1.5rem", color: "#b45309", fontSize: "0.9rem" }}>
             <strong>Billing Cycle:</strong> Your plan 
             {sub.cycle_end ? ` renews on ${new Date(sub.cycle_end).toLocaleDateString()}` : " is currently active"}.
           </div>
@@ -138,23 +138,24 @@ export default function BillingPage() {
                 background: "#fff",
                 borderRadius: 24,
                 padding: "2rem",
-                border: isCurrentPlan ? "2px solid #3b82f6" : "2px solid #e2e8f0",
-                boxShadow: isCurrentPlan ? "4px 4px 0 #3b82f6" : "none",
+                border: isCurrentPlan ? "2px solid var(--blue)" : "1.5px solid var(--border)",
+                boxShadow: isCurrentPlan ? "0 10px 25px -5px rgba(29, 78, 216, 0.08)" : "0 4px 20px rgba(0, 0, 0, 0.02)",
                 display: "flex",
                 flexDirection: "column",
-                position: "relative"
+                position: "relative",
+                transition: "var(--transition)"
               }}>
                 {isCurrentPlan && (
-                  <div style={{ position: "absolute", top: -12, right: 24, background: "#3b82f6", color: "#fff", padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase" }}>
+                  <div style={{ position: "absolute", top: -12, right: 24, background: "var(--blue)", color: "#fff", padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase" }}>
                     Current Plan
                   </div>
                 )}
                 <h3 style={{ fontSize: "1.25rem", fontWeight: 800, margin: "0 0 0.5rem" }}>{plan.name}</h3>
                 <div style={{ fontSize: "2rem", fontWeight: 900, marginBottom: "1.5rem" }}>
-                  ${plan.price_usd} <span style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: 600 }}>/mo</span>
+                  ${plan.price_usd} <span style={{ fontSize: "0.9rem", color: "var(--text-muted)", fontWeight: 600 }}>/mo</span>
                 </div>
                 
-                <ul style={{ listStyle: "none", padding: 0, margin: "0 0 2rem", flexGrow: 1, color: "#475569", fontSize: "0.9rem", display: "flex", flexDirection: "column", gap: 12 }}>
+                <ul style={{ listStyle: "none", padding: 0, margin: "0 0 2rem", flexGrow: 1, color: "var(--text-muted)", fontSize: "0.9rem", display: "flex", flexDirection: "column", gap: 12 }}>
                   <li style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span>✅</span> {plan.minutes} included minutes
                   </li>
@@ -170,7 +171,7 @@ export default function BillingPage() {
                   onClick={() => handleUpgrade(plan.tier)}
                   disabled={checkoutLoading === plan.tier || isCurrentPlan}
                   style={{
-                    background: isCurrentPlan ? "#f1f5f9" : "var(--text)",
+                    background: isCurrentPlan ? "#f1f5f9" : "var(--blue)",
                     color: isCurrentPlan ? "#94a3b8" : "#fff",
                     border: "none",
                     padding: "0.75rem 1rem",

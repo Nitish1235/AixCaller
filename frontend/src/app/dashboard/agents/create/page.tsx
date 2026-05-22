@@ -8,30 +8,30 @@ import { fetchVoices, createAgent as createAgentApi, apiPost, apiGet, API_BASE_U
 /* ── shared styles ─────────────────────────────────────────────── */
 const inp: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: 9,
-  border: "1.5px solid #D1FAE5", fontSize: "0.9rem", color: "#064E3B",
+  border: "1.5px solid var(--border)", fontSize: "0.9rem", color: "var(--text)",
   outline: "none", fontFamily: "inherit", background: "#fff",
   boxSizing: "border-box",
 };
 const card: React.CSSProperties = {
-  background: "#fff", border: "1.5px solid #D1FAE5", borderRadius: 16,
-  boxShadow: "0 4px 20px rgba(16,185,129,0.08)", padding: "2.5rem",
+  background: "#fff", border: "1.5px solid var(--border)", borderRadius: 16,
+  boxShadow: "0 4px 15px rgba(0, 0, 0, 0.02)", padding: "2.5rem",
   maxWidth: 640, margin: "0 auto",
 };
 const lbl: React.CSSProperties = {
   display: "block", marginBottom: 6, fontWeight: 700,
-  fontSize: "0.8rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5,
+  fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5,
 };
 const btn: React.CSSProperties = {
-  width: "100%", background: "#064E3B", color: "#fff", border: "none",
+  width: "100%", background: "var(--blue)", color: "#fff", border: "none",
   borderRadius: 10, padding: "13px", fontWeight: 700, fontSize: "0.95rem",
-  cursor: "pointer", boxShadow: "0 4px 14px rgba(6,78,59,0.3)",
+  cursor: "pointer", boxShadow: "0 4px 14px rgba(29, 78, 216, 0.25)",
 };
 const ghost: React.CSSProperties = {
-  width: "100%", background: "none", border: "1.5px solid #E5E7EB",
-  borderRadius: 10, padding: "12px", color: "#9CA3AF", fontWeight: 600,
+  width: "100%", background: "none", border: "1.5px solid var(--border)",
+  borderRadius: 10, padding: "12px", color: "var(--text-muted)", fontWeight: 600,
   fontSize: "0.88rem", cursor: "pointer",
 };
-const hint: React.CSSProperties = { fontSize: "0.75rem", color: "#9CA3AF", marginTop: 5 };
+const hint: React.CSSProperties = { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 5 };
 
 const SUPPORTED_COUNTRIES = [
   { code: "US", name: "United States (+1)" },
@@ -78,15 +78,15 @@ function StepBar({ step }: { step: number }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{
               width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-              background: step >= i + 1 ? "#064E3B" : "#E5E7EB",
-              color: step >= i + 1 ? "#fff" : "#9CA3AF",
+              background: step >= i + 1 ? "var(--blue)" : "#E5E7EB",
+              color: step >= i + 1 ? "#fff" : "var(--text-muted)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontWeight: 800, fontSize: "0.85rem",
             }}>{step > i + 1 ? "✓" : i + 1}</div>
-            <span style={{ fontWeight: 700, fontSize: "0.82rem", color: step >= i + 1 ? "#064E3B" : "#9CA3AF", whiteSpace: "nowrap" }}>{label}</span>
+            <span style={{ fontWeight: 700, fontSize: "0.82rem", color: step >= i + 1 ? "var(--blue)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{label}</span>
           </div>
           {i < STEPS.length - 1 && (
-            <div style={{ flex: 1, height: 2, background: step > i + 1 ? "#10B981" : "#E5E7EB", margin: "0 10px" }} />
+            <div style={{ flex: 1, height: 2, background: step > i + 1 ? "var(--blue)" : "#E5E7EB", margin: "0 10px" }} />
           )}
         </div>
       ))}
@@ -108,7 +108,7 @@ export default function CreateAgentPage() {
   const [name, setName]     = useState("");
   const [businessName, setBusinessName] = useState("");
   const [prompt, setPrompt] = useState("You are a helpful AI assistant for our business. Be warm, concise, and professional.");
-  const [voice, setVoice]   = useState("aura-asteria-en");
+  const [voice, setVoice]   = useState("Telnyx.Ultra.Grace");
   const [voiceList, setVoiceList] = useState<any[]>([]);
 
   useEffect(() => {
@@ -240,11 +240,11 @@ export default function CreateAgentPage() {
       {/* Header */}
       <div>
         <button onClick={() => router.push("/dashboard/agents")}
-          style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: "0.88rem", fontWeight: 600, padding: 0, marginBottom: 12 }}>
+          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.88rem", fontWeight: 600, padding: 0, marginBottom: 12 }}>
           ← Back to Agents
         </button>
-        <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "#064E3B", margin: 0, letterSpacing: -0.5 }}>Create New Agent</h1>
-        <p style={{ color: "#9CA3AF", margin: "4px 0 0", fontSize: "0.9rem" }}>Deploy your AI workforce member in under 5 minutes.</p>
+        <h1 style={{ fontWeight: 800, fontSize: "1.6rem", color: "var(--text)", margin: 0, letterSpacing: -0.5 }}>Create New Agent</h1>
+        <p style={{ color: "var(--text-muted)", margin: "4px 0 0", fontSize: "0.9rem" }}>Deploy your AI workforce member in under 5 minutes.</p>
       </div>
 
       <StepBar step={step} />
@@ -263,25 +263,25 @@ export default function CreateAgentPage() {
           <div
             onClick={() => router.push("/dashboard/agents/marketplace")}
             style={{
-              background: "linear-gradient(135deg, #ECFDF5, #D1FAE5)",
-              border: "1px solid #10B981",
+              background: "linear-gradient(135deg, var(--blue-light), #dbeafe)",
+              border: "1px solid rgba(29, 78, 216, 0.25)",
               borderRadius: 12, padding: "1rem 1.25rem", marginBottom: "1.5rem",
               display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
             }}
           >
             <div style={{ fontSize: "1.8rem" }}>✨</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 800, color: "#064E3B", fontSize: "0.92rem" }}>
+              <div style={{ fontWeight: 800, color: "var(--blue)", fontSize: "0.92rem" }}>
                 Want a head start?
               </div>
-              <div style={{ color: "#059669", fontSize: "0.82rem", marginTop: 2 }}>
+              <div style={{ color: "var(--blue)", opacity: 0.8, fontSize: "0.82rem", marginTop: 2 }}>
                 Choose a pre-built template — clinic, e-commerce, real estate, restaurant.
               </div>
             </div>
-            <div style={{ color: "#059669", fontWeight: 700 }}>→</div>
+            <div style={{ color: "var(--blue)", fontWeight: 700 }}>→</div>
           </div>
 
-          <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B", marginBottom: "0.4rem" }}>Agent Details</h2>
+          <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--text)", marginBottom: "0.4rem" }}>Agent Details</h2>
           <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Give your agent a name, define its persona, and pick a voice.</p>
 
           <form onSubmit={createAgent} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -298,7 +298,7 @@ export default function CreateAgentPage() {
               </div>
             </div>
             {businessName.trim() && name.trim() && (
-              <div style={{ padding: "10px 14px", background: "#F6FEFA", borderRadius: 8, border: "1px dashed #D1FAE5", fontSize: "0.85rem", color: "#064E3B", fontStyle: "italic" }}>
+              <div style={{ padding: "10px 14px", background: "var(--blue-light)", borderRadius: 8, border: "1px dashed rgba(29, 78, 216, 0.25)", fontSize: "0.85rem", color: "var(--blue)", fontStyle: "italic" }}>
                 💬 Greeting: "Hi, thanks for calling {businessName.trim()}. This is {name.trim()} — how can I help you today?"
               </div>
             )}
@@ -317,55 +317,75 @@ export default function CreateAgentPage() {
                   {voiceList.length > 0 ? (
                     voiceList.map(v => (
                       <option key={v.voice_id} value={v.voice_id}>
-                        {v.name} — {v.gender} ({v.voice_id})
+                        {v.name} — {v.gender}
                       </option>
                     ))
                   ) : (
                     <>
-                      <option value="aura-2-thalia-en">Thalia (F - Energetic/Confident)</option>
-                      <option value="aura-2-amalthea-en">Amalthea (F - Engaging/Professional)</option>
-                      <option value="aura-2-andromeda-en">Andromeda (F - Casual/Expressive)</option>
-                      <option value="aura-2-apollo-en">Apollo (M - Confident/Casual)</option>
-                      <option value="aura-2-arcas-en">Arcas (M - Smooth/Natural)</option>
-                      <option value="aura-2-aries-en">Aries (M - Warm/Caring)</option>
-                      <option value="aura-2-aurora-en">Aurora (F - Cheerful/Friendly)</option>
-                      <option value="aura-2-delia-en">Delia (F - Friendly/Approachable)</option>
-                      <option value="aura-2-electra-en">Electra (F - Professional/Authoritative)</option>
-                      <option value="aura-2-harmonia-en">Harmonia (F - Empathetic/Sincere)</option>
-                      <option value="aura-2-helena-en">Helena (F - Caring/Natural)</option>
-                      <option value="aura-2-hermes-en">Hermes (M - Professional/Knowledgeable)</option>
-                      <option value="aura-2-hyperion-en">Hyperion (M - Empathetic/Confident)</option>
-                      <option value="aura-2-juno-en">Juno (F - Melodic/Engaging)</option>
-                      <option value="aura-2-jupiter-en">Jupiter (M - Knowledgeable/Authoritative)</option>
-                      <option value="aura-2-mars-en">Mars (M - Trustworthy/Calm)</option>
-                      <option value="aura-2-neptune-en">Neptune (M - Polite/Professional)</option>
-                      <option value="aura-2-ophelia-en">Ophelia (F - Enthusiastic/Expressive)</option>
-                      <option value="aura-2-orion-en">Orion (M - Polite/Friendly)</option>
-                      <option value="aura-2-orpheus-en">Orpheus (M - Trustworthy/Warm)</option>
-                      <option value="aura-2-phoebe-en">Phoebe (F - Warm/Sincere)</option>
-                      <option value="aura-2-pluto-en">Pluto (M - Empathetic/Calm)</option>
-                      <option value="aura-2-saturn-en">Saturn (M - Confident/Authoritative)</option>
-                      <option value="aura-2-selene-en">Selene (F - Engaging/Clear)</option>
-                      <option value="aura-2-theia-en">Theia (F - Sincere/Professional)</option>
-                      <option value="aura-2-vesta-en">Vesta (F - Patient/Caring)</option>
-                      <option value="aura-2-luna-en">Luna (F - Expressive/Cheerful)</option>
-                      <option value="aura-2-odysseus-en">Odysseus (M - Strong/Direct)</option>
+                      <option value="Telnyx.Ultra.Grace">Grace (F - Professional / Warm)</option>
+                      <option value="Telnyx.Ultra.George">George (M - Professional / Confident)</option>
+                      <option value="Telnyx.Ultra.Ava">Ava (F - Friendly / Bright)</option>
+                      <option value="Telnyx.Ultra.James">James (M - Calm / Authoritative)</option>
+                      <option value="Telnyx.Ultra.Emma">Emma (F - Empathetic / Sincere)</option>
+                      <option value="Telnyx.Ultra.Daniel">Daniel (M - Warm / Trustworthy)</option>
+                      <option value="Telnyx.Ultra.Allie">Allie (F - Friendly / Expressive)</option>
+                      <option value="Telnyx.Ultra.Benji">Benji (M - Playful / High-energy)</option>
+                      <option value="Telnyx.Ultra.Ronald">Ronald (M - Mature / Reassuring)</option>
+                      <option value="Telnyx.Ultra.Wesley">Wesley (M - Clean / Clear)</option>
+                      <option value="Telnyx.Ultra.Mia">Mia (F - Direct / Business)</option>
+                      <option value="Telnyx.Ultra.Howard">Howard (M - Deep / Narrative)</option>
+                      <option value="Telnyx.Ultra.Harry">Harry (M - Youthful / Casual)</option>
+                      <option value="Telnyx.Ultra.Jasper">Jasper (M - Smooth / Conversational)</option>
+                      <option value="Telnyx.Ultra.Arvin">Arvin (M - Energetic / Direct)</option>
+                      <option value="Telnyx.Ultra.Callie">Callie (F - Bright / Engaging)</option>
+                      <option value="Telnyx.Ultra.Skyler">Skyler (F - Natural / Conversational)</option>
+                      <option value="Telnyx.Ultra.Darius">Darius (M - Professional / Grounded)</option>
+                      <option value="Telnyx.Ultra.Kelsey">Kelsey (F - Soft / Gentle)</option>
                     </>
                   )}
                 </select>
-                <button type="button" onClick={() => {
-                  const selectedVoice = voiceList.find(v => v.voice_id === voice);
-                  if (selectedVoice?.preview_url && audioRef.current) {
-                    audioRef.current.src = selectedVoice.preview_url;
-                    audioRef.current.play();
-                  } else {
-                    alert("Preview not generated yet for this voice! Use Admin panel.");
-                  }
-                }} style={{
-                  padding: "11px 16px", borderRadius: 8, border: "1.5px solid #D1FAE5", background: "#F6FEFA",
-                  color: "#059669", fontWeight: 800, cursor: "pointer"
-                }}>
-                  ▶ Play
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const selectedVoice = voiceList.find(v => v.voice_id === voice);
+                    let url = selectedVoice?.preview_url;
+                    if (!url && voice.startsWith("Telnyx.Ultra.")) {
+                      const name = voice.split(".").pop();
+                      if (name) {
+                        url = `https://storage.googleapis.com/aixcaller-assets/voices/telnyx_ultra_${name.toLowerCase()}.mp3`;
+                      }
+                    }
+                    if (url && audioRef.current) {
+                      audioRef.current.src = url;
+                      audioRef.current.play();
+                    } else {
+                      alert("Preview not available yet. Please make sure admin has generated the voices.");
+                    }
+                  }} 
+                  style={{
+                    padding: "11px 18px", 
+                    borderRadius: 12, 
+                    border: "1px solid rgba(29, 78, 216, 0.3)", 
+                    background: "linear-gradient(135deg, var(--blue-light) 0%, rgba(29, 78, 216, 0.08) 100%)", 
+                    color: "var(--blue)", 
+                    fontWeight: 800, 
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(29, 78, 216, 0.05)",
+                    backdropFilter: "blur(4px)",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(29, 78, 216, 0.15)";
+                    e.currentTarget.style.background = "linear-gradient(135deg, var(--blue-light) 0%, rgba(29, 78, 216, 0.12) 100%)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = "none";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(29, 78, 216, 0.05)";
+                    e.currentTarget.style.background = "linear-gradient(135deg, var(--blue-light) 0%, rgba(29, 78, 216, 0.08) 100%)";
+                  }}
+                >
+                  ▶ Audition
                 </button>
               </div>
               <audio ref={audioRef} style={{ display: "none" }} />
@@ -382,25 +402,25 @@ export default function CreateAgentPage() {
       {step === 2 && (
         <div style={card}>
           {/* Success badge */}
-          <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 10, padding: "10px 16px", marginBottom: "2rem", display: "flex", alignItems: "center", gap: 8 }}>
-            <span>✅</span><span style={{ fontWeight: 700, color: "#059669", fontSize: "0.88rem" }}>Agent created! Now train it with your business knowledge.</span>
+          <div style={{ background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)", borderRadius: 10, padding: "10px 16px", marginBottom: "2rem", display: "flex", alignItems: "center", gap: 8 }}>
+            <span>✅</span><span style={{ fontWeight: 700, color: "var(--blue)", fontSize: "0.88rem" }}>Agent created! Now train it with your business knowledge.</span>
           </div>
 
-          <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B", marginBottom: "0.4rem" }}>Knowledge Base</h2>
-          <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--text)", marginBottom: "0.4rem" }}>Knowledge Base</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
             Add FAQs, product info, pricing, and policies. Your agent uses this to answer caller questions accurately.
           </p>
 
           {/* Guide: what to upload */}
           <div style={{
-            background: "linear-gradient(135deg,#F6FEFA,#ECFDF5)",
-            border: "1px solid #D1FAE5", borderRadius: 12,
+            background: "linear-gradient(135deg, var(--surface), var(--blue-light))",
+            border: "1px solid rgba(29, 78, 216, 0.15)", borderRadius: 12,
             padding: "1rem 1.25rem", marginBottom: "1.5rem",
           }}>
-            <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#059669", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+            <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--blue)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
               💡 What to upload for the best agent answers
             </div>
-            <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "#374151", fontSize: "0.82rem", lineHeight: 1.75 }}>
+            <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "var(--text)", fontSize: "0.82rem", lineHeight: 1.75 }}>
               <li><strong>Business basics</strong> — name, address, phone, hours, location, parking</li>
               <li><strong>Products / services</strong> — what you offer, key features, who it's for</li>
               <li><strong>Pricing</strong> — plan names, prices, what's included, discounts</li>
@@ -409,7 +429,7 @@ export default function CreateAgentPage() {
               <li><strong>Process flows</strong> — how to book, order, sign up, get support</li>
               <li><strong>Team / expertise</strong> — doctors, agents, specialties, languages spoken</li>
             </ul>
-            <div style={{ fontSize: "0.74rem", color: "#6B7280", marginTop: 10, fontStyle: "italic" }}>
+            <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: 10, fontStyle: "italic" }}>
               Tip: Write in plain Q&amp;A or short bullets. Avoid scanned PDFs — text-only works best.
             </div>
           </div>
@@ -417,8 +437,8 @@ export default function CreateAgentPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
 
             {/* Tab: Paste text */}
-            <div style={{ border: "1.5px solid #D1FAE5", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ background: "#F6FEFA", padding: "10px 16px", borderBottom: "1px solid #D1FAE5", fontWeight: 700, fontSize: "0.82rem", color: "#064E3B", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ border: "1.5px solid var(--border)", borderRadius: 12, overflow: "hidden", background: "#fff" }}>
+              <div style={{ background: "var(--blue-light)", padding: "10px 16px", borderBottom: "1.5px solid var(--border)", fontWeight: 700, fontSize: "0.82rem", color: "var(--blue)", display: "flex", alignItems: "center", gap: 8 }}>
                 📝 Paste Text
               </div>
               <div style={{ padding: "1.25rem" }}>
@@ -430,8 +450,8 @@ export default function CreateAgentPage() {
             </div>
 
             {/* Tab: Upload file */}
-            <div style={{ border: "1.5px solid #D1FAE5", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ background: "#F6FEFA", padding: "10px 16px", borderBottom: "1px solid #D1FAE5", fontWeight: 700, fontSize: "0.82rem", color: "#064E3B", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ border: "1.5px solid var(--border)", borderRadius: 12, overflow: "hidden", background: "#fff" }}>
+              <div style={{ background: "var(--blue-light)", padding: "10px 16px", borderBottom: "1.5px solid var(--border)", fontWeight: 700, fontSize: "0.82rem", color: "var(--blue)", display: "flex", alignItems: "center", gap: 8 }}>
                 📎 Upload File
               </div>
               <div style={{ padding: "1.25rem" }}>
@@ -440,21 +460,30 @@ export default function CreateAgentPage() {
                 <div
                   onClick={() => fileRef.current?.click()}
                   style={{
-                    border: "2px dashed #D1FAE5", borderRadius: 10, padding: "2rem 1rem",
-                    textAlign: "center", cursor: "pointer", background: kbFile ? "#ECFDF5" : "#fafafa",
-                    transition: "background 0.2s",
-                  }}>
+                    border: "2px dashed var(--border)", borderRadius: 10, padding: "2rem 1rem",
+                    textAlign: "center", cursor: "pointer", background: kbFile ? "var(--blue-light)" : "#fafafa",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.borderColor = "var(--blue)";
+                    e.currentTarget.style.background = kbFile ? "var(--blue-light)" : "var(--surface)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.background = kbFile ? "var(--blue-light)" : "#fafafa";
+                  }}
+                >
                   {kbFile ? (
                     <div>
                       <div style={{ fontSize: "1.5rem", marginBottom: 4 }}>📄</div>
-                      <div style={{ fontWeight: 700, color: "#059669", fontSize: "0.88rem" }}>{kbFile.name}</div>
-                      <div style={{ color: "#9CA3AF", fontSize: "0.75rem", marginTop: 2 }}>Click to change</div>
+                      <div style={{ fontWeight: 700, color: "var(--blue)", fontSize: "0.88rem" }}>{kbFile.name}</div>
+                      <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginTop: 2 }}>Click to change</div>
                     </div>
                   ) : (
                     <div>
                       <div style={{ fontSize: "1.5rem", marginBottom: 4 }}>⬆️</div>
-                      <div style={{ fontWeight: 600, color: "#374151", fontSize: "0.88rem" }}>Click to upload .txt or .md file</div>
-                      <div style={{ color: "#9CA3AF", fontSize: "0.75rem", marginTop: 4 }}>Max 2MB · plain text only</div>
+                      <div style={{ fontWeight: 600, color: "var(--text)", fontSize: "0.88rem" }}>Click to upload .txt or .md file</div>
+                      <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginTop: 4 }}>Max 2MB · plain text only</div>
                     </div>
                   )}
                 </div>
@@ -463,24 +492,24 @@ export default function CreateAgentPage() {
 
             {/* Website URL sync — coming soon */}
             <div style={{
-              border: "1px dashed #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7,
+              border: "1.5px dashed var(--border)", borderRadius: 12, overflow: "hidden", opacity: 0.7,
             }}>
-              <div style={{ background: "#F9FAFB", padding: "10px 16px", borderBottom: "1px dashed #E5E7EB", fontWeight: 600, fontSize: "0.82rem", color: "#9CA3AF", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ background: "var(--surface)", padding: "10px 16px", borderBottom: "1.5px dashed var(--border)", fontWeight: 600, fontSize: "0.82rem", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>🌐 Sync Website URL</span>
-                <span style={{ fontSize: "0.7rem", padding: "2px 8px", background: "#F3F4F6", borderRadius: 99, fontWeight: 700, color: "#6B7280", letterSpacing: 0.5 }}>
+                <span style={{ fontSize: "0.7rem", padding: "2px 8px", background: "#E2E8F0", borderRadius: 99, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 0.5 }}>
                   COMING SOON
                 </span>
               </div>
-              <div style={{ padding: "0.85rem 1.25rem", fontSize: "0.78rem", color: "#9CA3AF" }}>
+              <div style={{ padding: "0.85rem 1.25rem", fontSize: "0.78rem", color: "var(--text-muted)" }}>
                 Automated website scraping is coming soon. For now, please copy the relevant content from your site and paste it as text above.
               </div>
             </div>
 
             {/* Status messages */}
             {kbStatus.length > 0 && (
-              <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 16px" }}>
+              <div style={{ background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)", borderRadius: 10, padding: "12px 16px" }}>
                 {kbStatus.map((s, i) => (
-                  <div key={i} style={{ fontSize: "0.85rem", color: "#064E3B", padding: "3px 0", fontFamily: "monospace" }}>{s}</div>
+                  <div key={i} style={{ fontSize: "0.85rem", color: "var(--blue)", padding: "3px 0", fontFamily: "monospace" }}>{s}</div>
                 ))}
               </div>
             )}
@@ -500,16 +529,16 @@ export default function CreateAgentPage() {
       {/* ─── STEP 3: Phone Number ────────────────────────────── */}
       {step === 3 && (
         <div style={card}>
-          <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 10, padding: "10px 16px", marginBottom: "2rem", display: "flex", alignItems: "center", gap: 8 }}>
-            <span>🧠</span><span style={{ fontWeight: 700, color: "#059669", fontSize: "0.88rem" }}>Knowledge base ready! Now connect a phone number.</span>
+          <div style={{ background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)", borderRadius: 10, padding: "10px 16px", marginBottom: "2rem", display: "flex", alignItems: "center", gap: 8 }}>
+            <span>🧠</span><span style={{ fontWeight: 700, color: "var(--blue)", fontSize: "0.88rem" }}>Knowledge base ready! Now connect a phone number.</span>
           </div>
 
-          <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B", marginBottom: "0.4rem" }}>Setup Phone Number</h2>
+          <h2 style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--text)", marginBottom: "0.4rem" }}>Setup Phone Number</h2>
 
           {/* ── Free plan gate ── */}
           {(planTier === "free" || subStatus !== "active") ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <div style={{ background: "#FEF3C7", border: "2px solid #F59E0B", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ background: "#FEF3C7", border: "1.5px solid #F59E0B", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", gap: 12, alignItems: "flex-start" }}>
                 <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>🔒</span>
                 <div>
                   <div style={{ fontWeight: 800, color: "#92400E", fontSize: "0.95rem", marginBottom: 4 }}>Phone numbers require a paid plan</div>
@@ -527,23 +556,32 @@ export default function CreateAgentPage() {
                   { name: "Premium", price: "$250", minutes: "1100 min", tier: "premium" },
                 ].map(p => (
                   <div key={p.tier} style={{
-                    border: p.highlight ? "2px solid #064E3B" : "1.5px solid #D1FAE5",
+                    border: p.highlight ? "2px solid var(--blue)" : "1.5px solid var(--border)",
                     borderRadius: 12, padding: "1.25rem",
-                    background: p.highlight ? "#064E3B" : "#F6FEFA",
-                    color: p.highlight ? "#fff" : "#064E3B",
+                    background: p.highlight ? "var(--blue)" : "#fff",
+                    color: p.highlight ? "#fff" : "var(--text)",
                     display: "flex", flexDirection: "column", gap: 6,
-                    boxShadow: p.highlight ? "0 4px 14px rgba(6,78,59,0.25)" : "none",
+                    boxShadow: p.highlight ? "0 8px 24px rgba(29, 78, 216, 0.2)" : "0 4px 12px rgba(0, 0, 0, 0.02)",
+                    transition: "all 0.2s ease",
                   }}>
-                    <div style={{ fontWeight: 900, fontSize: "1rem" }}>{p.name}</div>
-                    <div style={{ fontWeight: 900, fontSize: "1.6rem", lineHeight: 1 }}>{p.price}<span style={{ fontSize: "0.8rem", fontWeight: 600, opacity: 0.7 }}>/mo</span></div>
-                    <div style={{ fontSize: "0.78rem", opacity: 0.8 }}>{p.minutes} included</div>
+                    <div style={{ fontWeight: 800, fontSize: "1rem" }}>{p.name}</div>
+                    <div style={{ fontWeight: 800, fontSize: "1.6rem", lineHeight: 1 }}>{p.price}<span style={{ fontSize: "0.8rem", fontWeight: 600, opacity: 0.7 }}>/mo</span></div>
+                    <div style={{ fontSize: "0.78rem", opacity: p.highlight ? 0.9 : 0.8, color: p.highlight ? "#fff" : "var(--text-muted)" }}>{p.minutes} included</div>
                     <a
                       href={`/dashboard/billing`}
                       style={{
                         marginTop: 8, display: "block", textAlign: "center",
-                        background: p.highlight ? "#10B981" : "#064E3B",
-                        color: "#fff", borderRadius: 8, padding: "8px",
+                        background: p.highlight ? "#fff" : "var(--blue)",
+                        color: p.highlight ? "var(--blue)" : "#fff", borderRadius: 8, padding: "8px",
                         fontWeight: 700, fontSize: "0.82rem", textDecoration: "none",
+                        boxShadow: p.highlight ? "0 4px 10px rgba(0,0,0,0.15)" : "none",
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = "none";
                       }}
                     >
                       Choose {p.name} →
@@ -559,7 +597,7 @@ export default function CreateAgentPage() {
           ) : (
             /* ── Paid plan: show normal number search ── */
             <div>
-              <p style={{ color: "#9CA3AF", fontSize: "0.85rem", marginBottom: "2rem" }}>Search by area code to get a local number for your AI agent.</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "2rem" }}>Search by area code to get a local number for your AI agent.</p>
 
               <form onSubmit={searchNumbers} style={{ display: "flex", gap: 10, marginBottom: "1.5rem", flexWrap: "wrap" }}>
                 <select value={countryCode} onChange={e => setCountryCode(e.target.value)} style={{ ...inp, width: 200 }}>
@@ -570,7 +608,7 @@ export default function CreateAgentPage() {
                 <input type="text" value={areaCode} onChange={e => setAreaCode(e.target.value)}
                   placeholder="Area code (optional)" style={{ ...inp, flex: 1 }} />
                 <button type="submit" disabled={loading}
-                  style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 9, padding: "10px 20px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  style={{ background: "var(--blue)", color: "#fff", border: "none", borderRadius: 9, padding: "10px 20px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, boxShadow: "0 4px 14px rgba(29, 78, 216, 0.2)" }}>
                   {loading ? "Searching..." : "Search"}
                 </button>
               </form>
@@ -579,12 +617,12 @@ export default function CreateAgentPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
                   <label style={lbl}>Available Numbers</label>
                   {numbers.map(n => (
-                    <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 10 }}>
+                    <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "var(--blue-light)", border: "1.5px solid var(--border)", borderRadius: 10 }}>
                       <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#064E3B", letterSpacing: 1 }}>{n.phone_number}</span>
+                        <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "var(--blue)", letterSpacing: 1 }}>{n.phone_number}</span>
                       </div>
                       <button onClick={() => claimNumber(n.phone_number)} disabled={loading}
-                        style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>
+                        style={{ background: "var(--blue)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 10px rgba(29, 78, 216, 0.2)" }}>
                         {loading ? "..." : "Claim"}
                       </button>
                     </div>

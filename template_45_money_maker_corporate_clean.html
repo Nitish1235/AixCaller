@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIxCaller — Clean Corporate Revenue Machine</title>
+  <meta name="description" content="AIxCaller: Enterprise-grade AI voice agents that convert every call into measurable revenue.">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f8fafc;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --blue: #1d4ed8;
+      --blue-light: #eff6ff;
+      --green: #059669;
+      --green-light: #ecfdf5;
+      --amber: #d97706;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    header {
+      padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100;
+    }
+    .logo { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.5px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+    .logo-mark {
+      width: 32px; height: 32px; background: var(--blue); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { color: #fff; }
+    .nav-links { display: flex; gap: 2rem; align-items: center; }
+    .nav-links a { text-decoration: none; color: var(--text-muted); font-weight: 600; font-size: 0.95rem; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    .btn-primary {
+      background: var(--blue); color: #fff; padding: 0.75rem 2rem; border-radius: 8px;
+      font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: 0 4px 14px rgba(29,78,216,0.25);
+      transition: all 0.2s; font-size: 0.95rem; border: none; cursor: pointer;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(29,78,216,0.35); }
+    .btn-secondary {
+      background: var(--bg); color: var(--text); padding: 0.75rem 2rem; border-radius: 8px;
+      font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+      border: 1.5px solid var(--border); transition: all 0.2s; font-size: 0.95rem; cursor: pointer;
+    }
+    .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Hero */
+    .hero { padding: 6rem 5% 4rem; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+    .hero-left h1 { font-size: 4rem; font-weight: 800; line-height: 1.1; letter-spacing: -2px; margin-bottom: 1.5rem; }
+    .hero-left h1 .highlight { color: var(--blue); }
+    .hero-left p { font-size: 1.2rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 2rem; }
+    .hero-cta { display: flex; gap: 1rem; margin-bottom: 3rem; }
+
+    /* Social Proof Bar */
+    .social-proof { display: flex; align-items: center; gap: 1.5rem; }
+    .sp-avatars { display: flex; }
+    .sp-avatars .sp-av {
+      width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid #fff;
+      margin-left: -10px; font-size: 0.7rem; font-weight: 800; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sp-avatars .sp-av:first-child { margin-left: 0; }
+    .sp-av-1 { background: var(--blue); }
+    .sp-av-2 { background: #7c3aed; }
+    .sp-av-3 { background: #059669; }
+    .sp-av-4 { background: #d97706; }
+    .sp-text { font-size: 0.9rem; color: var(--text-muted); }
+    .sp-text strong { color: var(--text); }
+
+    /* Right side — Revenue Dashboard */
+    .hero-right {
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: 20px;
+      overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.06);
+    }
+    .dash-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: #fff;
+    }
+    .dash-head .dash-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+    .dash-head .dash-live {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.8rem; font-weight: 700; color: var(--green);
+    }
+    .dash-head .dash-live::before { content:''; width:6px; height:6px; border-radius:50%; background: var(--green); animation: pulse-dot 1.5s infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .dash-body { padding: 1.5rem; }
+
+    /* Revenue Stats Row */
+    .rev-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .rev-stat {
+      background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1rem;
+    }
+    .rev-stat .rs-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+    .rev-stat .rs-val { font-size: 1.5rem; font-weight: 800; }
+    .rev-stat .rs-change { font-size: 0.75rem; font-weight: 700; color: var(--green); margin-top: 0.2rem; }
+
+    /* Mini Call Log */
+    .mini-log {
+      background: var(--text); border-radius: 12px; padding: 1.2rem 1.5rem;
+      font-size: 0.85rem; line-height: 1.8;
+    }
+    .ml-head {
+      display: flex; justify-content: space-between; margin-bottom: 0.8rem;
+      font-weight: 600; font-size: 0.8rem;
+    }
+    .ml-head .ml-title { color: #94a3b8; }
+    .ml-head .ml-status { color: var(--green); }
+    .ml-line { display: flex; gap: 0.8rem; margin-bottom: 0.3rem; }
+    .ml-ts { color: #64748b; min-width: 40px; }
+    .ml-caller { color: #cbd5e1; }
+    .ml-agent { color: #93c5fd; }
+    .ml-exec {
+      display: inline-block; margin-top: 0.3rem;
+      background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.2);
+      border-radius: 4px; padding: 0.2rem 0.6rem; color: var(--green); font-size: 0.75rem;
+    }
+    .ml-result {
+      margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .ml-result .label { color: #64748b; font-weight: 600; font-size: 0.75rem; }
+    .ml-result .amount { color: var(--green); font-weight: 800; font-size: 1.2rem; }
+
+    /* Sections */
+    section { padding: 6rem 5%; max-width: 1200px; margin: 0 auto; }
+    .sec-header { text-align: center; margin-bottom: 4rem; }
+    .sec-header .badge {
+      display: inline-block; background: var(--blue-light); color: var(--blue);
+      font-size: 0.8rem; font-weight: 700; padding: 0.35rem 1rem; border-radius: 99px;
+      margin-bottom: 1rem;
+    }
+    .sec-header h2 { font-size: 3rem; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 1rem; }
+    .sec-header p { font-size: 1.15rem; color: var(--text-muted); max-width: 550px; margin: 0 auto; }
+
+    /* Metric Strip */
+    .metric-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;
+      padding: 3rem 5%; max-width: 1200px; margin: 0 auto; border-bottom: 1px solid var(--border);
+    }
+    .ms-item { text-align: center; }
+    .ms-num { font-size: 2.8rem; font-weight: 800; color: var(--blue); letter-spacing: -1px; }
+    .ms-label { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; margin-top: 0.3rem; }
+
+    /* Feature Grid */
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    .f-card {
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px;
+      padding: 2.5rem; transition: all 0.3s;
+    }
+    .f-card:hover { border-color: var(--blue); transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,0.05); }
+    .f-card.wide { grid-column: span 2; }
+    .f-icon-wrap {
+      width: 44px; height: 44px; border-radius: 10px; margin-bottom: 1.5rem;
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+    }
+    .f-icon-blue { background: var(--blue-light); }
+    .f-icon-green { background: var(--green-light); }
+    .f-icon-amber { background: #fffbeb; }
+    .f-card h3 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.8rem; }
+    .f-card p { color: var(--text-muted); line-height: 1.7; }
+
+    /* Process Steps */
+    .process { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 3rem; }
+    .proc-step {
+      text-align: center; padding: 2.5rem 1.5rem; position: relative;
+      border: 1.5px solid var(--border); background: #fff;
+    }
+    .proc-step:first-child { border-radius: 16px 0 0 16px; }
+    .proc-step:last-child { border-radius: 0 16px 16px 0; }
+    .proc-step.active { background: var(--blue-light); border-color: rgba(29,78,216,0.2); }
+    .proc-num {
+      width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 1rem;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.9rem;
+      background: var(--surface); border: 1.5px solid var(--border); color: var(--text-muted);
+    }
+    .proc-step.active .proc-num { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .proc-step h4 { font-weight: 800; font-size: 1rem; margin-bottom: 0.5rem; }
+    .proc-step p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
+
+    /* Pricing */
+    .pricing-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; max-width: 900px; margin: 0 auto; }
+    .pc {
+      background: #fff; border: 1.5px solid var(--border); border-radius: 20px;
+      padding: 3rem; position: relative;
+    }
+    .pc.popular {
+      border-color: var(--blue); box-shadow: 0 20px 40px rgba(29,78,216,0.08);
+    }
+    .pc-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--blue); color: #fff; font-size: 0.7rem; font-weight: 800;
+      padding: 0.3rem 1rem; border-radius: 99px; letter-spacing: 1px;
+    }
+    .pc-tier { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 1.5rem; }
+    .pc.popular .pc-tier { color: var(--blue); }
+    .pc-price { font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 0.3rem; }
+    .pc-price span { font-size: 1.1rem; color: var(--text-muted); font-weight: 500; }
+    .pc-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .pc-list { list-style: none; padding: 0; margin-bottom: 2.5rem; }
+    .pc-list li {
+      padding: 0.6rem 0; color: var(--text-muted); font-size: 0.95rem; font-weight: 500;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pc-list li::before { content: '✓'; color: var(--green); font-weight: 800; font-size: 1.1rem; }
+
+    /* Testimonials */
+    .reviews { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    .r-card {
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px;
+      padding: 2rem;
+    }
+    .r-stars { color: #f59e0b; font-size: 1rem; margin-bottom: 1rem; letter-spacing: 1px; }
+    .r-text { color: var(--text-muted); line-height: 1.7; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .r-author { display: flex; align-items: center; gap: 12px; }
+    .r-av {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--blue-light); color: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.8rem;
+    }
+    .r-name { font-weight: 700; font-size: 0.9rem; }
+    .r-role { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* CTA */
+    .cta-section {
+      text-align: center; padding: 8rem 5%; margin: 0 5%;
+      background: var(--text); border-radius: 24px; color: #fff; max-width: 1200px;
+      margin: 0 auto 4rem;
+    }
+    .cta-section h2 { font-size: 3.5rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 1rem; }
+    .cta-section p { color: #94a3b8; font-size: 1.1rem; margin-bottom: 2.5rem; }
+    .cta-section .btn-primary { background: #fff; color: var(--text); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+    footer {
+      text-align: center; padding: 3rem 5%; color: var(--text-muted); font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-left h1 { font-size: 2.8rem; }
+      .features-grid, .reviews { grid-template-columns: 1fr; }
+      .f-card.wide { grid-column: span 1; }
+      .process { grid-template-columns: 1fr; }
+      .proc-step:first-child, .proc-step:last-child { border-radius: 16px; }
+      .pricing-row { grid-template-columns: 1fr; }
+      .metric-strip { grid-template-columns: repeat(2, 1fr); }
+      .cta-section h2 { font-size: 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5v14M7 5v14M22 9v6M2 9v6"/></svg>
+      </div>
+      AIxCaller
+    </div>
+    <div class="nav-links">
+      <a href="#">Product</a>
+      <a href="#">Pricing</a>
+      <a href="#">Resources</a>
+      <a href="#" class="btn-primary" style="padding:0.55rem 1.5rem; font-size:0.85rem;">Get Started</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-left">
+        <h1>Turn missed calls into <span class="highlight">closed deals.</span></h1>
+        <p>Your AI voice agent answers every call, resolves tickets, and closes sales — at a fraction of the cost of a human. ROI-positive from day one.</p>
+        <div class="hero-cta">
+          <a href="#" class="btn-primary" style="padding:1rem 2.5rem; font-size:1.05rem;">Deploy Agent →</a>
+          <a href="#" class="btn-secondary" style="padding:1rem 2.5rem; font-size:1.05rem;">Watch Demo</a>
+        </div>
+        <div class="social-proof">
+          <div class="sp-avatars">
+            <div class="sp-av sp-av-1">DC</div>
+            <div class="sp-av sp-av-2">SJ</div>
+            <div class="sp-av sp-av-3">MT</div>
+            <div class="sp-av sp-av-4">+8</div>
+          </div>
+          <div class="sp-text"><strong>500+</strong> businesses scaling revenue with AIxCaller</div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="dash-head">
+          <div class="dash-title">Revenue Dashboard</div>
+          <div class="dash-live mono">Live</div>
+        </div>
+        <div class="dash-body">
+          <div class="rev-row">
+            <div class="rev-stat">
+              <div class="rs-label">Today</div>
+              <div class="rs-val">$1,247</div>
+              <div class="rs-change">↑ 23%</div>
+            </div>
+            <div class="rev-stat">
+              <div class="rs-label">Calls</div>
+              <div class="rs-val">89</div>
+              <div class="rs-change">0 missed</div>
+            </div>
+            <div class="rev-stat">
+              <div class="rs-label">Conv Rate</div>
+              <div class="rs-val">34%</div>
+              <div class="rs-change">↑ 8%</div>
+            </div>
+          </div>
+          <div class="mini-log mono">
+            <div class="ml-head">
+              <span class="ml-title">LATEST SESSION // +1 (555) 0198</span>
+              <span class="ml-status">● COMPLETE</span>
+            </div>
+            <div class="ml-line"><span class="ml-ts">00:01</span><span class="ml-caller">"Does Pro include Shopify?"</span></div>
+            <div class="ml-line"><span class="ml-ts">00:02</span><span class="ml-agent">Agent: "Yes! Real-time sync, unlimited products. Send signup link?"</span></div>
+            <div class="ml-line"><span class="ml-ts">00:05</span><span class="ml-caller">"Yeah, let's do it."</span></div>
+            <div class="ml-line">
+              <span class="ml-ts">00:06</span>
+              <span>
+                <div class="ml-exec">⚙ send_sms_link(plan:"pro")</div>
+              </span>
+            </div>
+            <div class="ml-result">
+              <span class="label mono">REVENUE CAPTURED</span>
+              <span class="amount mono">+$99.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="metric-strip mono">
+      <div class="ms-item"><div class="ms-num">$2.4M+</div><div class="ms-label">Revenue captured</div></div>
+      <div class="ms-item"><div class="ms-num">47K+</div><div class="ms-label">Calls handled</div></div>
+      <div class="ms-item"><div class="ms-num">0.8s</div><div class="ms-label">Avg response</div></div>
+      <div class="ms-item"><div class="ms-num">99.7%</div><div class="ms-label">Uptime SLA</div></div>
+    </div>
+
+    <section>
+      <div class="sec-header">
+        <div class="badge">Features</div>
+        <h2>Everything you need to scale revenue.</h2>
+        <p>Built to actively resolve and convert — not just answer phones.</p>
+      </div>
+      <div class="features-grid">
+        <div class="f-card wide">
+          <div class="f-icon-wrap f-icon-blue">⚡</div>
+          <h3>Sub-Second Response Engine</h3>
+          <p>Traditional bots have an awkward 3+ second delay that kills conversions. Our edge LLMs stream audio at human speed — the caller never notices they're talking to AI.</p>
+        </div>
+        <div class="f-card">
+          <div class="f-icon-wrap f-icon-green">🛡️</div>
+          <h3>Zero Missed Calls</h3>
+          <p>24/7/365 coverage. Every ring answered in under a second. No hold music.</p>
+        </div>
+        <div class="f-card">
+          <div class="f-icon-wrap f-icon-green">🛍️</div>
+          <h3>Shopify Native</h3>
+          <p>Resolve WISMO tickets instantly with real-time order tracking and return policies.</p>
+        </div>
+        <div class="f-card">
+          <div class="f-icon-wrap f-icon-blue">🧠</div>
+          <h3>Custom Knowledge</h3>
+          <p>Upload PDFs, docs, and URLs. Your AI memorizes your entire business.</p>
+        </div>
+        <div class="f-card wide">
+          <div class="f-icon-wrap f-icon-amber">🌐</div>
+          <h3>Global SIP Infrastructure</h3>
+          <p>Provision local phone numbers across 100+ countries with one click. Edge routing ensures crystal-clear audio worldwide with under 12ms latency.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-header">
+        <div class="badge">How It Works</div>
+        <h2>From ring to revenue in 4 steps.</h2>
+      </div>
+      <div class="process">
+        <div class="proc-step">
+          <div class="proc-num">1</div>
+          <h4>Intercept</h4>
+          <p>Customer calls. SIP routes to nearest edge node.</p>
+        </div>
+        <div class="proc-step active">
+          <div class="proc-num">2</div>
+          <h4>Understand</h4>
+          <p>AI identifies intent in 0.8s via streaming STT.</p>
+        </div>
+        <div class="proc-step">
+          <div class="proc-num">3</div>
+          <h4>Execute</h4>
+          <p>Resolves, books, or closes the sale automatically.</p>
+        </div>
+        <div class="proc-step">
+          <div class="proc-num">4</div>
+          <h4>Report</h4>
+          <p>Transcript logged, CRM updated, revenue tracked.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-header">
+        <div class="badge">Pricing</div>
+        <h2>ROI-positive from day one.</h2>
+        <p>A human call center costs $4,500/mo. Your AI agent pays for itself in 4 hours.</p>
+      </div>
+      <div class="pricing-row">
+        <div class="pc">
+          <div class="pc-tier">Starter</div>
+          <div class="pc-price">$29<span>/mo</span></div>
+          <div class="pc-sub">For solo operators and small teams</div>
+          <ul class="pc-list">
+            <li>1 AI Agent</li>
+            <li>500 Included Minutes</li>
+            <li>Basic Knowledge Base</li>
+            <li>Standard Voices</li>
+            <li>Email Support</li>
+          </ul>
+          <a href="#" class="btn-secondary" style="width:100%; justify-content:center;">Get Starter</a>
+        </div>
+        <div class="pc popular">
+          <div class="pc-badge">MOST POPULAR</div>
+          <div class="pc-tier">Pro Business</div>
+          <div class="pc-price">$99<span>/mo</span></div>
+          <div class="pc-sub">For businesses ready to scale revenue</div>
+          <ul class="pc-list">
+            <li>Unlimited AI Agents</li>
+            <li>2,500 Included Minutes</li>
+            <li>Shopify & Calendly Sync</li>
+            <li>Human Handoff Logic</li>
+            <li>Priority Support + SLA</li>
+          </ul>
+          <a href="#" class="btn-primary" style="width:100%; justify-content:center;">Get Pro →</a>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-header">
+        <div class="badge">Testimonials</div>
+        <h2>Trusted by 500+ businesses.</h2>
+      </div>
+      <div class="reviews">
+        <div class="r-card">
+          <div class="r-stars">★★★★★</div>
+          <div class="r-text">"It handles all our after-hours real estate leads. It asks qualifying questions and texts me the hot leads immediately. Pure ROI."</div>
+          <div class="r-author">
+            <div class="r-av">DC</div>
+            <div><div class="r-name">David Chen</div><div class="r-role">Broker, Luxe Realty</div></div>
+          </div>
+        </div>
+        <div class="r-card">
+          <div class="r-stars">★★★★★</div>
+          <div class="r-text">"We cut our customer support backlog by 80% on day one. It just tells people where their Shopify order is. Dead simple."</div>
+          <div class="r-author">
+            <div class="r-av">SJ</div>
+            <div><div class="r-name">Sarah Jenkins</div><div class="r-role">E-com Founder</div></div>
+          </div>
+        </div>
+        <div class="r-card">
+          <div class="r-stars">★★★★★</div>
+          <div class="r-text">"The latency is the real deal. People actually pause and say 'wait, are you a robot?' because it sounds so natural."</div>
+          <div class="r-author">
+            <div class="r-av">MT</div>
+            <div><div class="r-name">Marcus T.</div><div class="r-role">Ops Manager</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="cta-section">
+      <h2>Ready to stop leaving<br>money on the table?</h2>
+      <p>Every missed call is lost revenue. Deploy your AI agent in 60 seconds.</p>
+      <a href="#" class="btn-primary" style="padding:1.2rem 3.5rem; font-size:1.15rem;">Create Free Account →</a>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 AIxCaller. All rights reserved.</p>
+  </footer>
+</body>
+</html>

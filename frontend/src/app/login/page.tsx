@@ -23,10 +23,8 @@ function LoginInner() {
     <main
       style={{
         minHeight: "100vh",
-        background: "var(--bg)",
-        backgroundImage:
-          "linear-gradient(#e5e5df 1px, transparent 1px), linear-gradient(90deg, #e5e5df 1px, transparent 1px)",
-        backgroundSize: "40px 40px",
+        background: "var(--surface)",
+        backgroundImage: "radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.04) 0%, transparent 80%), var(--surface)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -41,14 +39,14 @@ function LoginInner() {
           </Link>
         </div>
 
-        {/* Brutalist card */}
+        {/* Corporate Clean card */}
         <div
           style={{
-            background: "#fff",
-            border: "4px solid var(--text)",
+            background: "#ffffff",
+            border: "1.5px solid var(--border)",
             borderRadius: 24,
-            boxShadow: "8px 8px 0 var(--text)",
-            padding: "2.5rem 2.25rem",
+            boxShadow: "0 20px 40px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02)",
+            padding: "3rem 2.5rem",
           }}
         >
           {/* Eyebrow badge */}
@@ -57,25 +55,26 @@ function LoginInner() {
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "var(--accent-yellow)",
-              border: "2px solid var(--text)",
-              padding: "0.4rem 1rem",
+              background: "var(--blue-light)",
+              border: "1.5px solid rgba(29, 78, 216, 0.15)",
+              padding: "0.4rem 1.2rem",
               borderRadius: 99,
-              fontWeight: 900,
-              fontSize: "0.72rem",
+              fontWeight: 700,
+              fontSize: "0.78rem",
               textTransform: "uppercase",
-              letterSpacing: 1.5,
-              boxShadow: "3px 3px 0 var(--text)",
+              letterSpacing: 1,
               marginBottom: "1.5rem",
+              color: "var(--blue)",
             }}
           >
             <span
               style={{
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
-                background: "var(--text)",
+                background: "var(--blue)",
                 display: "inline-block",
+                boxShadow: "0 0 6px rgba(29, 78, 216, 0.4)",
               }}
             />
             Sign in
@@ -84,23 +83,23 @@ function LoginInner() {
           <h1
             style={{
               margin: 0,
-              fontWeight: 900,
-              fontSize: "clamp(1.9rem, 3.5vw, 2.4rem)",
-              lineHeight: 1.05,
-              letterSpacing: -1,
+              fontWeight: 800,
+              fontSize: "clamp(1.8rem, 3.5vw, 2.2rem)",
+              lineHeight: 1.2,
+              letterSpacing: "-0.5px",
               color: "var(--text)",
-              textTransform: "uppercase",
+              textTransform: "none",
             }}
           >
-            Welcome <br />back.
+            Welcome back.
           </h1>
           <p
             style={{
               margin: "0.9rem 0 2rem",
-              fontWeight: 600,
-              fontSize: "1rem",
-              color: "#475569",
-              lineHeight: 1.5,
+              fontWeight: 500,
+              fontSize: "0.95rem",
+              color: "var(--text-muted)",
+              lineHeight: 1.6,
             }}
           >
             Continue with your Google account. No passwords to remember —
@@ -111,22 +110,21 @@ function LoginInner() {
             <div
               role="alert"
               style={{
-                background: "var(--accent-pink)",
-                border: "2px solid var(--text)",
+                background: "#fef2f2",
+                border: "1.5px solid #fee2e2",
                 borderRadius: 12,
                 padding: "0.85rem 1rem",
                 fontSize: "0.92rem",
-                color: "var(--text)",
-                fontWeight: 700,
+                color: "#991b1b",
+                fontWeight: 600,
                 marginBottom: "1.5rem",
-                boxShadow: "3px 3px 0 var(--text)",
               }}
             >
               {errorMsg}
             </div>
           )}
 
-          {/* Google button — full-width, brutalist, official Google "G" mark */}
+          {/* Google button — full-width, official Google "G" mark */}
           <a
             href="/api/auth/google"
             style={{
@@ -137,27 +135,23 @@ function LoginInner() {
               width: "100%",
               background: "#fff",
               color: "var(--text)",
-              border: "3px solid var(--text)",
-              borderRadius: 14,
-              padding: "0.95rem 1.25rem",
-              fontWeight: 900,
-              fontSize: "1.05rem",
+              border: "1.5px solid var(--border)",
+              borderRadius: 12,
+              padding: "0.85rem 1.25rem",
+              fontWeight: 700,
+              fontSize: "0.98rem",
               textTransform: "none",
               cursor: "pointer",
-              boxShadow: "5px 5px 0 var(--text)",
-              transition: "transform 0.1s, box-shadow 0.1s",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.02)",
+              transition: "var(--transition)",
             }}
-            onMouseDown={(e) => {
-              e.currentTarget.style.transform = "translate(5px,5px)";
-              e.currentTarget.style.boxShadow = "0 0 0 var(--text)";
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = "";
-              e.currentTarget.style.boxShadow = "5px 5px 0 var(--text)";
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--blue)";
+              e.currentTarget.style.boxShadow = "0 4px 15px rgba(29, 78, 216, 0.08)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "";
-              e.currentTarget.style.boxShadow = "5px 5px 0 var(--text)";
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.02)";
             }}
           >
             <GoogleG />
@@ -169,7 +163,7 @@ function LoginInner() {
             style={{
               marginTop: "1.75rem",
               paddingTop: "1.25rem",
-              borderTop: "2px dashed #cbd5e1",
+              borderTop: "1.5px solid var(--border)",
               display: "flex",
               flexDirection: "column",
               gap: 6,
@@ -178,17 +172,18 @@ function LoginInner() {
             <div
               style={{
                 fontSize: "0.78rem",
-                fontWeight: 700,
-                color: "#64748b",
+                fontWeight: 600,
+                color: "var(--text-muted)",
                 textAlign: "center",
+                lineHeight: 1.5,
               }}
             >
               By continuing you agree to our{" "}
-              <Link href="/terms" style={{ textDecoration: "underline" }}>
+              <Link href="/terms" style={{ textDecoration: "underline", color: "var(--blue)", fontWeight: 700 }}>
                 Terms
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" style={{ textDecoration: "underline" }}>
+              <Link href="/privacy" style={{ textDecoration: "underline", color: "var(--blue)", fontWeight: 700 }}>
                 Privacy Policy
               </Link>
               .
@@ -202,14 +197,14 @@ function LoginInner() {
             textAlign: "center",
             marginTop: "1.5rem",
             fontSize: "0.9rem",
-            fontWeight: 700,
-            color: "#475569",
+            fontWeight: 600,
+            color: "var(--text-muted)",
           }}
         >
           New here?{" "}
           <Link
             href="/api/auth/google"
-            style={{ color: "var(--text)", textDecoration: "underline" }}
+            style={{ color: "var(--blue)", textDecoration: "underline", fontWeight: 700 }}
           >
             Sign up with Google
           </Link>{" "}

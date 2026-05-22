@@ -7,18 +7,18 @@ import { fetchVoices, fetchAgents, updateAgent, apiPost, API_BASE_URL, getTenant
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: 9,
-  border: "1.5px solid #D1FAE5", fontSize: "0.9rem", color: "#064E3B",
+  border: "1.5px solid var(--border)", fontSize: "0.9rem", color: "var(--text)",
   outline: "none", fontFamily: "inherit", background: "#fff",
 };
 const lbl: React.CSSProperties = {
   display: "block", marginBottom: 6, fontWeight: 700,
-  fontSize: "0.78rem", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5,
+  fontSize: "0.78rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5,
 };
 const card = (extra?: React.CSSProperties): React.CSSProperties => ({
-  background: "#fff", border: "1.5px solid #D1FAE5", borderRadius: 16,
-  boxShadow: "0 2px 12px rgba(16,185,129,0.07)", padding: "1.75rem", ...extra,
+  background: "#fff", border: "1.5px solid var(--border)", borderRadius: 16,
+  boxShadow: "0 4px 15px rgba(0, 0, 0, 0.02)", padding: "1.75rem", ...extra,
 });
-const btn = (c = "#064E3B", extra?: React.CSSProperties): React.CSSProperties => ({
+const btn = (c = "var(--blue)", extra?: React.CSSProperties): React.CSSProperties => ({
   background: c, color: "#fff", border: "none", borderRadius: 9,
   padding: "10px 20px", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer", ...extra,
 });
@@ -130,10 +130,12 @@ export default function AgentDetailsPage() {
   const [kbSources, setKbSources] = useState<any[]>([]);
   const [kbTotal, setKbTotal] = useState(0);
   const [kbLoading, setKbLoading] = useState(false);
-  const [kbTab, setKbTab] = useState<"text" | "file">("text");
+  const [kbTab, setKbTab] = useState<"text" | "file" | "sheet">("text");
   const [kbText, setKbText] = useState("");
   const [kbUrl, setKbUrl] = useState("");
   const [kbFile, setKbFile] = useState<File | null>(null);
+  const [kbSheetId, setKbSheetId] = useState("");
+  const [kbSheetName, setKbSheetName] = useState("Sheet1");
   const [kbStatus, setKbStatus] = useState("");
   const [kbBusy, setKbBusy] = useState(false);
 
@@ -151,7 +153,7 @@ export default function AgentDetailsPage() {
           setAgent(found);
           setName(found.name);
           setPrompt(found.system_prompt || "");
-          setVoice(found.voice_id || "aura-2-thalia-en");
+          setVoice(found.voice_id || "Telnyx.Ultra.Grace");
           setForwardingNumber(found.forwarding_number || "");
           setTransferEnabled(!!found.human_transfer_enabled);
           setAutoCallbackEnabled(!!found.auto_callback_enabled);
@@ -310,6 +312,28 @@ export default function AgentDetailsPage() {
       const data = await res.json();
       setKbStatus(`✓ ${data.message}`);
       setKbUrl(""); setTimeout(() => loadKb(), 3000); // URL sync is async, wait a bit
+    } catch (e: any) { setKbStatus(`✗ Sync failed: ${e.message}`); }
+    setKbBusy(false);
+  };
+
+  const ingestGoogleSheet = async () => {
+    if (!kbSheetId.trim()) return;
+    setKbBusy(true); setKbStatus("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/kb/sync-google-sheet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agent_id: agentId,
+          sheet_id: kbSheetId.trim(),
+          sheet_name: kbSheetName.trim() || "Sheet1"
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+      setKbStatus(`✓ Synced successfully! Ingested ${data.rows_processed} rows as ${data.chunks_stored} knowledge chunks.`);
+      setKbSheetId("");
+      loadKb();
     } catch (e: any) { setKbStatus(`✗ Sync failed: ${e.message}`); }
     setKbBusy(false);
   };
@@ -476,8 +500,8 @@ export default function AgentDetailsPage() {
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: "8px 20px", borderRadius: 8, fontWeight: 700, fontSize: "0.85rem",
     cursor: "pointer", border: "none",
-    background: active ? "#064E3B" : "#F6FEFA",
-    color: active ? "#fff" : "#059669",
+    background: active ? "var(--blue)" : "var(--blue-light)",
+    color: active ? "#fff" : "var(--blue)",
   });
 
   return (
@@ -486,15 +510,15 @@ export default function AgentDetailsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => router.push("/dashboard/agents")}
-            style={{ background: "#F6FEFA", border: "1.5px solid #D1FAE5", borderRadius: 9, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "1rem", color: "#064E3B" }}>←</button>
+            style={{ background: "var(--blue-light)", border: "1.5px solid var(--border)", borderRadius: 9, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "1rem", color: "var(--blue)" }}>←</button>
           <div>
-            <h1 style={{ fontWeight: 900, fontSize: "1.5rem", color: "#064E3B", margin: 0 }}>{agent.name}</h1>
-            <p style={{ color: "#9CA3AF", margin: "2px 0 0", fontSize: "0.85rem" }}>Configure behaviour and knowledge.</p>
+            <h1 style={{ fontWeight: 900, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>{agent.name}</h1>
+            <p style={{ color: "var(--text-muted)", margin: "2px 0 0", fontSize: "0.85rem" }}>Configure behaviour and knowledge.</p>
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {saved && <span style={{ fontSize: "0.82rem", color: "#059669", fontWeight: 700 }}>✓ Saved!</span>}
-          <button onClick={save} disabled={saving} style={btn("#064E3B", { opacity: saving ? 0.7 : 1 })}>
+          {saved && <span style={{ fontSize: "0.82rem", color: "var(--blue)", fontWeight: 700 }}>✓ Saved!</span>}
+          <button onClick={save} disabled={saving} style={btn("var(--blue)", { opacity: saving ? 0.7 : 1 })}>
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
@@ -504,7 +528,7 @@ export default function AgentDetailsPage() {
       <div style={{ display: "flex", gap: 8 }}>
         <button style={tabStyle(tab === "settings")} onClick={() => setTab("settings")}>⚙️ Settings</button>
         <button style={tabStyle(tab === "kb")} onClick={() => setTab("kb")}>
-          📚 Knowledge Base {kbTotal > 0 && <span style={{ background: "#10B981", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: "0.7rem", marginLeft: 6 }}>{kbTotal}</span>}
+          📚 Knowledge Base {kbTotal > 0 && <span style={{ background: "var(--blue)", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: "0.7rem", marginLeft: 6 }}>{kbTotal}</span>}
         </button>
       </div>
 
@@ -513,7 +537,7 @@ export default function AgentDetailsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
           {/* Left */}
           <div style={card()}>
-            <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: "1.5rem" }}>Agent Settings</h2>
+            <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", marginBottom: "1.5rem" }}>Agent Settings</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <div>
                 <label style={lbl}>Agent Name</label>
@@ -523,7 +547,7 @@ export default function AgentDetailsPage() {
                 <label style={lbl}>System Prompt</label>
                 <textarea rows={10} value={prompt} onChange={e => setPrompt(e.target.value)}
                   style={{ ...inp, resize: "vertical", lineHeight: 1.6 }} />
-                <p style={{ fontSize: "0.75rem", color: "#9CA3AF", marginTop: 4 }}>How your agent should behave and what it knows about your business.</p>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 4 }}>How your agent should behave and what it knows about your business.</p>
               </div>
               <div>
                 <label style={lbl}>Voice</label>
@@ -533,55 +557,82 @@ export default function AgentDetailsPage() {
                       <option key={v.voice_id} value={v.voice_id}>{v.name} — {v.gender}</option>
                     )) : (
                       <>
-                        <option value="aura-2-thalia-en">Thalia (F - Energetic/Confident)</option>
-                        <option value="aura-2-amalthea-en">Amalthea (F - Engaging/Professional)</option>
-                        <option value="aura-2-andromeda-en">Andromeda (F - Casual/Expressive)</option>
-                        <option value="aura-2-apollo-en">Apollo (M - Confident/Casual)</option>
-                        <option value="aura-2-arcas-en">Arcas (M - Smooth/Natural)</option>
-                        <option value="aura-2-aries-en">Aries (M - Warm/Caring)</option>
-                        <option value="aura-2-aurora-en">Aurora (F - Cheerful/Friendly)</option>
-                        <option value="aura-2-delia-en">Delia (F - Friendly/Approachable)</option>
-                        <option value="aura-2-electra-en">Electra (F - Professional/Authoritative)</option>
-                        <option value="aura-2-harmonia-en">Harmonia (F - Empathetic/Sincere)</option>
-                        <option value="aura-2-helena-en">Helena (F - Caring/Natural)</option>
-                        <option value="aura-2-hermes-en">Hermes (M - Professional/Knowledgeable)</option>
-                        <option value="aura-2-hyperion-en">Hyperion (M - Empathetic/Confident)</option>
-                        <option value="aura-2-juno-en">Juno (F - Melodic/Engaging)</option>
-                        <option value="aura-2-jupiter-en">Jupiter (M - Knowledgeable/Authoritative)</option>
-                        <option value="aura-2-mars-en">Mars (M - Trustworthy/Calm)</option>
-                        <option value="aura-2-neptune-en">Neptune (M - Polite/Professional)</option>
-                        <option value="aura-2-ophelia-en">Ophelia (F - Enthusiastic/Expressive)</option>
-                        <option value="aura-2-orion-en">Orion (M - Polite/Friendly)</option>
-                        <option value="aura-2-orpheus-en">Orpheus (M - Trustworthy/Warm)</option>
-                        <option value="aura-2-phoebe-en">Phoebe (F - Warm/Sincere)</option>
-                        <option value="aura-2-pluto-en">Pluto (M - Empathetic/Calm)</option>
-                        <option value="aura-2-saturn-en">Saturn (M - Confident/Authoritative)</option>
-                        <option value="aura-2-selene-en">Selene (F - Engaging/Clear)</option>
-                        <option value="aura-2-theia-en">Theia (F - Sincere/Professional)</option>
-                        <option value="aura-2-vesta-en">Vesta (F - Patient/Caring)</option>
-                        <option value="aura-2-luna-en">Luna (F - Expressive/Cheerful)</option>
-                        <option value="aura-2-odysseus-en">Odysseus (M - Strong/Direct)</option>
+                        <option value="Telnyx.Ultra.Grace">Grace (F - Professional / Warm)</option>
+                        <option value="Telnyx.Ultra.George">George (M - Professional / Confident)</option>
+                        <option value="Telnyx.Ultra.Ava">Ava (F - Friendly / Bright)</option>
+                        <option value="Telnyx.Ultra.James">James (M - Calm / Authoritative)</option>
+                        <option value="Telnyx.Ultra.Emma">Emma (F - Empathetic / Sincere)</option>
+                        <option value="Telnyx.Ultra.Daniel">Daniel (M - Warm / Trustworthy)</option>
+                        <option value="Telnyx.Ultra.Allie">Allie (F - Friendly / Expressive)</option>
+                        <option value="Telnyx.Ultra.Benji">Benji (M - Playful / High-energy)</option>
+                        <option value="Telnyx.Ultra.Ronald">Ronald (M - Mature / Reassuring)</option>
+                        <option value="Telnyx.Ultra.Wesley">Wesley (M - Clean / Clear)</option>
+                        <option value="Telnyx.Ultra.Mia">Mia (F - Direct / Business)</option>
+                        <option value="Telnyx.Ultra.Howard">Howard (M - Deep / Narrative)</option>
+                        <option value="Telnyx.Ultra.Harry">Harry (M - Youthful / Casual)</option>
+                        <option value="Telnyx.Ultra.Jasper">Jasper (M - Smooth / Conversational)</option>
+                        <option value="Telnyx.Ultra.Arvin">Arvin (M - Energetic / Direct)</option>
+                        <option value="Telnyx.Ultra.Callie">Callie (F - Bright / Engaging)</option>
+                        <option value="Telnyx.Ultra.Skyler">Skyler (F - Natural / Conversational)</option>
+                        <option value="Telnyx.Ultra.Darius">Darius (M - Professional / Grounded)</option>
+                        <option value="Telnyx.Ultra.Kelsey">Kelsey (F - Soft / Gentle)</option>
                       </>
                     )}
                   </select>
-                  <button type="button" onClick={() => {
-                    const sv = voiceList.find(v => v.voice_id === voice);
-                    if (sv?.preview_url && audioRef.current) { audioRef.current.src = sv.preview_url; audioRef.current.play(); }
-                    else alert("No preview available.");
-                  }} style={{ padding: "11px 16px", borderRadius: 8, border: "1.5px solid #D1FAE5", background: "#F6FEFA", color: "#059669", fontWeight: 800, cursor: "pointer" }}>
-                    ▶
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const sv = voiceList.find(v => v.voice_id === voice);
+                      let url = sv?.preview_url;
+                      if (!url && voice.startsWith("Telnyx.Ultra.")) {
+                        const name = voice.split(".").pop();
+                        if (name) {
+                          url = `https://storage.googleapis.com/aixcaller-assets/voices/telnyx_ultra_${name.toLowerCase()}.mp3`;
+                        }
+                      }
+                      if (url && audioRef.current) {
+                        audioRef.current.src = url;
+                        audioRef.current.play();
+                      } else {
+                        alert("Preview not available yet. Please make sure admin has generated the voices.");
+                      }
+                    }} 
+                    style={{ 
+                      padding: "11px 18px", 
+                      borderRadius: 12, 
+                      border: "1px solid rgba(29, 78, 216, 0.3)", 
+                      background: "linear-gradient(135deg, var(--blue-light) 0%, rgba(29, 78, 216, 0.08) 100%)", 
+                      color: "var(--blue)", 
+                      fontWeight: 800, 
+                      cursor: "pointer",
+                      boxShadow: "0 4px 12px rgba(29, 78, 216, 0.05)",
+                      backdropFilter: "blur(4px)",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 6px 16px rgba(29, 78, 216, 0.15)";
+                      e.currentTarget.style.background = "linear-gradient(135deg, var(--blue-light) 0%, rgba(29, 78, 216, 0.12) 100%)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(29, 78, 216, 0.05)";
+                      e.currentTarget.style.background = "linear-gradient(135deg, var(--blue-light) 0%, rgba(29, 78, 216, 0.08) 100%)";
+                    }}
+                  >
+                    ▶ Audition
                   </button>
                 </div>
                 <audio ref={audioRef} style={{ display: "none" }} />
               </div>
-              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.5rem" }}>
+              <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.5rem" }}>
                 {/* Heading + master toggle */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
                   <div>
-                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "#064E3B", margin: 0 }}>
+                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)", margin: 0 }}>
                       🙋 Human Transfer to Live Agent
                     </h3>
-                    <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: "4px 0 0", lineHeight: 1.5, maxWidth: 480 }}>
+                    <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "4px 0 0", lineHeight: 1.5, maxWidth: 480 }}>
                       Optionally allow the AI to hand off the call to a real person on your team — only when they're available.
                     </p>
                   </div>
@@ -592,14 +643,14 @@ export default function AgentDetailsPage() {
                       onChange={e => setTransferEnabled(e.target.checked)}
                       style={{ width: 18, height: 18, cursor: "pointer" }}
                     />
-                    <span style={{ fontWeight: 700, fontSize: "0.82rem", color: transferEnabled ? "#059669" : "#9CA3AF" }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.82rem", color: transferEnabled ? "var(--blue)" : "var(--text-muted)" }}>
                       {transferEnabled ? "ENABLED" : "DISABLED"}
                     </span>
                   </label>
                 </div>
 
                 {!transferEnabled && (
-                  <div style={{ background: "#F9FAFB", border: "1px dashed #E5E7EB", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "#6B7280", marginTop: 8 }}>
+                  <div style={{ background: "var(--surface)", border: "1.5px dashed var(--border)", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 8 }}>
                     Human transfer is <strong>off</strong>. The AI will politely decline if a caller asks to speak to a person.
                     Enable this if you want callers to be transferred to a real team member during your available hours.
                   </div>
@@ -617,8 +668,8 @@ export default function AgentDetailsPage() {
                         placeholder="+12125550199"
                         style={inp}
                       />
-                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 5, marginBottom: 0 }}>
-                        E.164 format: <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>+12125550199</code> (with country code).
+                      <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 5, marginBottom: 0 }}>
+                        E.164 format: <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 4, border: "1.5px solid var(--border)" }}>+12125550199</code> (with country code).
                       </p>
                     </div>
 
@@ -634,7 +685,7 @@ export default function AgentDetailsPage() {
                           "Australia/Sydney",
                         ].map(tz => <option key={tz} value={tz}>{tz}</option>)}
                       </select>
-                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 5, marginBottom: 0 }}>
+                      <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 5, marginBottom: 0 }}>
                         All hour windows below are interpreted in this timezone.
                       </p>
                     </div>
@@ -653,10 +704,12 @@ export default function AgentDetailsPage() {
                             type="button"
                             onClick={() => applyPreset(key as any)}
                             style={{
-                              padding: "8px 14px", borderRadius: 8, border: "1.5px solid #D1FAE5",
-                              background: "#F6FEFA", color: "#059669", fontWeight: 700, fontSize: "0.78rem",
-                              cursor: "pointer",
+                              padding: "8px 14px", borderRadius: 8, border: "1.5px solid var(--border)",
+                              background: "var(--blue-light)", color: "var(--blue)", fontWeight: 700, fontSize: "0.78rem",
+                              cursor: "pointer", transition: "all 0.2s ease",
                             }}
+                            onMouseOver={(e) => e.currentTarget.style.borderColor = "var(--blue)"}
+                            onMouseOut={(e) => e.currentTarget.style.borderColor = "var(--border)"}
                           >
                             {label}
                           </button>
@@ -667,26 +720,26 @@ export default function AgentDetailsPage() {
                     {/* Per-day editor */}
                     <div style={{ marginTop: 16 }}>
                       <label style={lbl}>Available Hours (when humans can take transfers)</label>
-                      <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 10, padding: "0.75rem 1rem" }}>
+                      <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, padding: "0.75rem 1rem" }}>
                         {DAYS.map(d => (
-                          <div key={d} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: d === "sun" ? "none" : "1px solid #F3F4F6" }}>
-                            <div style={{ width: 44, fontWeight: 700, fontSize: "0.82rem", color: "#374151" }}>
+                          <div key={d} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: d === "sun" ? "none" : "1px solid var(--border)" }}>
+                            <div style={{ width: 44, fontWeight: 700, fontSize: "0.82rem", color: "var(--text)" }}>
                               {dayLabel(d)}
                             </div>
                             <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                               {transferHours[d].length === 0 ? (
-                                <span style={{ fontSize: "0.78rem", color: "#9CA3AF", fontStyle: "italic" }}>
+                                <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic" }}>
                                   Closed
                                 </span>
                               ) : (
                                 transferHours[d].map((win, idx) => (
-                                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #D1FAE5", borderRadius: 7, padding: "2px 8px" }}>
+                                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: "1.5px solid var(--border)", borderRadius: 7, padding: "2px 8px" }}>
                                     <input
                                       type="text"
                                       value={win}
                                       onChange={e => updateWindow(d, idx, e.target.value)}
                                       placeholder="09:00-18:00"
-                                      style={{ width: 110, border: "none", outline: "none", fontSize: "0.82rem", color: "#064E3B", fontFamily: "monospace", background: "transparent" }}
+                                      style={{ width: 110, border: "none", outline: "none", fontSize: "0.82rem", color: "var(--blue)", fontFamily: "monospace", background: "transparent" }}
                                     />
                                     <button type="button" onClick={() => removeWindow(d, idx)}
                                       style={{ background: "none", border: "none", color: "#EF4444", cursor: "pointer", fontSize: "1rem", padding: 0, lineHeight: 1 }}>
@@ -696,21 +749,21 @@ export default function AgentDetailsPage() {
                                 ))
                               )}
                               <button type="button" onClick={() => addWindow(d)}
-                                style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", color: "#059669", borderRadius: 7, padding: "2px 10px", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+                                style={{ background: "var(--blue-light)", border: "1.5px solid var(--border)", color: "var(--blue)", borderRadius: 7, padding: "2px 10px", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
                                 + Add
                               </button>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 6, marginBottom: 0, lineHeight: 1.5 }}>
-                        Standard format: <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>HH:MM-HH:MM</code> (24-hour).
-                        Add multiple windows per day for lunch breaks (e.g. <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>09:00-12:00</code> + <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>13:00-18:00</code>).
+                      <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 6, marginBottom: 0, lineHeight: 1.5 }}>
+                        Standard format: <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 4 }}>HH:MM-HH:MM</code> (24-hour).
+                        Add multiple windows per day for lunch breaks (e.g. <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 4 }}>09:00-12:00</code> + <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 4 }}>13:00-18:00</code>).
                         Remove all windows to mark a day as closed.
                       </p>
                     </div>
 
-                    <div style={{ marginTop: 14, background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "#064E3B" }}>
+                    <div style={{ marginTop: 14, background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "var(--blue)" }}>
                       💡 <strong>How it works:</strong> When a caller asks for a human <em>and</em> the current
                       time is inside one of these windows, the AI will say a brief "transferring you now" and
                       forward the call to your transfer number. Outside these hours, the AI politely says your
@@ -721,13 +774,13 @@ export default function AgentDetailsPage() {
               </div>
 
               {/* ── Auto Callback ───────────────────────────────────────── */}
-              <div style={{ borderTop: "2px solid var(--text)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+              <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
                   <div>
-                    <h3 style={{ fontWeight: 900, fontSize: "1rem", color: "var(--text)", margin: 0, textTransform: "uppercase" }}>
+                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                       📞 Auto-Recovery Dialing
                     </h3>
-                    <p style={{ fontSize: "0.85rem", color: "#64748b", margin: "4px 0 0", lineHeight: 1.5, maxWidth: 480, fontWeight: 600 }}>
+                    <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "4px 0 0", lineHeight: 1.5, maxWidth: 480 }}>
                       If a caller disconnects prematurely or the call is missed, the AI agent will automatically dial them back after 60 seconds.
                     </p>
                   </div>
@@ -736,33 +789,33 @@ export default function AgentDetailsPage() {
                       type="checkbox"
                       checked={autoCallbackEnabled}
                       onChange={e => setAutoCallbackEnabled(e.target.checked)}
-                      style={{ width: 22, height: 22, cursor: "pointer", accentColor: "var(--text)" }}
+                      style={{ width: 18, height: 18, cursor: "pointer" }}
                     />
-                    <span style={{ fontWeight: 900, fontSize: "0.85rem", color: autoCallbackEnabled ? "var(--accent-green)" : "#94a3b8", border: "2px solid", padding: "2px 8px", borderRadius: 8, borderColor: autoCallbackEnabled ? "var(--text)" : "#cbd5e1" }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.82rem", color: autoCallbackEnabled ? "var(--green)" : "var(--text-muted)" }}>
                       {autoCallbackEnabled ? "ENABLED" : "DISABLED"}
                     </span>
                   </label>
                 </div>
                 {!autoCallbackEnabled && (
-                  <div style={{ background: "var(--bg)", border: "2px dashed var(--text)", borderRadius: 12, padding: "12px 16px", fontSize: "0.85rem", color: "var(--text)", marginTop: 8, fontWeight: 700 }}>
+                  <div style={{ background: "var(--surface)", border: "1.5px dashed var(--border)", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 8 }}>
                     Auto-callback is <strong>off</strong>. If a caller hangs up midway through a booking, the AI will <strong>not</strong> attempt to call them back.
                   </div>
                 )}
               </div>
 
               {/* ── Shopify Integration ─────────────────────────────────── */}
-              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+              <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
                   <div>
-                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "#064E3B", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                       🛍️ Shopify Integration
                       {shopifyStatus?.connected && (
-                        <span style={{ fontSize: "0.65rem", padding: "2px 8px", background: "#D1FAE5", color: "#059669", borderRadius: 99, fontWeight: 700, letterSpacing: 0.5 }}>
+                        <span style={{ fontSize: "0.65rem", padding: "2px 8px", background: "var(--green-light)", color: "var(--green)", borderRadius: 99, fontWeight: 700, letterSpacing: 0.5 }}>
                           CONNECTED
                         </span>
                       )}
                     </h3>
-                    <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: "4px 0 0", lineHeight: 1.5 }}>
+                    <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "4px 0 0", lineHeight: 1.5 }}>
                       Connect your Shopify store so the AI can answer caller questions about their orders — status, tracking, items, totals, refunds — in real-time.
                     </p>
                   </div>
@@ -778,9 +831,9 @@ export default function AgentDetailsPage() {
                         style={{
                           padding: "5px 14px", borderRadius: 8, fontWeight: 700, fontSize: "0.78rem",
                           border: "1.5px solid", cursor: "pointer",
-                          background: shopifyMode === "oauth" ? "#064E3B" : "#fff",
-                          color: shopifyMode === "oauth" ? "#fff" : "#064E3B",
-                          borderColor: "#064E3B",
+                          background: shopifyMode === "oauth" ? "var(--blue)" : "#fff",
+                          color: shopifyMode === "oauth" ? "#fff" : "var(--blue)",
+                          borderColor: "var(--blue)",
                         }}
                       >
                         OAuth (Public App)
@@ -791,9 +844,9 @@ export default function AgentDetailsPage() {
                         style={{
                           padding: "5px 14px", borderRadius: 8, fontWeight: 700, fontSize: "0.78rem",
                           border: "1.5px solid", cursor: "pointer",
-                          background: shopifyMode === "direct" ? "#064E3B" : "#fff",
-                          color: shopifyMode === "direct" ? "#fff" : "#064E3B",
-                          borderColor: "#064E3B",
+                          background: shopifyMode === "direct" ? "var(--blue)" : "#fff",
+                          color: shopifyMode === "direct" ? "#fff" : "var(--blue)",
+                          borderColor: "var(--blue)",
                         }}
                       >
                         Custom App Token
@@ -811,7 +864,7 @@ export default function AgentDetailsPage() {
 
                     {shopifyMode === "oauth" ? (
                       <>
-                        <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "5px 0 14px" }}>
+                        <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "5px 0 14px" }}>
                           You'll be redirected to Shopify to approve access.
                         </p>
                         <button
@@ -819,11 +872,12 @@ export default function AgentDetailsPage() {
                           onClick={connectShopify}
                           disabled={!shopInput.trim() || shopifyBusy}
                           style={{
-                            background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
+                            background: "var(--blue)", color: "#fff", border: "none", borderRadius: 10,
                             padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem",
                             cursor: shopInput.trim() ? "pointer" : "not-allowed",
                             opacity: shopInput.trim() ? 1 : 0.6,
                             display: "inline-flex", alignItems: "center", gap: 8,
+                            boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)",
                           }}
                         >
                           🛍️ Connect with Shopify
@@ -831,8 +885,8 @@ export default function AgentDetailsPage() {
                       </>
                     ) : (
                       <>
-                        <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "5px 0 10px" }}>
-                          For dev stores or custom apps: create a legacy custom app in <em>Settings → Apps and sales channels → Develop apps</em>, then paste your <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>shpat_…</code> token below.
+                        <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "5px 0 10px" }}>
+                          For dev stores or custom apps: create a legacy custom app in <em>Settings → Apps and sales channels → Develop apps</em>, then paste your <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 4 }}>shpat_…</code> token below.
                         </p>
                         <label style={{ ...lbl, marginTop: 6 }}>Access Token</label>
                         <input
@@ -847,11 +901,12 @@ export default function AgentDetailsPage() {
                           onClick={connectShopifyDirect}
                           disabled={!shopInput.trim() || !directToken.trim() || shopifyBusy}
                           style={{
-                            background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
+                            background: "var(--blue)", color: "#fff", border: "none", borderRadius: 10,
                             padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem",
                             cursor: (shopInput.trim() && directToken.trim()) ? "pointer" : "not-allowed",
                             opacity: (shopInput.trim() && directToken.trim()) ? 1 : 0.6,
                             display: "inline-flex", alignItems: "center", gap: 8,
+                            boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)",
                           }}
                         >
                           {shopifyBusy ? "Connecting…" : "🛍️ Connect with Token"}
@@ -861,11 +916,11 @@ export default function AgentDetailsPage() {
                   </>
                 ) : (
                   <>
-                    <div style={{ background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "12px 16px", marginBottom: 12 }}>
-                      <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#9CA3AF", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
+                    <div style={{ background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.15)", borderRadius: 10, padding: "12px 16px", marginBottom: 12 }}>
+                      <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-muted)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
                         Connected Store
                       </div>
-                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#064E3B", fontFamily: "monospace" }}>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--blue)", fontFamily: "monospace" }}>
                         {shopifyStatus.store_url}
                       </div>
                     </div>
@@ -874,7 +929,7 @@ export default function AgentDetailsPage() {
                         type="button"
                         onClick={testShopify}
                         disabled={shopifyBusy}
-                        style={{ background: "#fff", border: "1.5px solid #D1FAE5", color: "#059669", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
+                        style={{ background: "#fff", border: "1.5px solid var(--border)", color: "var(--blue)", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
                       >
                         🔍 Test Connection
                       </button>
@@ -889,8 +944,8 @@ export default function AgentDetailsPage() {
                     </div>
 
                     {/* ── Test Order Lookup ── */}
-                    <div style={{ marginTop: 14, background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10, padding: "14px" }}>
-                      <div style={{ fontWeight: 700, fontSize: "0.78rem", color: "#064E3B", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    <div style={{ marginTop: 14, background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.15)", borderRadius: 10, padding: "14px" }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.78rem", color: "var(--blue)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
                         🧪 Test Order Lookup
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
@@ -906,7 +961,7 @@ export default function AgentDetailsPage() {
                           type="button"
                           onClick={testOrder}
                           disabled={testOrderBusy || !testOrderNum.trim()}
-                          style={{ background: "#064E3B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: testOrderNum.trim() ? "pointer" : "not-allowed", opacity: testOrderNum.trim() ? 1 : 0.6, whiteSpace: "nowrap" }}
+                          style={{ background: "var(--blue)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: testOrderNum.trim() ? "pointer" : "not-allowed", opacity: testOrderNum.trim() ? 1 : 0.6, whiteSpace: "nowrap" }}
                         >
                           {testOrderBusy ? "Fetching…" : "Fetch Order"}
                         </button>
@@ -915,12 +970,12 @@ export default function AgentDetailsPage() {
                       {testOrderResult && (
                         <div style={{
                           marginTop: 10, borderRadius: 8, padding: "10px 14px",
-                          background: testOrderResult.ok ? "#ECFDF5" : "#FEF2F2",
-                          border: `1px solid ${testOrderResult.ok ? "#A7F3D0" : "#FECACA"}`,
+                          background: testOrderResult.ok ? "var(--green-light)" : "#FEF2F2",
+                          border: `1px solid ${testOrderResult.ok ? "rgba(5, 150, 105, 0.2)" : "#FECACA"}`,
                         }}>
                           {testOrderResult.ok ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                              <div style={{ fontWeight: 700, color: "#059669", fontSize: "0.85rem" }}>✓ {testOrderResult.message}</div>
+                              <div style={{ fontWeight: 700, color: "var(--green)", fontSize: "0.85rem" }}>✓ {testOrderResult.message}</div>
                               {testOrderResult.order && (
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginTop: 6 }}>
                                   {[
@@ -932,8 +987,8 @@ export default function AgentDetailsPage() {
                                     ["Total", testOrderResult.order.total],
                                   ].map(([label, value]) => (
                                     <div key={label as string} style={{ fontSize: "0.78rem" }}>
-                                      <span style={{ color: "#6B7280", fontWeight: 600 }}>{label}: </span>
-                                      <span style={{ color: "#064E3B", fontWeight: 700 }}>{String(value)}</span>
+                                      <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{label}: </span>
+                                      <span style={{ color: "var(--text)", fontWeight: 700 }}>{String(value)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -952,15 +1007,15 @@ export default function AgentDetailsPage() {
                   <div style={{
                     marginTop: 10,
                     padding: "8px 12px",
-                    background: shopifyMsg.startsWith("✓") ? "#ECFDF5" : "#FEF2F2",
-                    color: shopifyMsg.startsWith("✓") ? "#059669" : "#DC2626",
+                    background: shopifyMsg.startsWith("✓") ? "var(--green-light)" : "#FEF2F2",
+                    color: shopifyMsg.startsWith("✓") ? "var(--green)" : "#DC2626",
                     borderRadius: 8, fontSize: "0.82rem", fontWeight: 600,
                   }}>
                     {shopifyMsg}
                   </div>
                 )}
 
-                <div style={{ marginTop: 14, background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 9, padding: "10px 14px", fontSize: "0.76rem", color: "#064E3B", lineHeight: 1.6 }}>
+                <div style={{ marginTop: 14, background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.15)", borderRadius: 9, padding: "10px 14px", fontSize: "0.76rem", color: "var(--blue)", lineHeight: 1.6 }}>
                   💡 <strong>What callers can ask:</strong>
                   <ul style={{ margin: "6px 0 0", paddingLeft: "1.1rem" }}>
                     <li>"What's the status of order #1042?"</li>
@@ -972,30 +1027,30 @@ export default function AgentDetailsPage() {
               </div>
 
               {/* ── Custom URL / Webhook ──────────────────────────────────── */}
-              <div style={{ borderTop: "1px solid #D1FAE5", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+              <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
                   <div>
-                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "#064E3B", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                       🔗 Custom URL / Webhook
                       {customApiEnabled && (
-                        <span style={{ fontSize: "0.65rem", padding: "2px 8px", background: "#EDE9FE", color: "#7C3AED", borderRadius: 99, fontWeight: 700, letterSpacing: 0.5 }}>
+                        <span style={{ fontSize: "0.65rem", padding: "2px 8px", background: "var(--blue-light)", color: "var(--blue)", borderRadius: 99, fontWeight: 700, letterSpacing: 0.5 }}>
                           ENABLED
                         </span>
                       )}
                     </h3>
-                    <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: "4px 0 0", lineHeight: 1.5 }}>
+                    <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "4px 0 0", lineHeight: 1.5 }}>
                       Connect any REST API or webhook. Your AI calls this endpoint mid-conversation to fetch live data — inventory, bookings, customer info, or any business logic.
                     </p>
                   </div>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", flexShrink: 0 }}>
-                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6B7280" }}>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)" }}>
                       {customApiEnabled ? "On" : "Off"}
                     </span>
                     <div
                       onClick={() => setCustomApiEnabled(v => !v)}
                       style={{
                         width: 40, height: 22, borderRadius: 99, cursor: "pointer",
-                        background: customApiEnabled ? "#7C3AED" : "#D1D5DB",
+                        background: customApiEnabled ? "var(--blue)" : "#D1D5DB",
                         position: "relative", transition: "background 0.2s",
                       }}
                     >
@@ -1036,7 +1091,7 @@ export default function AgentDetailsPage() {
                         </select>
                       </div>
                       <div>
-                        <label style={lbl}>Auth Header <span style={{ fontWeight: 400, color: "#9CA3AF", textTransform: "none" }}>(optional)</span></label>
+                        <label style={lbl}>Auth Header <span style={{ fontWeight: 400, color: "var(--text-muted)", textTransform: "none" }}>(optional)</span></label>
                         <input
                           type="text"
                           value={customApiAuth}
@@ -1048,7 +1103,7 @@ export default function AgentDetailsPage() {
                     </div>
 
                     <div>
-                      <label style={lbl}>AI Tool Description <span style={{ fontWeight: 400, color: "#9CA3AF", textTransform: "none" }}>(tells AI when to call this)</span></label>
+                      <label style={lbl}>AI Tool Description <span style={{ fontWeight: 400, color: "var(--text-muted)", textTransform: "none" }}>(tells AI when to call this)</span></label>
                       <textarea
                         value={customApiDesc}
                         onChange={e => setCustomApiDesc(e.target.value)}
@@ -1056,16 +1111,16 @@ export default function AgentDetailsPage() {
                         rows={3}
                         style={{ ...inp, resize: "vertical", lineHeight: 1.5 }}
                       />
-                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "4px 0 0" }}>
+                      <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "4px 0 0" }}>
                         This description is passed to the AI so it knows when and how to use your endpoint.
                       </p>
                     </div>
 
-                    <div style={{ marginTop: 4, background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 9, padding: "10px 14px", fontSize: "0.76rem", color: "#5B21B6", lineHeight: 1.6 }}>
+                    <div style={{ marginTop: 4, background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)", borderRadius: 9, padding: "10px 14px", fontSize: "0.76rem", color: "var(--blue)", lineHeight: 1.6 }}>
                       <strong>How it works:</strong> When a caller asks something your AI can't answer from its knowledge,
-                      it sends a <code style={{ background: "#EDE9FE", padding: "1px 4px", borderRadius: 4 }}>query</code> parameter
+                      it sends a <code style={{ background: "var(--surface)", padding: "1px 4px", borderRadius: 4, border: "1.5px solid var(--border)" }}>query</code> parameter
                       to your endpoint and reads the response. GET requests use query params; POST requests send{" "}
-                      <code style={{ background: "#EDE9FE", padding: "1px 4px", borderRadius: 4 }}>{`{"query": "..."}`}</code>.
+                      <code style={{ background: "var(--surface)", padding: "1px 4px", borderRadius: 4, border: "1.5px solid var(--border)" }}>{`{"query": "..."}`}</code>.
                     </div>
                   </div>
                 )}
@@ -1076,9 +1131,10 @@ export default function AgentDetailsPage() {
                     onClick={saveCustomApi}
                     disabled={customApiSaving}
                     style={{
-                      background: "#7C3AED", color: "#fff", border: "none", borderRadius: 9,
+                      background: "var(--blue)", color: "#fff", border: "none", borderRadius: 9,
                       padding: "10px 22px", fontWeight: 700, fontSize: "0.88rem",
                       cursor: customApiSaving ? "not-allowed" : "pointer", opacity: customApiSaving ? 0.7 : 1,
+                      boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)",
                     }}
                   >
                     {customApiSaving ? "Saving…" : "Save Custom URL"}
@@ -1086,7 +1142,7 @@ export default function AgentDetailsPage() {
                   {customApiMsg && (
                     <span style={{
                       fontSize: "0.82rem", fontWeight: 600,
-                      color: customApiMsg.startsWith("✓") ? "#059669" : "#DC2626",
+                      color: customApiMsg.startsWith("✓") ? "var(--green)" : "#DC2626",
                     }}>
                       {customApiMsg}
                     </span>
@@ -1100,35 +1156,35 @@ export default function AgentDetailsPage() {
           {/* Right: Telephony */}
           <div style={card()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", margin: 0 }}>Incoming Calls</h2>
+              <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", margin: 0 }}>Incoming Calls</h2>
               {agent.phone_number
-                ? <span style={{ background: "#ECFDF5", color: "#059669", border: "1px solid #D1FAE5", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700 }}>● Live</span>
+                ? <span style={{ background: "var(--green-light)", color: "var(--green)", border: "1px solid rgba(5, 150, 105, 0.2)", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700 }}>● Live</span>
                 : <span style={{ background: "#FEF3C7", color: "#D97706", border: "1px solid #FDE68A", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700 }}>⚠ No Number</span>}
             </div>
             {agent.phone_number ? (
               <>
                 {/* ── Your AI Number ─────────────────────────────────────── */}
-                <div style={{ background: "#ECFDF5", border: "1px solid #D1FAE5", borderRadius: 12, padding: "1.5rem", textAlign: "center", marginBottom: "1.75rem" }}>
-                  <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9CA3AF", letterSpacing: 1, marginBottom: 6 }}>YOUR AI PHONE NUMBER</div>
-                  <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#064E3B", letterSpacing: 2, fontFamily: "monospace" }}>{agent.phone_number}</div>
+                <div style={{ background: "var(--blue-light)", border: "1px solid var(--border)", borderRadius: 12, padding: "1.5rem", textAlign: "center", marginBottom: "1.75rem" }}>
+                  <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", letterSpacing: 1, marginBottom: 6 }}>YOUR AI PHONE NUMBER</div>
+                  <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "var(--blue)", letterSpacing: 2, fontFamily: "monospace" }}>{agent.phone_number}</div>
                 </div>
 
                 {/* ── Option A ───────────────────────────────────────────── */}
-                <div style={{ marginBottom: "1rem", padding: "1.25rem", background: "#F6FEFA", borderRadius: 12, border: "1px solid #D1FAE5" }}>
-                  <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "#064E3B", marginBottom: 6 }}>📱 Option A — Direct Line</h3>
-                  <p style={{ color: "#6B7280", fontSize: "0.85rem", margin: 0 }}>
+                <div style={{ marginBottom: "1rem", padding: "1.25rem", background: "var(--surface)", borderRadius: 12, border: "1.5px solid var(--border)" }}>
+                  <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "var(--blue)", marginBottom: 6 }}>📱 Option A — Direct Line</h3>
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
                     Use this number directly in your marketing — put it on your website, Google My Business, or ads.
                   </p>
                 </div>
 
-                {/* ── Option B — Legacy Number Forwarding ───────────────── */}
-                <div style={{ padding: "1.25rem", background: "#F6FEFA", borderRadius: 12, border: "1px solid #D1FAE5" }}>
+                {/* ── Option B — Keep Your Existing Number ───────────────── */}
+                <div style={{ padding: "1.25rem", background: "var(--surface)", borderRadius: 12, border: "1.5px solid var(--border)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <div>
-                      <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "#064E3B", margin: 0 }}>
+                      <h3 style={{ fontWeight: 800, fontSize: "0.9rem", color: "var(--blue)", margin: 0 }}>
                         🔄 Option B — Keep Your Existing Number
                       </h3>
-                      <p style={{ color: "#6B7280", fontSize: "0.82rem", margin: "4px 0 0", lineHeight: 1.5 }}>
+                      <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", margin: "4px 0 0", lineHeight: 1.5 }}>
                         Already have a number on your marketing? Tell your carrier to
                         forward it here — callers dial your old number and your AI answers.
                       </p>
@@ -1136,7 +1192,7 @@ export default function AgentDetailsPage() {
                     {agent.legacy_number && (
                       <span style={{
                         flexShrink: 0, marginLeft: 10,
-                        background: "#D1FAE5", color: "#059669",
+                        background: "var(--green-light)", color: "var(--green)",
                         borderRadius: 99, padding: "2px 10px",
                         fontSize: "0.68rem", fontWeight: 700, letterSpacing: 0.5,
                       }}>● CONFIGURED</span>
@@ -1158,7 +1214,7 @@ export default function AgentDetailsPage() {
                         type="button"
                         onClick={saveLegacyNumber}
                         disabled={legacySaving}
-                        style={btn("#064E3B", { whiteSpace: "nowrap", opacity: legacySaving ? 0.7 : 1 })}
+                        style={btn("var(--blue)", { whiteSpace: "nowrap", opacity: legacySaving ? 0.7 : 1, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}
                       >
                         {legacySaving ? "Saving…" : "Save"}
                       </button>
@@ -1166,11 +1222,11 @@ export default function AgentDetailsPage() {
                     {legacySaveMsg && (
                       <div style={{
                         marginTop: 6, fontSize: "0.78rem", fontWeight: 700,
-                        color: legacySaveMsg.startsWith("✓") ? "#059669" : "#DC2626",
+                        color: legacySaveMsg.startsWith("✓") ? "var(--green)" : "#DC2626",
                       }}>{legacySaveMsg}</div>
                     )}
-                    <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 5, marginBottom: 0 }}>
-                      E.164 format: <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4 }}>+12125550100</code>. This is the number you want to keep on billboards, ads, etc.
+                    <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 5, marginBottom: 0 }}>
+                      E.164 format: <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 4, border: "1.5px solid var(--border)" }}>+12125550100</code>. This is the number you want to keep on billboards, ads, etc.
                     </p>
                   </div>
 
@@ -1182,9 +1238,9 @@ export default function AgentDetailsPage() {
                         onClick={() => setShowForwardingInstr(v => !v)}
                         style={{
                           marginTop: 14, width: "100%", textAlign: "left",
-                          background: "#fff", border: "1.5px solid #D1FAE5",
+                          background: "#fff", border: "1.5px solid var(--border)",
                           borderRadius: 9, padding: "10px 14px",
-                          fontWeight: 700, fontSize: "0.82rem", color: "#064E3B",
+                          fontWeight: 700, fontSize: "0.82rem", color: "var(--blue)",
                           cursor: "pointer", display: "flex", justifyContent: "space-between",
                         }}
                       >
@@ -1194,19 +1250,19 @@ export default function AgentDetailsPage() {
 
                       {showForwardingInstr && (
                         <div style={{
-                          marginTop: 4, border: "1.5px solid #D1FAE5", borderRadius: 9,
+                          marginTop: 4, border: "1.5px solid var(--border)", borderRadius: 9,
                           background: "#fff", padding: "1rem 1.1rem",
-                          fontSize: "0.8rem", color: "#374151", lineHeight: 1.75,
+                          fontSize: "0.8rem", color: "var(--text)", lineHeight: 1.75,
                         }}>
                           {/* Forward-to number prominently shown */}
                           <div style={{
-                            background: "#ECFDF5", border: "1px solid #A7F3D0",
+                            background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)",
                             borderRadius: 8, padding: "8px 12px", marginBottom: 14,
                           }}>
-                            <span style={{ fontWeight: 700, color: "#065F46" }}>Forward ALL calls to: </span>
+                            <span style={{ fontWeight: 700, color: "var(--blue)" }}>Forward ALL calls to: </span>
                             <code style={{
                               fontFamily: "monospace", fontWeight: 900,
-                              fontSize: "1rem", color: "#064E3B", letterSpacing: 1,
+                              fontSize: "1rem", color: "var(--blue)", letterSpacing: 1,
                             }}>{agent.phone_number}</code>
                           </div>
 
@@ -1247,7 +1303,7 @@ export default function AgentDetailsPage() {
                             },
                           ].map(({ carrier, steps }) => (
                             <div key={carrier} style={{ marginBottom: 14 }}>
-                              <div style={{ fontWeight: 800, color: "#064E3B", marginBottom: 5 }}>{carrier}</div>
+                              <div style={{ fontWeight: 800, color: "var(--blue)", marginBottom: 5 }}>{carrier}</div>
                               <ol style={{ margin: 0, paddingLeft: "1.2rem" }}>
                                 {steps.map((s, i) => <li key={i} style={{ marginBottom: 3 }}>{s}</li>)}
                               </ol>
@@ -1255,8 +1311,8 @@ export default function AgentDetailsPage() {
                           ))}
 
                           <div style={{
-                            marginTop: 8, background: "#FEF9C3", border: "1px solid #FDE68A",
-                            borderRadius: 8, padding: "8px 12px", fontSize: "0.75rem", color: "#78350F",
+                            marginTop: 8, background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)",
+                            borderRadius: 8, padding: "8px 12px", fontSize: "0.75rem", color: "var(--blue)",
                           }}>
                             💡 Not sure which carrier you have? Search your carrier name + "unconditional call forwarding" for exact steps. Most carriers support it at no extra cost.
                           </div>
@@ -1270,11 +1326,12 @@ export default function AgentDetailsPage() {
                           onClick={sendForwardingTestCall}
                           disabled={legacyTestBusy}
                           style={{
-                            background: legacyTestBusy ? "#9CA3AF" : "#0D9488",
+                            background: legacyTestBusy ? "var(--text-muted)" : "var(--blue)",
                             color: "#fff", border: "none", borderRadius: 9,
                             padding: "10px 18px", fontWeight: 700, fontSize: "0.85rem",
                             cursor: legacyTestBusy ? "not-allowed" : "pointer",
                             display: "flex", alignItems: "center", gap: 8,
+                            boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)",
                           }}
                         >
                           {legacyTestBusy ? "Placing test call…" : "📞 Send Test Call to Legacy Number"}
@@ -1283,18 +1340,18 @@ export default function AgentDetailsPage() {
                         {legacyTestMsg && (
                           <div style={{
                             padding: "10px 14px", borderRadius: 9, fontSize: "0.8rem", fontWeight: 600,
-                            background: legacyTestMsg.startsWith("✗") ? "#FEF2F2" : "#ECFDF5",
-                            color: legacyTestMsg.startsWith("✗") ? "#DC2626" : "#065F46",
-                            border: `1px solid ${legacyTestMsg.startsWith("✗") ? "#FECACA" : "#A7F3D0"}`,
+                            background: legacyTestMsg.startsWith("✗") ? "#FEF2F2" : "var(--green-light)",
+                            color: legacyTestMsg.startsWith("✗") ? "#DC2626" : "var(--green)",
+                            border: `1px solid ${legacyTestMsg.startsWith("✗") ? "#FECACA" : "rgba(5, 150, 105, 0.2)"}`,
                           }}>
                             {legacyTestMsg}
                           </div>
                         )}
 
                         <div style={{
-                          background: "#F0FDF4", border: "1px solid #D1FAE5",
+                          background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)",
                           borderRadius: 9, padding: "10px 14px", fontSize: "0.77rem",
-                          color: "#065F46", lineHeight: 1.6,
+                          color: "var(--blue)", lineHeight: 1.6,
                         }}>
                           <strong>How the test works:</strong><br />
                           We call your legacy number from {agent.phone_number}.<br />
@@ -1319,12 +1376,12 @@ export default function AgentDetailsPage() {
                 </div>
                 {provError && <div style={{ color: "#DC2626", fontSize: "0.75rem" }}>{provError}</div>}
                 {availableNumbers.map(n => (
-                  <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 10, background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10 }}>
-                    <div style={{ fontWeight: 700, color: "#064E3B" }}>{n.phone_number}</div>
-                    <button onClick={() => claimNumber(n.phone_number)} disabled={provLoading} style={btn("#10B981", { padding: "6px 12px", fontSize: "0.75rem" })}>Claim</button>
+                  <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 10, background: "var(--blue-light)", border: "1.5px solid var(--border)", borderRadius: 10 }}>
+                    <div style={{ fontWeight: 700, color: "var(--blue)" }}>{n.phone_number}</div>
+                    <button onClick={() => claimNumber(n.phone_number)} disabled={provLoading} style={btn("var(--blue)", { padding: "6px 12px", fontSize: "0.75rem" })}>Claim</button>
                   </div>
                 ))}
-                <button onClick={() => setProvisioning(false)} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => setProvisioning(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", transition: "var(--transition)" }}>Cancel</button>
               </div>
             ) : (
               <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
@@ -1342,24 +1399,24 @@ export default function AgentDetailsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
           {/* Left: Add content */}
           <div style={card()}>
-            <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: "1.25rem" }}>Add Knowledge</h2>
+            <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", marginBottom: "1.25rem" }}>Add Knowledge</h2>
 
             {/* Sub-tabs — URL sync hidden for now, coming back soon */}
             <div style={{ display: "flex", gap: 6, marginBottom: "1.25rem" }}>
-              {(["text", "file"] as const).map(t => (
+              {(["text", "file", "sheet"] as const).map(t => (
                 <button key={t} onClick={() => setKbTab(t)} style={{
                   padding: "6px 14px", borderRadius: 7, fontWeight: 700, fontSize: "0.8rem",
-                  cursor: "pointer", border: "1.5px solid #D1FAE5",
-                  background: kbTab === t ? "#064E3B" : "#F6FEFA",
-                  color: kbTab === t ? "#fff" : "#059669",
+                  cursor: "pointer", border: "1.5px solid var(--border)",
+                  background: kbTab === t ? "var(--blue)" : "var(--blue-light)",
+                  color: kbTab === t ? "#fff" : "var(--blue)",
                 }}>
-                  {t === "text" ? "✏️ Text" : "📄 File"}
+                  {t === "text" ? "✏️ Text" : t === "file" ? "📄 File" : "📊 Google Sheet"}
                 </button>
               ))}
               <span style={{
                 padding: "6px 12px", borderRadius: 7, fontWeight: 600, fontSize: "0.75rem",
-                background: "#F3F4F6", color: "#9CA3AF",
-                border: "1px dashed #E5E7EB", display: "inline-flex", alignItems: "center", gap: 6,
+                background: "var(--surface)", color: "var(--text-muted)",
+                border: "1.5px dashed var(--border)", display: "inline-flex", alignItems: "center", gap: 6,
               }}>
                 🌐 Website Sync — coming soon
               </span>
@@ -1367,14 +1424,14 @@ export default function AgentDetailsPage() {
 
             {/* Guide: what to upload */}
             <div style={{
-              background: "linear-gradient(135deg,#F6FEFA,#ECFDF5)",
-              border: "1px solid #D1FAE5", borderRadius: 10,
+              background: "linear-gradient(135deg, var(--surface), var(--blue-light))",
+              border: "1px solid rgba(29, 78, 216, 0.15)", borderRadius: 10,
               padding: "0.9rem 1rem", marginBottom: "1rem",
             }}>
-              <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#059669", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--blue)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
                 💡 What to upload for the best agent answers
               </div>
-              <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "#374151", fontSize: "0.82rem", lineHeight: 1.7 }}>
+              <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "var(--text)", fontSize: "0.82rem", lineHeight: 1.7 }}>
                 <li><strong>Business basics</strong> — name, address, phone, hours, location, parking</li>
                 <li><strong>Products / services</strong> — what you offer, key features, who it's for</li>
                 <li><strong>Pricing</strong> — plan names, prices, what's included, discounts</li>
@@ -1383,7 +1440,7 @@ export default function AgentDetailsPage() {
                 <li><strong>Process flows</strong> — how to book, order, sign up, get support</li>
                 <li><strong>Team / expertise</strong> — doctors, agents, specialties, languages spoken</li>
               </ul>
-              <div style={{ fontSize: "0.74rem", color: "#6B7280", marginTop: 8, fontStyle: "italic" }}>
+              <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: 8, fontStyle: "italic" }}>
                 Tip: Write in plain Q&amp;A or short bullets. Avoid PDFs of scanned forms — text only works best.
               </div>
             </div>
@@ -1394,7 +1451,7 @@ export default function AgentDetailsPage() {
                 <textarea rows={10} value={kbText} onChange={e => setKbText(e.target.value)}
                   placeholder={"Example:\n\nQ: What are your hours?\nA: We're open Monday to Saturday, 9 AM to 7 PM.\n\nQ: Where are you located?\nA: 123 Main Street, Jaipur, India.\n\nQ: What services do you offer?\nA: We provide AI customer support, voice agents, and automation tools."}
                   style={{ ...inp, resize: "vertical", lineHeight: 1.6 }} />
-                <button onClick={ingestText} disabled={kbBusy || !kbText.trim()} style={btn("#064E3B", { opacity: kbBusy ? 0.6 : 1 })}>
+                <button onClick={ingestText} disabled={kbBusy || !kbText.trim()} style={btn("var(--blue)", { opacity: kbBusy ? 0.6 : 1, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}>
                   {kbBusy ? "Uploading..." : "Upload Text"}
                 </button>
               </div>
@@ -1403,28 +1460,66 @@ export default function AgentDetailsPage() {
             {kbTab === "file" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <label style={lbl}>Upload a .txt or .md file</label>
-                <div style={{ border: "2px dashed #D1FAE5", borderRadius: 10, padding: "2rem", textAlign: "center", cursor: "pointer", background: "#F6FEFA" }}
+                <div style={{ border: "2px dashed var(--border)", borderRadius: 10, padding: "2rem", textAlign: "center", cursor: "pointer", background: "var(--blue-light)" }}
                   onClick={() => document.getElementById("kb-file-input")?.click()}>
                   <div style={{ fontSize: "2rem", marginBottom: 8 }}>📄</div>
-                  <div style={{ color: "#6B7280", fontSize: "0.85rem" }}>
+                  <div style={{ color: "var(--text)", fontSize: "0.85rem" }}>
                     {kbFile ? kbFile.name : "Click to select a file (.txt or .md)"}
                   </div>
-                  <div style={{ color: "#9CA3AF", fontSize: "0.72rem", marginTop: 4 }}>
+                  <div style={{ color: "var(--text-muted)", fontSize: "0.72rem", marginTop: 4 }}>
                     Max 2MB. Use plain-text files — not PDFs.
                   </div>
                   <input id="kb-file-input" type="file" accept=".txt,.md" style={{ display: "none" }}
                     onChange={e => setKbFile(e.target.files?.[0] || null)} />
                 </div>
-                <button onClick={ingestFile} disabled={kbBusy || !kbFile} style={btn("#064E3B", { opacity: kbBusy || !kbFile ? 0.6 : 1 })}>
+                <button onClick={ingestFile} disabled={kbBusy || !kbFile} style={btn("var(--blue)", { opacity: kbBusy || !kbFile ? 0.6 : 1, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}>
                   {kbBusy ? "Uploading..." : "Upload File"}
+                </button>
+              </div>
+            )}
+
+            {kbTab === "sheet" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div>
+                  <label style={lbl}>Google Spreadsheet ID</label>
+                  <input
+                    type="text"
+                    value={kbSheetId}
+                    onChange={e => setKbSheetId(e.target.value)}
+                    placeholder="e.g. 1aBCDeFghIjKLmNoPQrsT..."
+                    style={inp}
+                  />
+                  <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>
+                    Enter the long identifier code from your sheet's browser URL bar.
+                  </p>
+                </div>
+                <div>
+                  <label style={lbl}>Sheet Tab Name</label>
+                  <input
+                    type="text"
+                    value={kbSheetName}
+                    onChange={e => setKbSheetName(e.target.value)}
+                    placeholder="Sheet1"
+                    style={inp}
+                  />
+                  <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>
+                    The tab name at the bottom of your Google Sheet. Defaults to 'Sheet1'.
+                  </p>
+                </div>
+                <button
+                  onClick={ingestGoogleSheet}
+                  disabled={kbBusy || !kbSheetId.trim()}
+                  style={btn("var(--blue)", { opacity: kbBusy || !kbSheetId.trim() ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}
+                >
+                  {kbBusy ? "Syncing Google Sheet..." : "⚡ Sync Google Sheet Knowledge"}
                 </button>
               </div>
             )}
 
             {kbStatus && (
               <div style={{ marginTop: "1rem", padding: "10px 14px", borderRadius: 9,
-                background: kbStatus.startsWith("✓") ? "#ECFDF5" : "#FEF2F2",
-                color: kbStatus.startsWith("✓") ? "#059669" : "#DC2626",
+                background: kbStatus.startsWith("✓") ? "var(--green-light)" : "#FEF2F2",
+                color: kbStatus.startsWith("✓") ? "var(--green)" : "#DC2626",
                 fontSize: "0.85rem", fontWeight: 700 }}>
                 {kbStatus}
               </div>
@@ -1434,9 +1529,9 @@ export default function AgentDetailsPage() {
           {/* Right: Current sources */}
           <div style={card()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", margin: 0 }}>
+              <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", margin: 0 }}>
                 Ingested Content
-                {kbTotal > 0 && <span style={{ marginLeft: 8, background: "#ECFDF5", color: "#059669", borderRadius: 99, padding: "2px 10px", fontSize: "0.75rem" }}>{kbTotal} chunks</span>}
+                {kbTotal > 0 && <span style={{ marginLeft: 8, background: "var(--green-light)", color: "var(--green)", borderRadius: 99, padding: "2px 10px", fontSize: "0.75rem" }}>{kbTotal} chunks</span>}
               </h2>
               {kbTotal > 0 && (
                 <button onClick={clearKb} disabled={kbBusy} style={{ background: "none", border: "1px solid #FCA5A5", color: "#DC2626", borderRadius: 7, padding: "5px 12px", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}>
@@ -1446,21 +1541,21 @@ export default function AgentDetailsPage() {
             </div>
 
             {kbLoading ? (
-              <div style={{ textAlign: "center", padding: "3rem", color: "#9CA3AF" }}>Loading...</div>
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>Loading...</div>
             ) : kbSources.length === 0 ? (
               <div style={{ textAlign: "center", padding: "3rem" }}>
                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📭</div>
-                <p style={{ color: "#9CA3AF", fontSize: "0.88rem" }}>No knowledge base content yet. Add text, upload a file, or sync a URL to get started.</p>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.88rem" }}>No knowledge base content yet. Add text, upload a file, or sync a URL to get started.</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 {kbSources.map((s, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F6FEFA", border: "1px solid #D1FAE5", borderRadius: 10 }}>
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "var(--blue-light)", border: "1.5px solid var(--border)", borderRadius: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#064E3B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--blue)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {s.source.startsWith("http") ? "🌐 " : s.source === "manual" ? "✏️ " : "📄 "}{s.source}
                       </div>
-                      <div style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: 2 }}>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
                         {new Date(s.created_at).toLocaleDateString()} · {s.chunks} chunk{s.chunks !== 1 ? "s" : ""}
                       </div>
                     </div>
@@ -1469,9 +1564,9 @@ export default function AgentDetailsPage() {
               </div>
             )}
 
-            <div style={{ marginTop: "1.5rem", padding: "12px 16px", background: "#F0FDF4", borderRadius: 10, border: "1px solid #D1FAE5" }}>
-              <div style={{ fontSize: "0.78rem", color: "#059669", fontWeight: 700, marginBottom: 4 }}>💡 How it works</div>
-              <div style={{ fontSize: "0.75rem", color: "#6B7280", lineHeight: 1.6 }}>
+            <div style={{ marginTop: "1.5rem", padding: "12px 16px", background: "var(--blue-light)", borderRadius: 10, border: "1px solid rgba(29, 78, 216, 0.2)" }}>
+              <div style={{ fontSize: "0.78rem", color: "var(--blue)", fontWeight: 700, marginBottom: 4 }}>💡 How it works</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
                 When a caller asks a question, the AI searches your knowledge base using semantic similarity and injects the most relevant content into its context before responding.
               </div>
             </div>

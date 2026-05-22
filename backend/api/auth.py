@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from loguru import logger
-from backend.api.telegram import alert_admin
 
 from shared.database import get_db
 from shared.models import Tenant
@@ -91,15 +90,9 @@ async def sync_user(req: SyncUserRequest, background_tasks: BackgroundTasks, db:
         db.add(tenant)
         db.commit()
         db.refresh(tenant)
-        logger.info(f"Tenant created: {tenant.id} for {req.email}")
-        
-        # Fire Telegram alert for new signup
-        background_tasks.add_task(
-            alert_admin, 
-            f"👤 *New User Signup*\nEmail: `{req.email}`\nName: `{req.name or 'Unknown'}`"
-        )
+        logger.info(f"🆕 New signup: {req.email} (name: {req.name or 'Unknown'}) tenant={tenant.id}")
     else:
-        logger.info(f"Returning Google user: {req.email} | tenant={tenant.id}")
+        logger.info(f"Returning user: {req.email} | tenant={tenant.id}")
 
     return {
         "tenant_id": str(tenant.id),

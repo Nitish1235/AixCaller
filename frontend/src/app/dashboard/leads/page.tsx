@@ -41,15 +41,15 @@ export default function LeadsPage() {
         <h1 style={{ fontWeight: 900, fontSize: "2rem", color: "var(--text)", margin: 0, textTransform: "uppercase" }}>
           Captured Leads & Appointments
         </h1>
-        <p style={{ color: "#475569", margin: "8px 0 0", fontSize: "1.1rem", fontWeight: 600 }}>
+        <p style={{ color: "var(--text-muted)", margin: "8px 0 0", fontSize: "0.95rem" }}>
           Manage potential customers and scheduled meetings captured by your AI.
         </p>
       </div>
 
-      <div className="card" style={{ background: "#fff", padding: "1.5rem", overflowX: "auto" }}>
+      <div className="card" style={{ background: "#fff", padding: "1.5rem", border: "1.5px solid var(--border)", borderRadius: 16, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)", overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
           <thead>
-            <tr style={{ borderBottom: "4px solid var(--text)" }}>
+            <tr style={{ borderBottom: "1.5px solid var(--border)" }}>
               <th style={thStyle}>Date</th>
               <th style={thStyle}>Name</th>
               <th style={thStyle}>Contact</th>
@@ -84,8 +84,8 @@ export default function LeadsPage() {
                   <td style={tdStyle}>
                     {l.appointment_date ? (
                       <div style={{ 
-                        background: "var(--accent-yellow)", padding: "4px 8px", borderRadius: 8, 
-                        border: "2px solid var(--text)", display: "inline-block", fontSize: "0.8rem", fontWeight: 900
+                        background: "var(--blue-light)", padding: "6px 12px", borderRadius: 8, 
+                        border: "1px solid rgba(29, 78, 216, 0.15)", color: "var(--blue)", display: "inline-block", fontSize: "0.8rem", fontWeight: 700
                       }}>
                         🗓️ {l.appointment_date} @ {l.appointment_time}
                       </div>
@@ -98,9 +98,9 @@ export default function LeadsPage() {
                       value={l.status} 
                       onChange={(e) => updateStatus(l.id, e.target.value)}
                       style={{
-                        padding: "6px 12px", borderRadius: 8, border: "2px solid var(--text)",
-                        background: getStatusBg(l.status), fontWeight: 900, fontSize: "0.8rem",
-                        cursor: "pointer", textTransform: "uppercase"
+                        padding: "6px 12px", borderRadius: 8, border: "1.5px solid var(--border)",
+                        background: getStatusBg(l.status), color: getStatusColor(l.status), fontWeight: 600, fontSize: "0.82rem",
+                        cursor: "pointer", textTransform: "uppercase", outline: "none", transition: "var(--transition)"
                       }}
                     >
                       <option value="new">New</option>
@@ -129,10 +129,20 @@ const tdStyle: React.CSSProperties = {
 
 const getStatusBg = (status: string) => {
   switch (status) {
-    case "new": return "#fff";
-    case "contacted": return "var(--accent-blue)";
-    case "booked": return "var(--accent-green)";
-    case "closed": return "#cbd5e1";
+    case "new": return "var(--surface)";
+    case "contacted": return "var(--blue-light)";
+    case "booked": return "var(--green-light)";
+    case "closed": return "#f1f5f9";
     default: return "#fff";
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "new": return "var(--text)";
+    case "contacted": return "var(--blue)";
+    case "booked": return "var(--green)";
+    case "closed": return "#475569";
+    default: return "var(--text)";
   }
 };

@@ -4,8 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from sqlmodel import Session, select
 from loguru import logger
-import jwt
-import time
 import uuid
 import traceback
 
@@ -19,7 +17,10 @@ _DEMO_PHONE_NUMBER = os.environ.get("DEMO_PHONE_NUMBER", "+13322446316")
 
 _ALLOWED_ORIGINS = [
     o.strip() for o in
-    os.environ.get("ALLOWED_ORIGINS", "https://callerx.ai,https://www.callerx.ai,http://localhost:3000,http://localhost:3001").split(",")
+    os.environ.get(
+        "ALLOWED_ORIGINS",
+        "https://callerx.ai,https://www.callerx.ai,http://localhost:3000,http://localhost:3001"
+    ).split(",")
     if o.strip()
 ]
 
@@ -28,18 +29,17 @@ try:
     from shared.models import Agent, Tenant, CallRecord
     from backend.services.kb import IngestionService
     from backend.services.outbound_dialer import schedule_missed_call, execute_missed_call
-    from backend.api import admin, dashboard, kb, billing, live, telegram, numbers
+    from backend.api import admin, dashboard, kb, billing, numbers
     from backend.api import shopify as shopify_api
     from backend.api import zoho as zoho_api
     from backend.api import google as google_api
     from backend.api.auth import router as auth_router
-    from backend.services.email import send_call_summary_email
-    from backend.api import demo_recordings
-except Exception as e:
+    from backend.api import telnyx_ai
+except Exception:
     print(f"CRITICAL STARTUP CRASH: {traceback.format_exc()}")
     raise
 
-app = FastAPI(title="AIxcaller SaaS Backend")
+app = FastAPI(title="AIxCaller SaaS Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,218 +50,221 @@ app.add_middleware(
 )
 
 app.include_router(admin.router)
-app.include_router(demo_recordings.router)
 app.include_router(auth_router)
 app.include_router(dashboard.router)
 app.include_router(kb.router)
 app.include_router(billing.router)
-app.include_router(live.router)
-app.include_router(telegram.router)
 app.include_router(numbers.router)
 app.include_router(shopify_api.router)
 app.include_router(zoho_api.router)
 app.include_router(google_api.router)
+app.include_router(telnyx_ai.router)
+
 kb_service = IngestionService()
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INBOUND CALL — main routing entry point
+# Telnyx sends a POST to this URL when a call arrives on an agent's number.
+# We respond with TeXML connecting the call to the agent's Telnyx AI Assistant.
+# ─────────────────────────────────────────────────────────────────────────────
 @app.post("/incoming-call")
 async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     """
-    Production-ready Telnyx routing.
+    Production routing:
     1. Identify Agent by 'To' number.
-    2. Check if Tenant is active.
-    3. Route to Voice Engine with signed metadata.
+    2. Auto-sync Telnyx Assistant if not yet provisioned.
+    3. Return TeXML <Connect><AIAssistant id="..." /></Connect>
     """
     form = await request.form()
     to_number = form.get("To")
     from_number = form.get("From")
-    call_uuid = form.get("CallSid")  # Telnyx uses CallSid
 
-    # DB Lookup
-    statement = select(Agent).where(Agent.phone_number == to_number)
-    agent = db.exec(statement).first()
+    agent = db.exec(select(Agent).where(Agent.phone_number == to_number)).first()
 
     if not agent:
         logger.error(f"No agent found for number {to_number}")
-        texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+        texml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say>We are sorry, this number is not configured.</Say>
+    <Say>We're sorry, this number is not yet configured.</Say>
 </Response>"""
         return PlainTextResponse(texml, media_type="application/xml")
 
-    # 3. Create a Secure One-Time Token (JWT)
-    # This prevents anyone from spoofing your voice engine
-    is_demo = (to_number == _DEMO_PHONE_NUMBER)
-    token_payload = {
-        "tenant_id": str(agent.tenant_id),
-        "agent_id": str(agent.id),
-        "voice_id": agent.voice_id,
-        "from_number": from_number,
-        "to_number": to_number,
-        "is_demo": is_demo,
-        "exp": time.time() + 300
-    }
-    signed_token = jwt.encode(token_payload, _JWT_SECRET, algorithm="HS256")
+    # Auto-provision Telnyx Assistant on first call
+    if not agent.telnyx_assistant_id:
+        try:
+            from backend.services.telnyx_assistant import sync_agent_with_telnyx
+            await sync_agent_with_telnyx(agent, db)
+        except Exception as e:
+            logger.error(f"Telnyx auto-sync failed on incoming call: {e}")
 
-    # 4. Route to Voice Engine with the Token
-    voice_url = os.environ.get("VOICE_ENGINE_URL")
-    
-    # Official Pipecat Telnyx example (pipecat-examples/telnyx-chatbot/outbound/server.py):
-    # bidirectionalMode="rtp" is the CORRECT attribute for two-way audio.
-    # track="both_tracks" alone does NOT enable sending audio back — rtp mode is required.
+    if not agent.telnyx_assistant_id:
+        texml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>The conversational assistant is currently unavailable. Please try again shortly.</Say>
+</Response>"""
+        return PlainTextResponse(texml, media_type="application/xml")
+
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
-        <Stream url="{voice_url}" bidirectionalMode="rtp">
-            <Parameter name="call_token" value="{signed_token}" />
-        </Stream>
+        <AIAssistant id="{agent.telnyx_assistant_id}" />
     </Connect>
-    <Pause length="40"/>
 </Response>"""
-
+    logger.info(f"Inbound call {from_number} → {to_number} routed to assistant {agent.telnyx_assistant_id}")
     return PlainTextResponse(texml, media_type="application/xml")
 
-@app.post("/api/v1/kb/upload")
-async def upload_kb(request: Request, tenant_id: str, agent_id: str, content: str, db: Session = Depends(get_db)):
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OUTBOUND ANSWER — called when a recovery callback is picked up
+# ─────────────────────────────────────────────────────────────────────────────
+@app.post("/outbound-answer")
+async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)):
     """
-    Internal KB ingestion — requires X-Internal-Key header.
-    Prefer the /api/v1/kb/upload-text route from the dashboard.
+    When a missed-call recovery callback is answered, connect the caller
+    to the same agent's Telnyx AI Assistant.
     """
+    form = await request.form()
+    from_number = form.get("From")  # In outbound, From = agent's Telnyx number
+
+    agent = db.exec(select(Agent).where(Agent.phone_number == from_number)).first()
+    if not agent:
+        texml = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+        return PlainTextResponse(texml, media_type="application/xml")
+
+    if not agent.telnyx_assistant_id:
+        try:
+            from backend.services.telnyx_assistant import sync_agent_with_telnyx
+            await sync_agent_with_telnyx(agent, db)
+        except Exception as e:
+            logger.error(f"Telnyx auto-sync failed on outbound answer: {e}")
+
+    if not agent.telnyx_assistant_id:
+        texml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>The assistant is temporarily unavailable. Please call back shortly.</Say>
+</Response>"""
+        return PlainTextResponse(texml, media_type="application/xml")
+
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <AIAssistant id="{agent.telnyx_assistant_id}" />
+    </Connect>
+</Response>"""
+    return PlainTextResponse(texml, media_type="application/xml")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CALL STATUS — missed call detection and auto-callback trigger
+# ─────────────────────────────────────────────────────────────────────────────
+@app.post("/call-status")
+async def handle_call_status(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Receives Telnyx TeXML hangup/status webhooks.
+    If the call was missed, creates a CallRecord and optionally schedules recovery.
+    """
+    form = await request.form()
+    call_status = form.get("CallStatus")
+    to_number = form.get("To")
+    from_number = form.get("From")
+
+    if call_status in ("no-answer", "busy", "failed", "canceled"):
+        agent = db.exec(select(Agent).where(Agent.phone_number == to_number)).first()
+        if agent:
+            new_call = CallRecord(
+                tenant_id=agent.tenant_id,
+                agent_id=agent.id,
+                from_number=from_number or "unknown",
+                to_number=to_number or "unknown",
+                direction="inbound",
+                status="missed",
+                requires_callback=agent.auto_callback_enabled,
+            )
+            db.add(new_call)
+            db.commit()
+            db.refresh(new_call)
+
+            if agent.auto_callback_enabled:
+                await schedule_missed_call(new_call.id, 60, background_tasks)
+                logger.info(f"Missed call from {from_number}. Recovery callback scheduled.")
+            else:
+                logger.info(f"Missed call from {from_number}. Auto-callback disabled.")
+
+    return {"status": "received"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FORWARDING TEST ANSWER — instructional message when forwarding not yet set up
+# ─────────────────────────────────────────────────────────────────────────────
+@app.post("/forwarding-test-answer")
+async def handle_forwarding_test_answer(request: Request):
+    """
+    TeXML delivered when a legacy-number forwarding test call is answered
+    directly (i.e. forwarding is not configured yet).
+    """
+    form = await request.form()
+    to_number = form.get("To", "your AI number")
+    last4 = to_number[-4:] if len(to_number) >= 4 else "your AI number"
+
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>
+        Hello! This is an AIxCaller forwarding test.
+        You are hearing this message because call forwarding has not been configured yet.
+        Please contact your carrier and ask them to forward all calls to your
+        AIxCaller number ending in {last4}.
+        Once forwarding is active, callers will be answered by your AI agent automatically.
+        Goodbye!
+    </Say>
+    <Hangup/>
+</Response>"""
+    return PlainTextResponse(texml, media_type="application/xml")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTERNAL — dial recovery endpoint (triggered by BackgroundTasks)
+# ─────────────────────────────────────────────────────────────────────────────
+@app.post("/api/v1/internal/dial-recovery")
+async def dial_recovery_endpoint(request: Request, data: dict):
+    """Internal endpoint for executing delayed outbound recovery calls."""
     if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
+
+    call_record_id = data.get("call_record_id")
+    if not call_record_id:
+        raise HTTPException(status_code=400, detail="Missing call_record_id")
+
+    await execute_missed_call(uuid.UUID(call_record_id))
+    return {"status": "executed"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTERNAL — KB upload (raw text ingestion)
+# ─────────────────────────────────────────────────────────────────────────────
+@app.post("/api/v1/kb/upload")
+async def upload_kb(
+    request: Request,
+    tenant_id: str,
+    agent_id: str,
+    content: str,
+    db: Session = Depends(get_db),
+):
+    """Internal KB text ingestion. Requires X-Internal-Key header."""
+    if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
+
     tenant = db.get(Tenant, uuid.UUID(tenant_id))
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
+
     count = await kb_service.ingest_text(
         content=content,
         tenant_id=uuid.UUID(tenant_id),
         agent_id=uuid.UUID(agent_id),
     )
     return {"status": "success", "chunks_stored": count}
-
-@app.post("/call-status")
-async def handle_call_status(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """
-    Receives Telnyx TeXML Hangup/Status webhooks.
-    Flags missed calls and triggers the recovery dialer.
-    """
-    form = await request.form()
-    call_status = form.get("CallStatus")
-    to_number = form.get("To")
-    from_number = form.get("From")
-    
-    if call_status in ["no-answer", "busy", "failed", "canceled"]:
-        agent = db.exec(select(Agent).where(Agent.phone_number == to_number)).first()
-        if agent:
-            # Create a missed CallRecord
-            new_call = CallRecord(
-                tenant_id=agent.tenant_id,
-                agent_id=agent.id,
-                from_number=from_number,
-                to_number=to_number,
-                direction="inbound",
-                status="missed",
-                requires_callback=agent.auto_callback_enabled
-            )
-            db.add(new_call)
-            db.commit()
-            db.refresh(new_call)
-            
-            # Trigger background callback in 60 seconds ONLY if enabled
-            if agent.auto_callback_enabled:
-                await schedule_missed_call(new_call.id, 60, background_tasks)
-                logger.info(f"Missed call detected from {from_number}. Recovery scheduled.")
-            else:
-                logger.info(f"Missed call from {from_number}. Auto-callback is disabled.")
-
-    return {"status": "received"}
-
-@app.post("/api/v1/internal/dial-recovery")
-async def dial_recovery_endpoint(request: Request, data: dict):
-    """
-    Internal endpoint hit by Google Cloud Tasks to execute delayed outbound recovery calls.
-    """
-    if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
-    call_record_id = data.get("call_record_id")
-    if not call_record_id:
-        raise HTTPException(status_code=400, detail="Missing call_record_id")
-    
-    await execute_missed_call(uuid.UUID(call_record_id))
-    return {"status": "executed"}
-
-@app.post("/forwarding-test-answer")
-async def handle_forwarding_test_answer(request: Request):
-    """
-    TeXML response delivered when a legacy-number forwarding test call is answered
-    DIRECTLY on the legacy phone (i.e. forwarding is not yet configured).
-
-    If forwarding IS set up the carrier never sends this call here — it routes
-    the call to the Telnyx number instead and the AI agent answers normally,
-    which is the proof that forwarding works.
-    """
-    form = await request.form()
-    to_number = form.get("To", "your new AI number")
-
-    # Last 4 digits only — friendly, avoids leaking full E.164
-    last4 = to_number[-4:] if to_number and len(to_number) >= 4 else "your AI number"
-
-    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say>
-        Hello! This is an AixCaller forwarding test.
-        You are hearing this message because call forwarding has not been
-        configured on this number yet.
-        To activate forwarding, please contact your phone carrier and ask them
-        to forward all calls to your AixCaller number ending in {last4}.
-        Once forwarding is active, callers will be answered by your AI agent
-        automatically.
-        Goodbye!
-    </Say>
-    <Hangup/>
-</Response>"""
-
-    return PlainTextResponse(texml, media_type="application/xml")
-
-
-@app.post("/outbound-answer")
-async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)):
-    """
-    When the user picks up the recovery call, connect them to the Voice Engine.
-    """
-    form = await request.form()
-    from_number = form.get("From") # This is our Agent's number in outbound
-    
-    agent = db.exec(select(Agent).where(Agent.phone_number == from_number)).first()
-    if not agent:
-        texml = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
-        return PlainTextResponse(texml, media_type="application/xml")
-
-    # Generate Secure JWT with is_recovery flag
-    token_payload = {
-        "tenant_id": str(agent.tenant_id),
-        "agent_id": str(agent.id),
-        "system_prompt": agent.system_prompt,
-        "voice_id": agent.voice_id,
-        "idle_timeout": agent.idle_timeout,
-        "llm_temperature": agent.llm_temperature,
-        "language": agent.language,
-        "tools_config": agent.tools_config,
-        "forwarding_number": agent.forwarding_number,
-        "call_id": form.get("CallUUID"),
-        "is_recovery": True,
-        "exp": time.time() + 300
-    }
-    signed_token = jwt.encode(token_payload, _JWT_SECRET, algorithm="HS256")
-
-    voice_url = os.environ.get("VOICE_ENGINE_URL")
-    
-    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Connect>
-        <Stream url="{voice_url}">
-            <Parameter name="call_token" value="{signed_token}" />
-        </Stream>
-    </Connect>
-</Response>"""
-
-    return PlainTextResponse(texml, media_type="application/xml")

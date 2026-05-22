@@ -21,10 +21,8 @@ export default function SignupPage() {
     <main
       style={{
         minHeight: "100vh",
-        background: "var(--bg)",
-        backgroundImage:
-          "linear-gradient(#e5e5df 1px, transparent 1px), linear-gradient(90deg, #e5e5df 1px, transparent 1px)",
-        backgroundSize: "40px 40px",
+        background: "var(--surface)",
+        backgroundImage: "radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.04) 0%, transparent 80%), var(--surface)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -40,11 +38,11 @@ export default function SignupPage() {
 
         <div
           style={{
-            background: "#fff",
-            border: "4px solid var(--text)",
+            background: "#ffffff",
+            border: "1.5px solid var(--border)",
             borderRadius: 24,
-            boxShadow: "8px 8px 0 var(--text)",
-            padding: "2.5rem 2.25rem",
+            boxShadow: "0 20px 40px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02)",
+            padding: "3rem 2.5rem",
           }}
         >
           <div
@@ -52,25 +50,26 @@ export default function SignupPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "var(--accent-green)",
-              border: "2px solid var(--text)",
-              padding: "0.4rem 1rem",
+              background: "var(--green-light)",
+              border: "1.5px solid rgba(5, 150, 105, 0.15)",
+              padding: "0.4rem 1.2rem",
               borderRadius: 99,
-              fontWeight: 900,
-              fontSize: "0.72rem",
+              fontWeight: 700,
+              fontSize: "0.78rem",
               textTransform: "uppercase",
-              letterSpacing: 1.5,
-              boxShadow: "3px 3px 0 var(--text)",
+              letterSpacing: 1,
               marginBottom: "1.25rem",
+              color: "var(--green)",
             }}
           >
             <span
               style={{
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
-                background: "var(--text)",
+                background: "var(--green)",
                 display: "inline-block",
+                boxShadow: "0 0 6px rgba(5, 150, 105, 0.4)",
               }}
             />
             One-click signup
@@ -79,23 +78,23 @@ export default function SignupPage() {
           <h1
             style={{
               margin: 0,
-              fontWeight: 900,
+              fontWeight: 800,
               fontSize: "clamp(1.7rem, 3.5vw, 2.2rem)",
-              lineHeight: 1.05,
-              letterSpacing: -1,
+              lineHeight: 1.2,
+              letterSpacing: "-0.5px",
               color: "var(--text)",
-              textTransform: "uppercase",
+              textTransform: "none",
             }}
           >
-            We use Google <br />for everything.
+            We use Google for everything.
           </h1>
           <p
             style={{
               margin: "0.9rem 0 1.75rem",
-              fontWeight: 600,
-              fontSize: "1rem",
-              color: "#475569",
-              lineHeight: 1.5,
+              fontWeight: 500,
+              fontSize: "0.95rem",
+              color: "var(--text-muted)",
+              lineHeight: 1.6,
             }}
           >
             No separate signup needed. Sign in with Google and your account
@@ -105,7 +104,7 @@ export default function SignupPage() {
           <Link
             href="/login"
             className="btn-brutal"
-            style={{ fontSize: "1rem" }}
+            style={{ fontSize: "1rem", width: "100%" }}
           >
             Continue →
           </Link>

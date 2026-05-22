@@ -35,21 +35,21 @@ export default function KnowledgePage() {
   }, []);
 
   const card: React.CSSProperties = {
-    background: "#fff", border: "1.5px solid #D1FAE5", borderRadius: 16,
-    boxShadow: "0 2px 12px rgba(16,185,129,0.07)", padding: "1.75rem",
+    background: "#fff", border: "1.5px solid var(--border)", borderRadius: 16,
+    boxShadow: "0 4px 15px rgba(0,0,0,0.02)", padding: "1.75rem",
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
-        <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "#064E3B", margin: 0 }}>Knowledge Base</h1>
-        <p style={{ color: "#9CA3AF", marginTop: 4, fontSize: "0.88rem" }}>
+        <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "var(--text)", margin: 0 }}>Knowledge Base</h1>
+        <p style={{ color: "var(--text-muted)", marginTop: 4, fontSize: "0.88rem" }}>
           Train each agent with your business data — FAQs, services, pricing, policies.
         </p>
       </div>
 
       {/* How it works banner */}
-      <div style={{ ...card, background: "linear-gradient(135deg,#064E3B,#059669)", color: "#fff", display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+      <div style={{ ...card, background: "linear-gradient(135deg, var(--blue), #3b82f6)", color: "#fff", display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap", justifyContent: "center", border: "none" }}>
         {[
           ["📝", "Add Content", "Paste text or upload .txt / .md files (website sync coming soon)"],
           ["🔍", "Semantic Search", "Queries are matched by meaning — not just keywords"],
@@ -65,41 +65,48 @@ export default function KnowledgePage() {
 
       {/* Agent list */}
       <div style={card}>
-        <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B", marginBottom: "1.25rem" }}>Select an Agent to Manage its Knowledge Base</h2>
+        <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", marginBottom: "1.25rem" }}>Select an Agent to Manage its Knowledge Base</h2>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "#9CA3AF" }}>Loading agents...</div>
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>Loading agents...</div>
         ) : agents.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem" }}>
             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🤖</div>
-            <p style={{ color: "#9CA3AF" }}>No agents yet. <a href="/dashboard/agents/create" style={{ color: "#059669", fontWeight: 700 }}>Create one first.</a></p>
+            <p style={{ color: "var(--text-muted)" }}>No agents yet. <a href="/dashboard/agents/create" style={{ color: "var(--blue)", fontWeight: 700 }}>Create one first.</a></p>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
             {agents.map((a: any) => {
               const chunks = kbStats[a.id] ?? "...";
+              const hasChunks = chunks > 0;
               return (
                 <div key={a.id}
                   onClick={() => router.push(`/dashboard/agents/${a.id}?tab=kb`)}
-                  style={{ border: "1.5px solid #D1FAE5", borderRadius: 12, padding: "1.25rem", cursor: "pointer", background: "#F6FEFA", transition: "all 0.15s" }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = "#059669")}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = "#D1FAE5")}
+                  style={{ border: "1.5px solid var(--border)", borderRadius: 12, padding: "1.25rem", cursor: "pointer", background: "#ffffff", transition: "all 0.15s" }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = "var(--blue)";
+                    e.currentTarget.style.boxShadow = "0 8px 24px rgba(29, 78, 216, 0.04)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                    <div style={{ fontWeight: 800, fontSize: "1rem", color: "#064E3B" }}>{a.name}</div>
+                    <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)" }}>{a.name}</div>
                     <span style={{
-                      background: chunks > 0 ? "#ECFDF5" : "#F3F4F6",
-                      color: chunks > 0 ? "#059669" : "#9CA3AF",
-                      border: `1px solid ${chunks > 0 ? "#D1FAE5" : "#E5E7EB"}`,
+                      background: hasChunks ? "var(--blue-light)" : "#F3F4F6",
+                      color: hasChunks ? "var(--blue)" : "var(--text-muted)",
+                      border: `1px solid ${hasChunks ? "rgba(29, 78, 216, 0.15)" : "#E5E7EB"}`,
                       borderRadius: 99, padding: "2px 10px", fontSize: "0.72rem", fontWeight: 700
                     }}>
                       {chunks} chunks
                     </span>
                   </div>
-                  <div style={{ fontSize: "0.8rem", color: "#6B7280", marginBottom: 14, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 14, lineHeight: 1.5 }}>
                     {a.system_prompt?.slice(0, 80)}...
                   </div>
-                  <div style={{ fontSize: "0.78rem", color: "#059669", fontWeight: 700 }}>
+                  <div style={{ fontSize: "0.78rem", color: "var(--blue)", fontWeight: 700 }}>
                     📚 Manage Knowledge Base →
                   </div>
                 </div>

@@ -19,6 +19,31 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState("");
   const [details, setDetails] = useState<{ success: string[], failed: any[] } | null>(null);
 
+  // Global settings state
+  const [globalModel, setGlobalModel] = useState("openai/gpt-4o-mini");
+  const [customApiKey, setCustomApiKey] = useState("");
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  const fetchSettings = async (user = username, pass = password) => {
+    try {
+      const auth = btoa(`${user}:${pass}`);
+      const res = await fetch(`${API_URL}/admin/settings`, {
+        headers: {
+          "Authorization": `Basic ${auth}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalModel(data.global_model || "openai/gpt-4o-mini");
+        setCustomApiKey(data.api_key || "");
+        setHasApiKey(data.has_api_key || false);
+      }
+    } catch (err) {
+      console.error("Failed to fetch global settings:", err);
+    }
+  };
+
   const getHeaders = () => {
     const auth = btoa(`${username}:${password}`);
     return {
@@ -32,7 +57,34 @@ export default function AdminDashboard() {
     if (username && password) {
       setIsLoggedIn(true);
       setMessage("Logged in (Credentials stored in session)");
+      fetchSettings(username, password);
     }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch(`${API_URL}/admin/settings`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          global_model: globalModel,
+          api_key: customApiKey || null
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("✅ Success: Global model settings updated successfully.");
+        await fetchSettings();
+      } else {
+        setMessage(`⚠️ Error: ${data.detail || JSON.stringify(data)}`);
+      }
+    } catch (err) {
+      setMessage(`⚠️ Network Error: ${err}`);
+    }
+    setLoading(false);
   };
 
   const handleAssignPlan = async (e: React.FormEvent) => {
@@ -63,7 +115,7 @@ export default function AdminDashboard() {
   };
 
   const handleGenerateVoices = async () => {
-    if (!confirm("Are you sure? This will call Deepgram 28+ times and upload to GCS.")) return;
+    if (!confirm("Are you sure? This will call Telnyx 19 times and upload to GCS.")) return;
     setLoading(true);
     setMessage("Generating previews and uploading to GCS... This may take up to a minute.");
     setDetails(null);
@@ -188,12 +240,67 @@ export default function AdminDashboard() {
 
               {details.success.length === 0 && details.failed.length === 0 && (
                 <div className="text-amber-400">
-                  ⚠️ The backend returned an empty result. This usually means the internal voice list didn't match any criteria or an environment variable (DEEPGRAM_API_KEY) is missing.
+                  ⚠️ The backend returned an empty result. This usually means the internal voice list didn't match any criteria or the TELNYX_API_KEY environment variable is missing.
                 </div>
               )}
             </div>
           </div>
         )}
+
+        {/* Section: Global Model & API Key Settings */}
+        <section className="bg-[#1e293b] rounded-2xl p-8 border border-[#334155] shadow-xl mb-8">
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">🤖</span>
+            Global Assistant Model Settings
+          </h2>
+          <form onSubmit={handleSaveSettings} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Global Assistant LLM Model</label>
+                <select
+                  value={globalModel}
+                  onChange={(e) => setGlobalModel(e.target.value)}
+                  className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-300 font-medium"
+                >
+                  <option value="openai/gpt-4o-mini">openai/gpt-4o-mini (Recommended)</option>
+                  <option value="google/gemini-2.5-flash">google/gemini-2.5-flash</option>
+                  <option value="meta/llama-3.3-70b">meta/llama-3.3-70b</option>
+                  <option value="moonshotai/Kimi-K2.5">moonshotai/Kimi-K2.5</option>
+                  <option value="Qwen/Qwen3-235B-A22B">Qwen/Qwen3-235B-A22B</option>
+                  <option value="openai/gpt-4o">openai/gpt-4o</option>
+                  <option value="anthropic/claude-haiku-4-5">anthropic/claude-haiku-4-5</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-2">
+                  Applied globally to all voice call assistants. Native models are billed directly to your Telnyx balance.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Custom OpenAI/Provider API Key (Optional)
+                </label>
+                <input
+                  type="password"
+                  value={customApiKey}
+                  onChange={(e) => setCustomApiKey(e.target.value)}
+                  className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                  placeholder={hasApiKey ? "•••••••••••••••• (Leave blank to keep current key)" : "sk-... (Optional - BYOK)"}
+                />
+                <p className="text-xs text-slate-500 mt-2">
+                  If provided, OpenAI models will be configured as an External LLM using this key via Telnyx Integration Secrets. To clear the key, clear the field and save.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25"
+              >
+                {loading ? "Saving Settings..." : "Save Global Settings"}
+              </button>
+            </div>
+          </form>
+        </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Section: Plan Assignment */}
@@ -257,12 +364,12 @@ export default function AdminDashboard() {
             </h2>
             <div className="space-y-4">
               <p className="text-slate-400 text-sm leading-relaxed">
-                Regenerate audio previews for all Deepgram Aura-2 voices. This script will:
+                Regenerate audio previews for all Telnyx Ultra voices. This script will:
               </p>
               <ul className="text-xs text-slate-500 space-y-2 list-disc pl-4">
-                <li>Generate 28+ MP3 samples via Deepgram API</li>
+                <li>Generate 19 MP3 samples via Telnyx Text-To-Speech API</li>
                 <li>Upload each sample to your Google Cloud Storage bucket</li>
-                <li>Make samples public and update database URLs</li>
+                <li>Make samples public for public read access</li>
                 <li>Refresh the user selection dropdown in the dashboard</li>
               </ul>
               <div className="pt-4">

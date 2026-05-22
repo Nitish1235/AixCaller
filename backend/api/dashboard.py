@@ -1,19 +1,21 @@
+"""
+Dashboard API — Agent management, integration settings, calls, and limits.
+All routes require tenant_id to enforce multi-tenant isolation.
+"""
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
 from sqlalchemy import text
 from typing import List, Optional
-import uuid, json, os
+import uuid
+import json
+import os
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from shared.database import engine, get_db
-from shared.models import Agent, VoiceOption, CallRecord, Tenant
+from shared.database import get_db
+from shared.models import Agent, CallRecord, Tenant
 from backend.services.analytics import AnalyticsService
 from backend.services.crm import ZohoCRMService
-from backend.services.integrations import IntegrationService
-from shared.database import get_db
-from backend.api.telegram import send_telegram_message
 from backend.services.email import send_call_summary_email
-from backend.services.agent_templates import list_templates, get_template
 from loguru import logger
 
 _INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
@@ -22,24 +24,382 @@ router = APIRouter(prefix="/api/v1", tags=["dashboard"])
 analytics_service = AnalyticsService()
 
 
-# ── Marketplace: pre-built agent templates ──────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# PLAN LIMITS
+# Agent slots per plan tier — only agents WITH a phone number count.
+# ─────────────────────────────────────────────────────────────────────────────
+PLAN_AGENT_LIMITS = {
+    "free":    1,
+    "starter": 2,   # $50/mo
+    "pro":     2,   # $119/mo
+    "premium": 4,   # $250/mo
+}
+
+
+def _count_active_agents(db: Session, tenant_id: uuid.UUID) -> int:
+    """Count agents that have a phone number (only those consume plan slots)."""
+    return len(db.exec(
+        select(Agent).where(
+            Agent.tenant_id == tenant_id,
+            Agent.phone_number.is_not(None),
+        )
+    ).all())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTEGRATION SETTINGS
+# ─────────────────────────────────────────────────────────────────────────────
+class IntegrationSettings(BaseModel):
+    zoho_org_id: Optional[str] = None
+    email_summary_enabled: Optional[bool] = None
+
+
+@router.get("/integrations")
+async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
+    """Return current integration status for a tenant."""
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return {
+        "zoho_connected":        bool(tenant.zoho_refresh_token),
+        "zoho_org_id":           tenant.zoho_org_id,
+        "zoho_domain":           tenant.zoho_domain,
+        "email_summary_enabled": tenant.email_summary_enabled,
+        "contact_email":         tenant.contact_email,
+        "google_connected":      tenant.google_connected,
+        "google_calendar_id":    tenant.google_calendar_id,
+    }
+
+
+@router.patch("/integrations")
+async def save_integrations(
+    tenant_id: str,
+    settings: IntegrationSettings,
+    db: Session = Depends(get_db),
+):
+    """Save integration settings for a tenant."""
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if settings.zoho_org_id is not None:
+        tenant.zoho_org_id = settings.zoho_org_id
+    if settings.email_summary_enabled is not None:
+        tenant.email_summary_enabled = settings.email_summary_enabled
+
+    db.add(tenant)
+    db.commit()
+    return {"status": "saved"}
+
+
+@router.delete("/integrations/{key}")
+async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends(get_db)):
+    """Disconnect a specific integration."""
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    def _disconnect_zoho(t: Tenant):
+        t.zoho_refresh_token = None
+        t.zoho_domain = None
+        t.zoho_token_expires_at = None
+        t.zoho_org_id = None
+
+    def _disconnect_google(t: Tenant):
+        t.google_refresh_token = None
+        t.google_token_expires_at = None
+        t.google_calendar_id = "primary"
+        t.google_connected = False
+
+    field_map = {
+        "zoho":   _disconnect_zoho,
+        "google": _disconnect_google,
+    }
+    if key in field_map:
+        field_map[key](tenant)
+        db.add(tenant)
+        db.commit()
+    return {"status": "disconnected", "key": key}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AGENTS — CRUD
+# ─────────────────────────────────────────────────────────────────────────────
+class CreateAgentRequest(BaseModel):
+    name: str
+    business_name: Optional[str] = None
+    system_prompt: str
+    voice_id: str = "Telnyx.Ultra.Grace"
+    tenant_id: str
+    template_id: Optional[str] = None
+
+
+class AgentUpdateRequest(BaseModel):
+    """Strict schema — only whitelisted fields can be updated."""
+    name: Optional[str] = None
+    business_name: Optional[str] = None
+    system_prompt: Optional[str] = None
+    voice_id: Optional[str] = None
+    language: Optional[str] = None
+    forwarding_number: Optional[str] = None
+    human_transfer_enabled: Optional[bool] = None
+    human_transfer_timezone: Optional[str] = None
+    human_transfer_hours: Optional[dict] = None
+    auto_callback_enabled: Optional[bool] = None
+    tools_config: Optional[dict] = None
+    legacy_number: Optional[str] = None
+
+
+@router.get("/agents/limits")
+async def get_agent_limits(tenant_id: str, db: Session = Depends(get_db)):
+    """Current active agent count vs plan limit."""
+    tenant_uuid = uuid.UUID(tenant_id)
+    tenant = db.get(Tenant, tenant_uuid)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    used = _count_active_agents(db, tenant_uuid)
+    limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
+    return {
+        "plan_tier":       tenant.plan_tier,
+        "agents_used":     used,
+        "agents_limit":    limit,
+        "can_assign_number": used < limit,
+    }
+
+
+@router.get("/agents", response_model=List[Agent])
+async def get_my_agents(tenant_id: str, db: Session = Depends(get_db)):
+    """Return all agents for the given tenant."""
+    return db.exec(select(Agent).where(Agent.tenant_id == uuid.UUID(tenant_id))).all()
+
+
+@router.post("/agents", response_model=Agent)
+async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
+    """
+    Create a new AI agent.
+    Plan limit is enforced only when a phone number is assigned.
+    """
+    tenant_uuid = uuid.UUID(req.tenant_id)
+    tenant = db.get(Tenant, tenant_uuid)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    new_agent = Agent(
+        tenant_id=tenant_uuid,
+        name=req.name,
+        business_name=req.business_name,
+        system_prompt=req.system_prompt,
+        voice_id=req.voice_id,
+        template_id=req.template_id,
+    )
+    db.add(new_agent)
+    db.commit()
+    db.refresh(new_agent)
+
+    # Provision Telnyx Assistant immediately
+    try:
+        from backend.services.telnyx_assistant import sync_agent_with_telnyx
+        await sync_agent_with_telnyx(new_agent, db)
+    except Exception as e:
+        logger.error(f"Telnyx sync failed on agent creation: {e}")
+
+    return new_agent
+
+
+@router.get("/agents/{agent_id}", response_model=Agent)
+async def get_agent(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Fetch a single agent by ID."""
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
+
+
+@router.patch("/agents/{agent_id}", response_model=Agent)
+async def update_agent_config(
+    agent_id: uuid.UUID,
+    config: AgentUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    """Update agent settings. Only whitelisted fields are accepted."""
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    update_data = config.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(agent, key, value)
+    agent.updated_at = datetime.now(timezone.utc)
+
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+
+    # Re-sync Telnyx Assistant with new config
+    try:
+        from backend.services.telnyx_assistant import sync_agent_with_telnyx
+        await sync_agent_with_telnyx(agent, db)
+    except Exception as e:
+        logger.error(f"Telnyx sync failed on agent update: {e}")
+
+    return agent
+
+
+@router.delete("/agents/{agent_id}")
+async def delete_agent(agent_id: uuid.UUID, tenant_id: str, db: Session = Depends(get_db)):
+    """Delete an agent and clean up its Telnyx Assistant."""
+    agent = db.exec(
+        select(Agent).where(Agent.id == agent_id, Agent.tenant_id == uuid.UUID(tenant_id))
+    ).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    # Best-effort delete from Telnyx
+    if agent.telnyx_assistant_id:
+        try:
+            import httpx
+            api_key = os.environ.get("TELNYX_API_KEY")
+            if api_key:
+                async with httpx.AsyncClient() as client:
+                    await client.delete(
+                        f"https://api.telnyx.com/v2/ai/assistants/{agent.telnyx_assistant_id}",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        timeout=10.0,
+                    )
+        except Exception as e:
+            logger.warning(f"Could not delete Telnyx Assistant {agent.telnyx_assistant_id}: {e}")
+
+    db.delete(agent)
+    db.commit()
+    return {"status": "deleted", "agent_id": str(agent_id)}
+
+
+@router.get("/agents/{agent_id}/transfer-availability")
+async def get_transfer_availability(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Check whether human transfer is available right now for this agent."""
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    if not agent.human_transfer_enabled or not agent.forwarding_number:
+        return {"available": False, "reason": "Human transfer is not configured."}
+
+    # Simple business hours check
+    from datetime import datetime
+    import zoneinfo
+    try:
+        tz = zoneinfo.ZoneInfo(agent.human_transfer_timezone or "UTC")
+        now = datetime.now(tz)
+        day_key = now.strftime("%a").lower()  # "mon", "tue", etc.
+        windows = (agent.human_transfer_hours or {}).get(day_key, [])
+        if not windows:
+            return {"available": False, "reason": "Outside staffed hours for today."}
+        current_time = now.strftime("%H:%M")
+        for window in windows:
+            try:
+                start, end = window.split("-")
+                if start <= current_time <= end:
+                    return {"available": True, "reason": "Within staffed hours."}
+            except ValueError:
+                continue
+        return {"available": False, "reason": "Outside staffed hours."}
+    except Exception as e:
+        logger.warning(f"Transfer availability check error: {e}")
+        return {"available": True, "reason": "Could not determine hours — defaulting to available."}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MARKETPLACE — pre-built agent templates (inline, no separate file)
+# ─────────────────────────────────────────────────────────────────────────────
+AGENT_TEMPLATES = [
+    {
+        "id": "dental_receptionist",
+        "name": "Dental Receptionist",
+        "description": "Books appointments, answers FAQ about procedures, and handles cancellations.",
+        "industry": "Healthcare",
+        "voice_id": "Telnyx.Ultra.Grace",
+        "system_prompt": (
+            "You are a warm, professional AI receptionist for a dental clinic. "
+            "Help callers book, reschedule, or cancel appointments. Answer questions about "
+            "services, insurance acceptance, and office hours. Always be empathetic and patient. "
+            "If the caller has a dental emergency, express concern and advise them to visit an "
+            "emergency clinic or call 911 if severe."
+        ),
+    },
+    {
+        "id": "real_estate_agent",
+        "name": "Real Estate Agent",
+        "description": "Qualifies buyer/seller leads, answers property questions, and schedules viewings.",
+        "industry": "Real Estate",
+        "voice_id": "Telnyx.Ultra.George",
+        "system_prompt": (
+            "You are an enthusiastic, knowledgeable AI real estate agent assistant. "
+            "Help callers learn about property listings, schedule viewings, and understand "
+            "the buying or selling process. Qualify leads by asking about their budget, "
+            "timeline, and requirements. Always be professional and helpful."
+        ),
+    },
+    {
+        "id": "ecommerce_support",
+        "name": "E-Commerce Support",
+        "description": "Handles order status, returns, refunds, and product questions.",
+        "industry": "E-Commerce",
+        "voice_id": "Telnyx.Ultra.Grace",
+        "system_prompt": (
+            "You are a helpful AI customer support agent for an online store. "
+            "Assist callers with order status, tracking, returns, refunds, and product questions. "
+            "Be empathetic when callers have issues. Always aim to resolve issues on the first call."
+        ),
+    },
+    {
+        "id": "hvac_contractor",
+        "name": "HVAC Service Dispatcher",
+        "description": "Books service calls, qualifies urgency, and provides basic troubleshooting.",
+        "industry": "Home Services",
+        "voice_id": "Telnyx.Ultra.George",
+        "system_prompt": (
+            "You are a professional AI dispatcher for an HVAC company. "
+            "Help callers schedule service calls, assess urgency (emergency vs. routine), "
+            "and provide basic troubleshooting steps while a technician is dispatched. "
+            "Always ask about the issue, the equipment type, and a good contact number."
+        ),
+    },
+    {
+        "id": "law_firm_intake",
+        "name": "Law Firm Intake",
+        "description": "Screens potential clients, gathers case details, and schedules consultations.",
+        "industry": "Legal",
+        "voice_id": "Telnyx.Ultra.George",
+        "system_prompt": (
+            "You are a professional AI intake specialist for a law firm. "
+            "Gather basic information about potential clients' legal situations, explain the "
+            "consultation process, and schedule initial meetings with an attorney. "
+            "Never provide legal advice. Always note the nature of the case and urgency."
+        ),
+    },
+]
+
+
 @router.get("/agent-templates")
 async def get_agent_templates():
-    """Public list of marketplace templates (Healthcare, E-commerce, etc.)."""
-    return {"templates": list_templates()}
+    """Return available marketplace agent templates."""
+    return {"templates": AGENT_TEMPLATES}
 
 
 class CreateFromTemplateRequest(BaseModel):
     template_id: str
     tenant_id: str
     business_name: str
-    agent_name: Optional[str] = None   # override template's default_name
+    agent_name: Optional[str] = None
 
 
 @router.post("/agents/from-template", response_model=Agent)
-async def create_agent_from_template(req: CreateFromTemplateRequest, db: Session = Depends(get_db)):
+async def create_agent_from_template(
+    req: CreateFromTemplateRequest,
+    db: Session = Depends(get_db),
+):
     """Spin up a new agent pre-configured from a marketplace template."""
-    template = get_template(req.template_id)
+    template = next((t for t in AGENT_TEMPLATES if t["id"] == req.template_id), None)
     if not template:
         raise HTTPException(status_code=404, detail=f"Template '{req.template_id}' not found")
 
@@ -50,389 +410,90 @@ async def create_agent_from_template(req: CreateFromTemplateRequest, db: Session
 
     new_agent = Agent(
         tenant_id=tenant_uuid,
-        name=req.agent_name or template["default_name"],
+        name=req.agent_name or template["name"],
         business_name=req.business_name,
         system_prompt=template["system_prompt"],
         voice_id=template["voice_id"],
         template_id=template["id"],
-        kb_namespace=f"kb_{tenant_uuid.hex[:8]}_{uuid.uuid4().hex[:8]}"
     )
     db.add(new_agent)
     db.commit()
     db.refresh(new_agent)
+
+    try:
+        from backend.services.telnyx_assistant import sync_agent_with_telnyx
+        await sync_agent_with_telnyx(new_agent, db)
+    except Exception as e:
+        logger.error(f"Telnyx sync failed on template agent creation: {e}")
+
     return new_agent
 
 
-# ── Integration models ───────────────────────────────────────────────────────
-# Shopify is per-agent (see backend/api/shopify.py for OAuth).
-# Zoho is per-tenant (see backend/api/zoho.py for OAuth — uses zoho_org_id only).
-# Webhooks (Zapier/Make.com) removed — were unauthenticated outbound POSTs.
-class IntegrationSettings(BaseModel):
-    zoho_org_id:           Optional[str] = None
-    email_summary_enabled: Optional[bool] = None
-
-class AgentConfig(BaseModel):
-    name: Optional[str] = None
-    system_prompt: Optional[str] = None
-    voice_id: Optional[str] = None
-    idle_timeout: Optional[int] = None
-    forwarding_number: Optional[str] = None
-
-
-@router.get("/integrations")
-async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
-    """Return current integration settings for a tenant."""
-    tenant = db.get(Tenant, uuid.UUID(tenant_id))
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-    return {
-        "zoho_connected":        bool(tenant.zoho_refresh_token),
-        "zoho_org_id":           tenant.zoho_org_id,
-        "zoho_domain":           tenant.zoho_domain,
-        "email_summary_enabled": tenant.email_summary_enabled,
-        "contact_email":         tenant.contact_email,
-        "google_connected":      getattr(tenant, "google_connected", False),
-        "google_calendar_id":    getattr(tenant, "google_calendar_id", "primary"),
-        "google_sheet_id":       getattr(tenant, "google_sheet_id", None),
-        "google_sheet_name":     getattr(tenant, "google_sheet_name", "Leads"),
-    }
-
-
-@router.patch("/integrations")
-async def save_integrations(
-    tenant_id: str,
-    settings:  IntegrationSettings,
-    db:        Session = Depends(get_db)
-):
-    """Save integration credentials for a tenant."""
-    tenant = db.get(Tenant, uuid.UUID(tenant_id))
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-
-    if settings.zoho_org_id         is not None: tenant.zoho_org_id         = settings.zoho_org_id
-    if settings.email_summary_enabled is not None: tenant.email_summary_enabled = settings.email_summary_enabled
-
-    db.add(tenant); db.commit()
-    return {"status": "saved"}
-
-
-@router.delete("/integrations/{key}")
-async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends(get_db)):
-    """Disconnect a specific integration by key."""
-    tenant = db.get(Tenant, uuid.UUID(tenant_id))
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-
-    def _disconnect_zoho(t):
-        t.zoho_access_token = None
-        t.zoho_refresh_token = None
-        t.zoho_domain = None
-        t.zoho_token_expires_at = None
-        t.zoho_org_id = None
-
-    field_map = {
-        "zoho": _disconnect_zoho,
-    }
-    if key in field_map:
-        field_map[key](tenant)
-        db.add(tenant); db.commit()
-    return {"status": "disconnected"}
-
-
-@router.get("/voices", response_model=List[VoiceOption])
-async def get_available_voices(db: Session = Depends(get_db)):
-    """
-    Returns the list of all available AI voices with their preview URLs.
-    """
-    statement = select(VoiceOption)
-    voices = db.exec(statement).all()
-    return voices
-
-from pydantic import BaseModel
-class CreateAgentRequest(BaseModel):
-    name: str
-    business_name: Optional[str] = None
-    system_prompt: str
-    voice_id: str = "aura-asteria-en"
-    tenant_id: str
-    template_id: Optional[str] = None
-
-
-# ─── Plan limits ─────────────────────────────────────────────────────────────
-# Agent slots per plan tier — only counts agents WITH a phone number assigned.
-PLAN_AGENT_LIMITS = {
-    "free":     1,
-    "starter":  2,   # $50 plan
-    "pro":      2,   # $119 plan
-    "premium":  4,   # $250 plan
-}
-
-
-def _count_active_agents(db: Session, tenant_id: uuid.UUID) -> int:
-    """Counts agents that have a phone number assigned (don't count drafts)."""
-    statement = select(Agent).where(
-        Agent.tenant_id == tenant_id,
-        Agent.phone_number.is_not(None),
-    )
-    return len(db.exec(statement).all())
-
-
-@router.post("/agents", response_model=Agent)
-async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
-    """
-    Creates a new agent for the given tenant.
-    Note: plan limit only counts agents with a phone number assigned.
-    """
-    tenant_uuid = uuid.UUID(req.tenant_id)
-    tenant = db.get(Tenant, tenant_uuid)
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-
-    # ── Plan Limit: count only agents with phone numbers ──────────────────────
-    active_agents = db.exec(
-        select(Agent).where(
-            Agent.tenant_id == tenant_uuid,
-            Agent.phone_number.is_not(None),
-        )
-    ).all()
-    limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
-    if len(active_agents) >= limit:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Your {tenant.plan_tier} plan allows up to {limit} active agent(s)."
-        )
-
-    new_agent = Agent(
-        tenant_id=tenant_uuid,
-        name=req.name,
-        business_name=req.business_name,
-        system_prompt=req.system_prompt,
-        voice_id=req.voice_id,
-        template_id=req.template_id,
-        kb_namespace=f"kb_{tenant_uuid.hex[:8]}_{uuid.uuid4().hex[:8]}"
-    )
-    db.add(new_agent)
-    db.commit()
-    db.refresh(new_agent)
-    return new_agent
-
-
-@router.get("/agents/{agent_id}/transfer-availability")
-async def get_transfer_availability(agent_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Returns whether human-transfer is currently available for this agent
-    (enabled + forwarding number set + inside staffed hours)."""
-    from shared.transfer_hours import is_human_transfer_available
-    agent = db.get(Agent, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    available, reason = is_human_transfer_available(
-        enabled=getattr(agent, "human_transfer_enabled", False),
-        forwarding_number=agent.forwarding_number,
-        timezone=getattr(agent, "human_transfer_timezone", "UTC"),
-        hours=getattr(agent, "human_transfer_hours", {}) or {},
-    )
-    return {"available": available, "reason": reason}
-
-
-@router.get("/agents/limits")
-async def get_agent_limits(tenant_id: str, db: Session = Depends(get_db)):
-    """Returns current active agent count + plan limit for the UI to show usage."""
-    tenant_uuid = uuid.UUID(tenant_id)
-    tenant = db.get(Tenant, tenant_uuid)
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-    used = _count_active_agents(db, tenant_uuid)
-    limit = PLAN_AGENT_LIMITS.get(tenant.plan_tier, 1)
-    return {
-        "plan_tier": tenant.plan_tier,
-        "agents_used": used,
-        "agents_limit": limit,
-        "can_assign_number": used < limit,
-    }
-
-@router.get("/agents", response_model=List[Agent])
-async def get_my_agents(tenant_id: str, db: Session = Depends(get_db)):
-    """Returns all agents belonging to the specific tenant."""
-    tenant_uuid = uuid.UUID(tenant_id)
-    statement = select(Agent).where(Agent.tenant_id == tenant_uuid)
-    agents = db.exec(statement).all()
-    return agents
-
-class AgentUpdateRequest(BaseModel):
-    """Strict schema for agent updates — prevents mass-assignment attacks.
-    Only fields listed here can be updated via the API."""
-    name: Optional[str] = None
-    business_name: Optional[str] = None
-    system_prompt: Optional[str] = None
-    voice_id: Optional[str] = None
-    idle_timeout: Optional[int] = None
-    llm_temperature: Optional[float] = None
-    language: Optional[str] = None
-    forwarding_number: Optional[str] = None
-    human_transfer_enabled: Optional[bool] = None
-    human_transfer_timezone: Optional[str] = None
-    human_transfer_hours: Optional[dict] = None
-    auto_callback_enabled: Optional[bool] = None
-    tools_config: Optional[dict] = None
-    # Legacy number forwarding (Option B): existing marketing number the carrier
-    # forwards to the Telnyx number. Stored for display; no routing logic here.
-    legacy_number: Optional[str] = None
-
-
-@router.patch("/agents/{agent_id}", response_model=Agent)
-async def update_agent_config(agent_id: uuid.UUID, config: AgentUpdateRequest, db: Session = Depends(get_db)):
-    """Updates an agent's settings. Only whitelisted fields are accepted."""
-    agent = db.get(Agent, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-
-    update_data = config.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(agent, key, value)
-
-    db.add(agent)
-    db.commit()
-    db.refresh(agent)
-    return agent
-
+# ─────────────────────────────────────────────────────────────────────────────
+# CALLS
+# ─────────────────────────────────────────────────────────────────────────────
 @router.get("/calls", response_model=List[CallRecord])
 async def get_call_history(tenant_id: str, db: Session = Depends(get_db)):
+    """Return paginated call history for the tenant, newest first."""
     tenant_uuid = uuid.UUID(tenant_id)
-    statement = select(CallRecord).where(CallRecord.tenant_id == tenant_uuid).order_by(CallRecord.created_at.desc())
-    calls = db.exec(statement).all()
-    return calls
+    return db.exec(
+        select(CallRecord)
+        .where(CallRecord.tenant_id == tenant_uuid)
+        .order_by(CallRecord.created_at.desc())
+    ).all()
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTERNAL — Call data processing (called from voice engine / Cloud Tasks)
+# ─────────────────────────────────────────────────────────────────────────────
 @router.post("/process-call-data")
-async def process_call_data(request: Request, data: dict, db: Session = Depends(get_db)):
+async def process_call_data(
+    request: Request,
+    data: dict,
+    db: Session = Depends(get_db),
+):
     """
-    Internal endpoint called by Voice Engine. Requires X-Internal-Key header.
-    Saves transcript, bills minutes, triggers analytics + integrations.
+    Internal endpoint. Requires X-Internal-Key header.
+    Delegates to the shared call processor.
     """
     if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
-    call_id = data.get("call_id")
-    transcript = data.get("transcript")
 
-    # transcript arrives as a list of message dicts from context.get_messages().
-    # psycopg2 cannot adapt a Python list/dict → must serialize to JSON string for Text column.
-    if isinstance(transcript, list):
-        transcript_str = json.dumps(transcript)
-    else:
-        transcript_str = str(transcript or "")
+    from backend.services.call_processor import process_completed_call
 
-    # 1. Create the Call Record
-    # call_id from voice engine is the Telnyx call_control_id (format: "v3:xxx...")
-    # which is NOT a UUID. We generate a fresh UUID for the DB record.
-    duration_sec = int(data.get("duration_seconds", 0))
-    new_call = CallRecord(
-        id=uuid.uuid4(),
-        tenant_id=uuid.UUID(data.get("tenant_id")),
-        agent_id=uuid.UUID(data.get("agent_id")),
+    return await process_completed_call(
+        tenant_id=uuid.UUID(data["tenant_id"]),
+        agent_id=uuid.UUID(data["agent_id"]),
         from_number=data.get("from_number", "unknown"),
         to_number=data.get("to_number", "unknown"),
-        transcript=transcript_str,
-        duration_seconds=duration_sec,
+        call_id=data.get("call_id", ""),
+        transcript=data.get("transcript", []),
+        duration_seconds=int(data.get("duration_seconds", 0)),
+        db=db,
     )
 
-    # 2. Run AI Analytics (Summary, Sentiment, Action Items, Call Type, etc.)
-    # Fetch agent for context hints (name, tools_config, forwarding_number).
-    agent_context: dict | None = None
-    agent_name: str = ""
-    try:
-        agent_obj = db.get(Agent, uuid.UUID(data.get("agent_id")))
-        if agent_obj:
-            agent_name = agent_obj.name or ""
-            agent_context = {
-                "name": agent_name,
-                "tools_config": agent_obj.tools_config or {},
-                "forwarding_number": getattr(agent_obj, "forwarding_number", None),
-            }
-    except Exception as e:
-        logger.warning(f"Could not fetch agent for analytics context: {e}")
 
-    # Pass the original list so analytics can skip system messages cleanly.
-    analysis = await analytics_service.analyze_call(transcript, agent_context=agent_context)
-    if analysis:
-        new_call.summary = analysis.get("summary")
-        new_call.sentiment = analysis.get("sentiment")
-        # Serialize action_items list to string for Text column
-        action_items = analysis.get("action_items", [])
-        new_call.action_items = json.dumps(action_items) if isinstance(action_items, list) else str(action_items)
-
-    db.add(new_call)
-
-    # 2b. Atomically increment minutes_used — avoids read-modify-write race
-    #     when concurrent calls finish simultaneously.
-    if duration_sec > 0:
-        db.execute(
-            text(
-                "UPDATE tenant SET minutes_used = COALESCE(minutes_used, 0) + :delta "
-                "WHERE id = CAST(:tid AS UUID)"
-            ),
-            {"delta": round(duration_sec / 60.0, 6), "tid": data.get("tenant_id")},
-        )
-
-    db.commit()
-
-    # Re-fetch tenant for downstream integrations (email, Zoho, etc.)
-    tenant = db.get(Tenant, uuid.UUID(data.get("tenant_id")))
-
-    if not tenant:
-        return {"status": "success"}
-
-    payload = {
-        "call_id": call_id,
-        "phone": new_call.from_number,
-        "transcript": transcript,
-        "summary": new_call.summary,
-        "sentiment": new_call.sentiment
-    }
-
-    # ── Zoho CRM Sync (OAuth, auto-refresh) ───────────────────────────────
-    if tenant.zoho_refresh_token:
-        try:
-            crm_service = ZohoCRMService(tenant, db_session=db)
-            await crm_service.upsert_lead_from_call(
-                phone=new_call.from_number,
-                summary=new_call.summary or "",
-                sentiment=new_call.sentiment or "neutral",
-                call_id=str(new_call.id),
-            )
-        except Exception as e:
-            logger.warning(f"Zoho sync failed for tenant {tenant.id}: {e}")
-
-    # HubSpot Sync (legacy — no OAuth yet, kept off by default)
-    if tenant.hubspot_api_key:
-        try:
-            await IntegrationService.push_to_hubspot(tenant.hubspot_api_key, payload)
-        except Exception:
-            pass
-
-    # NOTE: Zapier/Make.com webhook integration was removed in v2 — it was
-    # an unauthenticated arbitrary outbound POST with no allowlist.
-
-    # Resend — Call Summary Email (Default ON, tied to contact_email)
-    if tenant.email_summary_enabled and tenant.contact_email:
-        try:
-            await send_call_summary_email(
-                to_email=tenant.contact_email,
-                data={
-                    "call_id":          str(new_call.id),
-                    "phone":            new_call.from_number,
-                    "summary":          new_call.summary or "",
-                    "sentiment":        new_call.sentiment or "neutral",
-                    "action_items":     new_call.action_items or "None",
-                    "transcript":       transcript or "",
-                    "call_type":        analysis.get("call_type", "general") if analysis else "general",
-                    "lead_info":        analysis.get("lead_info") if analysis else None,
-                    "booking_info":     analysis.get("booking_info") if analysis else None,
-                    "issue_info":       analysis.get("issue_info") if analysis else None,
-                    "agent_name":       agent_name,
-                    "duration_seconds": duration_sec,
-                    "call_timestamp":   datetime.now(timezone.utc).strftime("%b %d, %Y · %I:%M %p UTC"),
-                }
-            )
-        except Exception as e:
-            logger.error(f"Resend email error: {e}")
-
-    return {"status": "success"}
+# ─────────────────────────────────────────────────────────────────────────────
+# VOICES — Public Telnyx voice catalogue with dynamic previews
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/voices")
+async def get_voices(db: Session = Depends(get_db)):
+    """
+    Returns the Telnyx Ultra voices with their dynamically constructed
+    Google Cloud Storage public preview URLs.
+    """
+    from backend.api.admin import TELNYX_VOICES
+    import os
+    
+    bucket_name = os.environ.get("GCS_BUCKET_NAME", "aixcaller-assets")
+    
+    voices_with_previews = []
+    for voice in TELNYX_VOICES:
+        name_lower = voice["name"].lower()
+        preview_url = f"https://storage.googleapis.com/{bucket_name}/voices/telnyx_ultra_{name_lower}.mp3"
+        voices_with_previews.append({
+            **voice,
+            "preview_url": preview_url
+        })
+        
+    return voices_with_previews

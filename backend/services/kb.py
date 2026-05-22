@@ -1,14 +1,14 @@
 import os
 import uuid
+import boto3
+import httpx
 from typing import List
-from sqlmodel import Session, select
+from botocore.config import Config
+from sqlmodel import Session
 from sqlalchemy import text
 from loguru import logger
 from shared.database import engine
 from shared.models import KnowledgeChunk
-
-# get_embeddings now uses local MiniLM (see shared/local_embeddings.py)
-from shared.kb import get_embeddings as _get_embeddings, search_knowledge_base
 
 # Chunk size: 400 words, 50-word overlap keeps context across chunk boundaries
 CHUNK_SIZE = 400
@@ -25,8 +25,65 @@ def _split_into_chunks(text: str) -> List[str]:
         start += CHUNK_SIZE - CHUNK_OVERLAP
     return [c for c in chunks if len(c.strip()) > 20]  # skip tiny chunks
 
+def get_telnyx_s3_client():
+    """Initializes and returns an S3 client configured for Telnyx Cloud Storage."""
+    api_key = os.environ.get("TELNYX_API_KEY", "")
+    region = os.environ.get("TELNYX_STORAGE_REGION", "us-central-1")
+    endpoint = f"https://{region}.telnyxcloudstorage.com"
+    
+    return boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=api_key,
+        aws_secret_access_key="dummy-not-required",
+        config=Config(signature_version="s3v4")
+    )
+
+def _ensure_bucket_exists(s3_client, bucket_name: str):
+    """Checks if a bucket exists. If not, creates it programmatically."""
+    try:
+        s3_client.head_bucket(Bucket=bucket_name)
+    except Exception as e:
+        logger.info(f"Bucket {bucket_name} not found or inaccessible. Attempting creation... Details: {e}")
+        try:
+            s3_client.create_bucket(Bucket=bucket_name)
+            logger.info(f"Successfully created Telnyx Storage bucket: {bucket_name}")
+        except Exception as create_err:
+            logger.error(f"Failed to create bucket {bucket_name}: {create_err}")
+            raise create_err
+
+async def _trigger_telnyx_embeddings(bucket_name: str):
+    """Triggers Telnyx's server-side document embedding API for the specified bucket."""
+    api_key = os.environ.get("TELNYX_API_KEY")
+    if not api_key:
+        logger.error("Missing TELNYX_API_KEY — cannot trigger document embeddings API")
+        return
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "bucket_name": bucket_name
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                "https://api.telnyx.com/v2/ai/embeddings/embed-documents",
+                headers=headers,
+                json=payload,
+                timeout=30.0
+            )
+            if response.status_code not in [200, 201]:
+                logger.error(f"Failed to trigger Telnyx embed-documents API: {response.status_code} - {response.text}")
+            else:
+                logger.info(f"Successfully triggered Telnyx document embedding for bucket {bucket_name}")
+        except Exception as e:
+            logger.error(f"Exception during Telnyx embed-documents API trigger: {e}")
+
 class IngestionService:
-    """Handles ingesting text into pgvector knowledge base."""
+    """Handles ingesting text into Telnyx Storage and RAG search pipeline."""
 
     async def ingest_text(
         self,
@@ -36,38 +93,80 @@ class IngestionService:
         source: str = "manual"
     ) -> int:
         """
-        Split content into chunks, embed them, and store in pgvector.
-        Returns the number of chunks stored.
+        Split content into chunks, upload them as .txt objects to the agent's Telnyx S3 bucket,
+        and trigger the Telnyx document embedding API.
         """
         chunks = _split_into_chunks(content)
         if not chunks:
             logger.warning("No valid chunks extracted from content.")
             return 0
 
-        logger.info(f"Embedding {len(chunks)} chunks for agent {agent_id}...")
-        embeddings = await _get_embeddings(chunks)
+        bucket_name = f"aixcaller-agent-{str(agent_id).lower()}"
+        logger.info(f"Ingesting {len(chunks)} chunks into Telnyx Bucket {bucket_name} for agent {agent_id}...")
 
-        with Session(engine) as db:
-            for chunk_text, embedding in zip(chunks, embeddings):
-                chunk = KnowledgeChunk(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    content=chunk_text,
-                    source=source,
-                    embedding=embedding
-                )
-                db.add(chunk)
-            db.commit()
+        try:
+            s3 = get_telnyx_s3_client()
+            _ensure_bucket_exists(s3, bucket_name)
+            
+            with Session(engine) as db:
+                for chunk_text in chunks:
+                    chunk_id = uuid.uuid4()
+                    key = f"chunk_{chunk_id.hex}.txt"
+                    
+                    # 1. Upload chunk text file to the S3 bucket
+                    s3.put_object(
+                        Bucket=bucket_name,
+                        Key=key,
+                        Body=chunk_text.encode("utf-8"),
+                        ContentType="text/plain"
+                    )
+                    
+                    # 2. Record chunk locally in PostgreSQL without embedding
+                    chunk = KnowledgeChunk(
+                        id=chunk_id,
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        content=chunk_text,
+                        source=source
+                    )
+                    db.add(chunk)
+                db.commit()
 
-        logger.info(f"Stored {len(chunks)} chunks for agent {agent_id}.")
-        return len(chunks)
+            # 3. Trigger Telnyx embed documents indexing API in the background
+            await _trigger_telnyx_embeddings(bucket_name)
+            
+            logger.info(f"Stored {len(chunks)} chunks for agent {agent_id} in S3 & DB.")
+            return len(chunks)
+
+        except Exception as e:
+            logger.error(f"Failed to ingest KB text into Telnyx Storage: {e}")
+            raise e
 
     async def delete_agent_kb(self, agent_id: uuid.UUID):
-        """Delete all knowledge base chunks for a specific agent."""
+        """Delete all knowledge base chunks for a specific agent locally and in Telnyx S3."""
+        bucket_name = f"aixcaller-agent-{str(agent_id).lower()}"
+        logger.info(f"Clearing KB and S3 bucket {bucket_name} for agent {agent_id}...")
+
+        # 1. Clear database records
         with Session(engine) as db:
             db.execute(
                 text("DELETE FROM knowledge_chunks WHERE agent_id = CAST(:agent_id AS UUID)"),
                 {"agent_id": str(agent_id)}
             )
             db.commit()
-        logger.info(f"Deleted KB for agent {agent_id}.")
+        logger.info(f"Deleted KB database records for agent {agent_id}.")
+
+        # 2. Clear Telnyx Cloud Storage bucket objects and the bucket itself
+        try:
+            s3 = get_telnyx_s3_client()
+            response = s3.list_objects_v2(Bucket=bucket_name)
+            if "Contents" in response:
+                objects = [{"Key": obj["Key"]} for obj in response["Contents"]]
+                s3.delete_objects(Bucket=bucket_name, Delete={"Objects": objects})
+                logger.info(f"Deleted all objects from Telnyx bucket {bucket_name}")
+            
+            # Delete the bucket
+            s3.delete_bucket(Bucket=bucket_name)
+            logger.info(f"Deleted Telnyx Bucket {bucket_name}")
+        except Exception as e:
+            logger.warning(f"Error while cleaning up Telnyx Bucket {bucket_name} (it might not exist): {e}")

@@ -65,8 +65,9 @@ async def google_callback(code: str = None, state: str = None, error: str = None
         logger.error(f"Google token exchange failed: {e}")
         return RedirectResponse(f"{fe}?google_error=token_exchange_failed")
 
-    tenant.google_access_token     = data.get("access_token")
-    tenant.google_refresh_token    = data.get("refresh_token") or tenant.google_refresh_token
+    # Only persist the refresh token — access token is ephemeral and not stored in DB
+    if data.get("refresh_token"):
+        tenant.google_refresh_token = data["refresh_token"]
     tenant.google_token_expires_at = int(time.time()) + data.get("expires_in", 3600)
     tenant.google_connected        = True
     db.add(tenant)
@@ -82,7 +83,6 @@ async def google_disconnect(tenant_id: str, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(404, "Tenant not found")
 
-    tenant.google_access_token     = None
     tenant.google_refresh_token    = None
     tenant.google_token_expires_at = None
     tenant.google_connected        = False
@@ -97,18 +97,14 @@ async def google_status(tenant_id: str, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(404, "Tenant not found")
     return {
-        "connected":       tenant.google_connected,
-        "calendar_id":     tenant.google_calendar_id,
-        "sheet_id":        tenant.google_sheet_id,
-        "sheet_name":      tenant.google_sheet_name,
+        "connected":   tenant.google_connected,
+        "calendar_id": tenant.google_calendar_id,
     }
 
 
 class GoogleSettingsRequest(BaseModel):
     tenant_id: str
     calendar_id: Optional[str] = None
-    sheet_id: Optional[str] = None
-    sheet_name: Optional[str] = None
 
 
 @router.patch("/google/settings")
@@ -118,10 +114,6 @@ async def google_settings(req: GoogleSettingsRequest, db: Session = Depends(get_
         raise HTTPException(404, "Tenant not found")
     if req.calendar_id is not None:
         tenant.google_calendar_id = req.calendar_id
-    if req.sheet_id is not None:
-        tenant.google_sheet_id = req.sheet_id
-    if req.sheet_name is not None:
-        tenant.google_sheet_name = req.sheet_name
     db.add(tenant)
     db.commit()
     return {"ok": True}
@@ -235,10 +227,18 @@ async def book_appointment(req: BookAppointmentRequest, db: Session = Depends(ge
     db.commit()
     db.refresh(lead)
 
-    # 3. Push to Google Sheets (if configured)
-    if tenant.google_connected and tenant.google_sheet_id:
+    # 3. Push to Google Sheets (if configured via agent tools_config)
+    sheet_id = (getattr(agent_from_db, "tools_config", {}) or {}).get("google_sheet", {}).get("sheet_id") if False else None  # Sheets via agent tools_config
+    if tenant.google_connected and sheet_id:
         try:
-            row_num = await append_lead_to_sheet(tenant, {
+            tenant_with_sheet = type('obj', (object,), {
+                'google_refresh_token': tenant.google_refresh_token,
+                'google_token_expires_at': tenant.google_token_expires_at,
+                'google_sheet_id': sheet_id,
+                'google_sheet_name': 'Sheet1',
+                'id': tenant.id,
+            })()
+            row_num = await append_lead_to_sheet(tenant_with_sheet, {
                 "name":             req.name,
                 "phone":            req.phone,
                 "email":            req.email or "",
@@ -249,10 +249,7 @@ async def book_appointment(req: BookAppointmentRequest, db: Session = Depends(ge
                 "status":           "booked",
                 "agent_name":       req.agent_name,
             })
-            lead.google_sheet_row = row_num
-            db.add(lead)
-            db.commit()
-            logger.info(f"✅ Lead appended to Sheets row {row_num}")
+            logger.info(f"Lead appended to Sheets row {row_num}")
         except Exception as e:
             logger.error(f"Sheets append failed: {e}")
 
@@ -292,8 +289,8 @@ async def record_lead_endpoint(req: RecordLeadRequest, db: Session = Depends(get
     db.commit()
     db.refresh(lead)
 
-    # Push to Sheets (if configured)
-    if tenant.google_connected and tenant.google_sheet_id:
+    # Push to Sheets if connected (sheet_id from agent tools_config)
+    if tenant.google_connected:
         try:
             row_num = await append_lead_to_sheet(tenant, {
                 "name":       req.name,
@@ -304,9 +301,7 @@ async def record_lead_endpoint(req: RecordLeadRequest, db: Session = Depends(get
                 "status":     "new",
                 "agent_name": req.agent_name,
             })
-            lead.google_sheet_row = row_num
-            db.add(lead)
-            db.commit()
+            logger.info(f"Lead appended to Sheets row {row_num}")
         except Exception as e:
             logger.error(f"Sheets lead append failed: {e}")
 

@@ -1,16 +1,26 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
 
-const outfit = Outfit({ subsets: ["latin"] });
+const plusJakartaSans = Plus_Jakarta_Sans({ 
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-mono",
+});
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
-    { media: "(prefers-color-scheme: dark)", color: "#064E3B" },
+    { media: "(prefers-color-scheme: light)", color: "#030712" },
+    { media: "(prefers-color-scheme: dark)", color: "#030712" },
   ],
-  colorScheme: "light",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
 };
@@ -197,7 +207,7 @@ export default function RootLayout({
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web, iOS, Android",
         "description":
-          "AI-powered phone answering service and virtual receptionist platform. Answers inbound calls 24/7, books appointments via Google Calendar, qualifies leads, handles Shopify orders, and syncs with Zoho & HubSpot CRM.",
+          "AI-powered phone answering service and virtual receptionist platform. Answers inbound calls 24/7, books appointments via Google Calendar, qualifies leads, handles Shopify orders, and syncs with Zoho CRM.",
         "screenshot": "https://callerx.ai/opengraph-image",
         "offers": [
           {
@@ -254,7 +264,7 @@ export default function RootLayout({
           "AI-generated call transcripts and summaries",
           "Sentiment analysis on every call",
           "Shopify order lookup",
-          "Zoho CRM and HubSpot sync",
+          "Zoho CRM sync",
           "Human call transfer",
           "Knowledge base training on PDFs and URLs",
           "31+ countries phone number support",
@@ -326,7 +336,7 @@ export default function RootLayout({
             "acceptedAnswer": {
               "@type": "Answer",
               "text":
-                "Yes. AIxCaller integrates with Zoho CRM and HubSpot, automatically creating or updating lead records after every call. It also syncs with Shopify for e-commerce order lookups, and Google Sheets for lead logging.",
+                "Yes. AIxCaller integrates with Zoho CRM, automatically creating or updating lead records after every call. It also syncs with Shopify for e-commerce order lookups, and Google Sheets for lead logging.",
             },
           },
         ],
@@ -335,14 +345,14 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en">
+    <html lang="en" className={`${plusJakartaSans.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
         />
       </head>
-      <body className={outfit.className}>
+      <body className={plusJakartaSans.className}>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

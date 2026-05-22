@@ -1,15 +1,17 @@
+"""
+AIxCaller — Database Engine & Initialization
+=============================================
+PostgreSQL (Supabase) + pgvector.
+
+DATABASE_URL         = Transaction Pooler (port 6543) — runtime queries
+DATABASE_DIRECT_URL  = Direct Connection (port 5432)  — migrations only
+"""
 import os
 from sqlmodel import SQLModel, create_engine, text, Session
-from sqlalchemy import event
 from loguru import logger
-from shared.models import Tenant, Agent, CallRecord, VoiceOption, KnowledgeChunk
 
-# ------------------------------------------------------------------
-# Supabase PostgreSQL + pgvector
-#
-# DATABASE_URL      = Transaction Pooler (port 6543) — runtime queries
-# DATABASE_DIRECT_URL = Direct Connection (port 5432) — migrations only
-# ------------------------------------------------------------------
+# Import all models so SQLModel.metadata is fully populated
+from shared.models import Tenant, Agent, KnowledgeChunk, CallRecord, Lead, SystemSettings
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 DATABASE_DIRECT_URL = os.getenv("DATABASE_DIRECT_URL", DATABASE_URL)
@@ -17,15 +19,15 @@ DATABASE_DIRECT_URL = os.getenv("DATABASE_DIRECT_URL", DATABASE_URL)
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable is not set.")
 
-# Runtime engine — Transaction Pooler for Cloud Run
-# Pool sized for concurrent voice calls: each call may run KB queries in parallel.
+# ── Runtime engine — Transaction Pooler ──────────────────────────────────────
+# Sized for concurrent AI calls + KB queries running in parallel.
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     pool_recycle=300,
-    pool_size=10,         # ↑ from 5 — handles more concurrent calls
-    max_overflow=20,      # ↑ from 10 — burst capacity for KB queries
-    pool_timeout=5,       # fail fast if pool exhausted (don't block voice path)
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=5,         # fail fast — don't block voice path
     connect_args={
         "sslmode": "require",
         "connect_timeout": 10,
@@ -36,10 +38,15 @@ engine = create_engine(
 
 def init_db():
     """
-    Creates the pgvector extension, all tables, and the HNSW vector index.
-    Run ONCE at first deploy using the DIRECT URL (not the Pooler).
+    Creates the pgvector extension, all tables, and performance indexes.
+
+    Run ONCE at first deploy using the DIRECT URL (not the Transaction Pooler).
+    The Pooler does not support DDL reliably.
+
+    Usage:
+        DATABASE_DIRECT_URL=<direct_url> python -c "from shared.database import init_db; init_db()"
     """
-    logger.info("Initializing database with pgvector...")
+    logger.info("Initializing database...")
 
     init_engine = create_engine(
         DATABASE_DIRECT_URL,
@@ -50,7 +57,7 @@ def init_db():
     )
 
     with init_engine.connect() as conn:
-        # 1. Enable pgvector extension (Supabase has it pre-installed)
+        # 1. Enable pgvector (Supabase has it pre-installed)
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         conn.commit()
         logger.info("pgvector extension enabled.")
@@ -60,34 +67,27 @@ def init_db():
     logger.info("All tables created.")
 
     with init_engine.connect() as conn:
-        # 3. Create HNSW index for fast approximate nearest-neighbor search
-        # m=16, ef_construction=64 are good defaults for this scale
-        conn.execute(text("""
-            CREATE INDEX IF NOT EXISTS knowledge_chunks_embedding_idx
-            ON knowledge_chunks
-            USING hnsw (embedding vector_cosine_ops)
-            WITH (m = 16, ef_construction = 64);
-        """))
-        conn.commit()
-        logger.info("HNSW vector index created on knowledge_chunks.")
-
-        # 4. Composite B-tree index on (agent_id, tenant_id) — speeds up the WHERE
-        # filter that runs BEFORE the vector ORDER BY. Without this, large tenants
-        # cause sequential scans.
+        # 3. Composite B-tree index for fast WHERE filtering
         conn.execute(text("""
             CREATE INDEX IF NOT EXISTS knowledge_chunks_agent_tenant_idx
             ON knowledge_chunks (agent_id, tenant_id);
         """))
         conn.commit()
-        logger.info("Composite (agent_id, tenant_id) index created.")
+        logger.info("Composite (agent_id, tenant_id) B-tree index created.")
+
+        # 5. Index for call history dashboard queries
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS callrecord_tenant_created_idx
+            ON callrecord (tenant_id, created_at DESC);
+        """))
+        conn.commit()
+        logger.info("CallRecord (tenant_id, created_at) index created.")
 
     logger.info("Database initialization complete.")
 
 
 def get_db():
-    """
-    FastAPI dependency that provides a database session.
-    """
+    """FastAPI dependency — provides a scoped database session."""
     with Session(engine) as session:
         yield session
 

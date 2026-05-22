@@ -30,9 +30,9 @@ export default function AdminVoicesPage() {
     <main style={{ padding: "4rem 2rem", fontFamily: "sans-serif", maxWidth: 600, margin: "0 auto" }}>
       <h1>Admin: Generate Voice Previews</h1>
       <p style={{ color: "#4B5563", marginBottom: "2rem" }}>
-        Clicking the button below will instruct the backend to iterate through all approved Deepgram Aura voices, 
+        Clicking the button below will instruct the backend to iterate through all approved Telnyx Ultra voices, 
         generate a short MP3 preview script, upload them to your Google Cloud Storage bucket, 
-        and save the public URLs into the database for the frontend to use.
+        and make them publicly readable for the frontend to play.
       </p>
 
       <button 
