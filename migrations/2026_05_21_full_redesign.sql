@@ -67,31 +67,8 @@ ALTER TABLE callrecord
     ALTER COLUMN requires_callback SET NOT NULL;
 
 -- ─────────────────────────────────────────────────────────────
--- 6. KnowledgeChunk — upgrade embedding dimension
---    MiniLM (384) → OpenAI text-embedding-3-small (1536)
---    WARNING: This drops and recreates the embedding column.
---    All existing embeddings must be re-indexed after this migration.
+-- 6. Create performance indexes
 -- ─────────────────────────────────────────────────────────────
-
--- Drop old HNSW index
-DROP INDEX IF EXISTS knowledge_chunks_embedding_idx;
-
--- Drop old embedding column and recreate with new dimension
-ALTER TABLE knowledge_chunks
-    DROP COLUMN IF EXISTS embedding;
-
-ALTER TABLE knowledge_chunks
-    ADD COLUMN embedding vector(1536);
-
--- ─────────────────────────────────────────────────────────────
--- 7. Create new indexes
--- ─────────────────────────────────────────────────────────────
-
--- HNSW index for 1536-dim cosine search
-CREATE INDEX IF NOT EXISTS knowledge_chunks_embedding_hnsw_idx
-    ON knowledge_chunks
-    USING hnsw (embedding vector_cosine_ops)
-    WITH (m = 16, ef_construction = 64);
 
 -- Composite B-tree for filtered KB searches
 CREATE INDEX IF NOT EXISTS knowledge_chunks_agent_tenant_idx

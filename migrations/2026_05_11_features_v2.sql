@@ -35,27 +35,8 @@ ALTER TABLE tenant ADD COLUMN IF NOT EXISTS subscription_status  TEXT NOT NULL D
 ALTER TABLE tenant ADD COLUMN IF NOT EXISTS cycle_start          TIMESTAMP;
 ALTER TABLE tenant ADD COLUMN IF NOT EXISTS cycle_end            TIMESTAMP;
 
--- ── 10: Embedding dimension migration (OpenAI 1536 → MiniLM 384) ─────────
--- pgvector doesn't allow ALTER COLUMN TYPE for Vector dims — must drop & recreate.
--- ⚠️  All existing knowledge_chunks rows will be DELETED. Re-ingest after migration.
-
--- Drop the HNSW index first (it depends on the column)
-DROP INDEX IF EXISTS knowledge_chunks_embedding_idx;
-
--- Wipe existing rows (they are 1536-dim and won't fit the new 384-dim column)
-DELETE FROM knowledge_chunks;
-
--- Resize the column
-ALTER TABLE knowledge_chunks
-  ALTER COLUMN embedding TYPE vector(384);
-
--- Recreate the HNSW index for fast cosine search
-CREATE INDEX IF NOT EXISTS knowledge_chunks_embedding_idx
-  ON knowledge_chunks
-  USING hnsw (embedding vector_cosine_ops)
-  WITH (m = 16, ef_construction = 64);
-
--- Composite index (filter speed-up)
+-- ── 10: Indexing optimization ─────────────────────────────────────────────
+-- Composite index (filter speed-up for KB searches)
 CREATE INDEX IF NOT EXISTS knowledge_chunks_agent_tenant_idx
   ON knowledge_chunks (agent_id, tenant_id);
 
