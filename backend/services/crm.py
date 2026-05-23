@@ -24,6 +24,11 @@ from loguru import logger
 from sqlmodel import Session
 
 
+# ─── In-memory access token cache ──────────────────────────────────────────────
+# Map of tenant_id -> (access_token, expires_at) to avoid redundant OAuth refreshing.
+_ZOHO_TOKEN_CACHE: dict[str, tuple[str, int]] = {}
+
+
 class ZohoCRMService:
     """Per-tenant Zoho client. Pass the Tenant row + DB session at construction;
     we'll handle token refresh and persistence ourselves."""
@@ -46,9 +51,15 @@ class ZohoCRMService:
         """Return a valid access_token, refreshing if needed. Returns None if
         we cannot refresh (e.g. user revoked access)."""
         now = int(time.time())
-        expires_at = self.tenant.zoho_token_expires_at or 0
-        if self.tenant.zoho_access_token and (expires_at - now) > self.REFRESH_BUFFER_SECONDS:
-            return self.tenant.zoho_access_token
+        tenant_id_str = str(self.tenant.id)
+
+        # Check in-memory token cache first
+        if tenant_id_str in _ZOHO_TOKEN_CACHE:
+            token, expires_at = _ZOHO_TOKEN_CACHE[tenant_id_str]
+            if expires_at - now > self.REFRESH_BUFFER_SECONDS:
+                return token
+            else:
+                del _ZOHO_TOKEN_CACHE[tenant_id_str]
 
         if not self.tenant.zoho_refresh_token:
             logger.warning(f"Tenant {self.tenant.id} has no Zoho refresh_token — cannot refresh")
@@ -81,11 +92,17 @@ class ZohoCRMService:
 
                 new_token = data["access_token"]
                 expires_in = int(data.get("expires_in", 3600))
-                self.tenant.zoho_access_token = new_token
-                self.tenant.zoho_token_expires_at = now + expires_in
+                expires_at = now + expires_in
+
+                # Cache the token in memory
+                _ZOHO_TOKEN_CACHE[tenant_id_str] = (new_token, expires_at)
+
+                # Persist the expiration timestamp to DB
+                self.tenant.zoho_token_expires_at = expires_at
                 self.db.add(self.tenant)
                 self.db.commit()
-                logger.info(f"♻️ Zoho token refreshed for tenant {self.tenant.id}")
+                
+                logger.info(f"♻️ Zoho token refreshed and cached for tenant {self.tenant.id}")
                 return new_token
         except Exception as e:
             logger.error(f"Zoho token refresh exception: {e}")

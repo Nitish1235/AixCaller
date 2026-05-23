@@ -25,7 +25,7 @@ from backend.services.zoho_oauth import (
     build_install_url,
     exchange_code_for_tokens,
 )
-from backend.services.crm import ZohoCRMService
+from backend.services.crm import ZohoCRMService, _ZOHO_TOKEN_CACHE
 
 router = APIRouter(prefix="/api/v1/zoho", tags=["zoho"])
 
@@ -106,10 +106,15 @@ async def oauth_callback(request: Request, db: Session = Depends(get_db)):
     api_domain = api_domain_raw.replace("https://", "").replace("http://", "").replace("www.", "").rstrip("/")
 
     now = int(time.time())
-    tenant.zoho_access_token       = token_data["access_token"]
+    expires_in = int(token_data.get("expires_in", 3600))
+    expires_at = now + expires_in
+    
+    # Save to in-memory cache
+    _ZOHO_TOKEN_CACHE[str(tenant.id)] = (token_data["access_token"], expires_at)
+    
     tenant.zoho_refresh_token      = token_data["refresh_token"]
     tenant.zoho_domain             = api_domain
-    tenant.zoho_token_expires_at   = now + int(token_data.get("expires_in", 3600))
+    tenant.zoho_token_expires_at   = expires_at
     db.add(tenant)
     db.commit()
     logger.info(f"✅ Zoho connected for tenant {tenant.id} (api_domain={api_domain})")
@@ -162,7 +167,9 @@ async def disconnect(tenant_id: str, db: Session = Depends(get_db)):
     tenant = db.get(Tenant, tenant_uuid)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    tenant.zoho_access_token = None
+    tenant_id_str = str(tenant.id)
+    if tenant_id_str in _ZOHO_TOKEN_CACHE:
+        del _ZOHO_TOKEN_CACHE[tenant_id_str]
     tenant.zoho_refresh_token = None
     tenant.zoho_domain = None
     tenant.zoho_token_expires_at = None

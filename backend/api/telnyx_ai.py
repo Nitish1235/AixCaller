@@ -58,8 +58,7 @@ async def telnyx_kb_search(request: Request, tenant_id: str, agent_id: str, db: 
             query=query,
             tenant_id=t_uuid,
             agent_id=a_uuid,
-            limit=3,
-            fast_only=False
+            limit=3
         )
 
         return {

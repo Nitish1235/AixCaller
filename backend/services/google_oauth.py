@@ -67,19 +67,28 @@ async def exchange_code(code: str) -> dict:
         return resp.json()
 
 
+# ─── In-memory access token cache ──────────────────────────────────────────────
+# Map of tenant_id -> (access_token, expires_at) to avoid redundant OAuth refreshing.
+_GOOGLE_TOKEN_CACHE: dict[str, tuple[str, int]] = {}
+
+
 # ─── Token refresh ────────────────────────────────────────────────────────────
 async def get_valid_token(tenant) -> Optional[str]:
     """
     Return a valid Google access token for the tenant.
-    Refreshes automatically if expired/missing.
+    Refreshes automatically if expired/missing, caching the token in memory.
     Persists the new token expiry to the tenant object (caller must commit).
     """
     now = int(time.time())
-    if (
-        getattr(tenant, "google_access_token", None)
-        and (tenant.google_token_expires_at or 0) - now > REFRESH_BUFFER
-    ):
-        return tenant.google_access_token
+    tenant_id_str = str(tenant.id)
+
+    # Check in-memory token cache first
+    if tenant_id_str in _GOOGLE_TOKEN_CACHE:
+        token, expires_at = _GOOGLE_TOKEN_CACHE[tenant_id_str]
+        if expires_at - now > REFRESH_BUFFER:
+            return token
+        else:
+            del _GOOGLE_TOKEN_CACHE[tenant_id_str]
 
     if not tenant.google_refresh_token:
         logger.warning(f"Tenant {tenant.id} has no Google refresh token")
@@ -100,10 +109,16 @@ async def get_valid_token(tenant) -> Optional[str]:
                 logger.error(f"Google refresh missing access_token: {data}")
                 return None
 
-            # Update in-memory; caller must db.add(tenant) + db.commit()
-            tenant._google_access_token_ephemeral = new_token
-            tenant.google_token_expires_at = now + data.get("expires_in", 3600)
-            logger.info(f"♻️ Google token refreshed for tenant {tenant.id}")
+            expires_in = data.get("expires_in", 3600)
+            expires_at = now + expires_in
+
+            # Cache the token in memory
+            _GOOGLE_TOKEN_CACHE[tenant_id_str] = (new_token, expires_at)
+            
+            # Persist expiration to the tenant model so caller can commit if needed
+            tenant.google_token_expires_at = expires_at
+            
+            logger.info(f"♻️ Google token refreshed and cached for tenant {tenant.id}")
             return new_token
     except Exception as e:
         logger.error(f"Google token refresh failed: {e}")
