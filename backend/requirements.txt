@@ -3,7 +3,6 @@ uvicorn
 sqlmodel
 loguru
 python-dotenv
-pgvector
 psycopg2-binary
 openai
 httpx

@@ -10,20 +10,7 @@ from loguru import logger
 from shared.database import engine
 from shared.models import KnowledgeChunk
 
-# Chunk size: 400 words, 50-word overlap keeps context across chunk boundaries
-CHUNK_SIZE = 400
-CHUNK_OVERLAP = 50
 
-def _split_into_chunks(text: str) -> List[str]:
-    """Split text into overlapping word chunks."""
-    words = text.split()
-    chunks = []
-    start = 0
-    while start < len(words):
-        end = min(start + CHUNK_SIZE, len(words))
-        chunks.append(" ".join(words[start:end]))
-        start += CHUNK_SIZE - CHUNK_OVERLAP
-    return [c for c in chunks if len(c.strip()) > 20]  # skip tiny chunks
 
 def get_telnyx_s3_client():
     """Initializes and returns an S3 client configured for Telnyx Cloud Storage."""
@@ -93,50 +80,48 @@ class IngestionService:
         source: str = "manual"
     ) -> int:
         """
-        Split content into chunks, upload them as .txt objects to the agent's Telnyx S3 bucket,
-        and trigger the Telnyx document embedding API.
+        Upload raw document content directly to the agent's Telnyx S3 bucket
+        and trigger the native Telnyx document embedding API.
         """
-        chunks = _split_into_chunks(content)
-        if not chunks:
-            logger.warning("No valid chunks extracted from content.")
+        if not content or len(content.strip()) < 10:
+            logger.warning("Content too short to ingest.")
             return 0
 
         bucket_name = f"aixcaller-agent-{str(agent_id).lower()}"
-        logger.info(f"Ingesting {len(chunks)} chunks into Telnyx Bucket {bucket_name} for agent {agent_id}...")
+        doc_id = uuid.uuid4()
+        key = f"document_{doc_id.hex}.txt"
+        
+        logger.info(f"Ingesting raw document {key} into Telnyx Bucket {bucket_name} for agent {agent_id}...")
 
         try:
             s3 = get_telnyx_s3_client()
             _ensure_bucket_exists(s3, bucket_name)
             
+            # 1. Upload the entire text document to S3
+            s3.put_object(
+                Bucket=bucket_name,
+                Key=key,
+                Body=content.encode("utf-8"),
+                ContentType="text/plain"
+            )
+            
+            # 2. Record the document upload locally as metadata
             with Session(engine) as db:
-                for chunk_text in chunks:
-                    chunk_id = uuid.uuid4()
-                    key = f"chunk_{chunk_id.hex}.txt"
-                    
-                    # 1. Upload chunk text file to the S3 bucket
-                    s3.put_object(
-                        Bucket=bucket_name,
-                        Key=key,
-                        Body=chunk_text.encode("utf-8"),
-                        ContentType="text/plain"
-                    )
-                    
-                    # 2. Record chunk locally in PostgreSQL without embedding
-                    chunk = KnowledgeChunk(
-                        id=chunk_id,
-                        tenant_id=tenant_id,
-                        agent_id=agent_id,
-                        content=chunk_text,
-                        source=source
-                    )
-                    db.add(chunk)
+                chunk = KnowledgeChunk(
+                    id=doc_id,
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    content=f"Uploaded full document to Telnyx: {key}",
+                    source=source
+                )
+                db.add(chunk)
                 db.commit()
 
-            # 3. Trigger Telnyx embed documents indexing API in the background
+            # 3. Trigger Telnyx embed documents indexing API
             await _trigger_telnyx_embeddings(bucket_name)
             
-            logger.info(f"Stored {len(chunks)} chunks for agent {agent_id} in S3 & DB.")
-            return len(chunks)
+            logger.info(f"Successfully uploaded {key} and triggered embeddings for agent {agent_id}.")
+            return 1  # 1 document stored
 
         except Exception as e:
             logger.error(f"Failed to ingest KB text into Telnyx Storage: {e}")

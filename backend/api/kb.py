@@ -56,7 +56,7 @@ async def upload_text(
 ):
     """
     Ingest plain text into the agent's knowledge base.
-    Content is chunked, embedded, and stored in pgvector.
+    Content is uploaded to Telnyx Cloud Storage and natively embedded.
     Send JSON body: { "content": "...", "source": "manual" }
     """
     agent = db.get(Agent, agent_id)

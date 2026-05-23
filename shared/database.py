@@ -57,10 +57,7 @@ def init_db():
     )
 
     with init_engine.connect() as conn:
-        # 1. Enable pgvector (Supabase has it pre-installed)
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        conn.commit()
-        logger.info("pgvector extension enabled.")
+        logger.info("Initializing connection (pgvector no longer required).")
 
     # 2. Create all SQLModel tables
     SQLModel.metadata.create_all(init_engine)

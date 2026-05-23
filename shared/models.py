@@ -18,7 +18,6 @@ Design rules:
 """
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import Text
-from pgvector.sqlalchemy import Vector
 from typing import List, Optional
 import uuid
 from datetime import datetime
@@ -122,9 +121,9 @@ class Agent(SQLModel, table=True):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# KNOWLEDGE CHUNK
-# Single chunk of an agent's knowledge base with its vector embedding.
-# Uses OpenAI text-embedding-3-small (1536 dims) for high-quality semantic search.
+# KNOWLEDGE DOCUMENT
+# Record of an uploaded knowledge base document.
+# Vectors and chunking are fully managed natively within Telnyx Cloud Storage.
 # ─────────────────────────────────────────────────────────────────────────────
 class KnowledgeChunk(SQLModel, table=True):
     __tablename__ = "knowledge_chunks"
