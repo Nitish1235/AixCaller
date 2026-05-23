@@ -28,7 +28,6 @@ try:
     from shared.database import engine, get_db
     from shared.models import Agent, Tenant, CallRecord
     from backend.services.kb import IngestionService
-    from backend.services.outbound_dialer import schedule_missed_call, execute_missed_call
     from backend.api import admin, dashboard, kb, billing, numbers
     from backend.api import shopify as shopify_api
     from backend.api import zoho as zoho_api
@@ -115,45 +114,6 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     return PlainTextResponse(texml, media_type="application/xml")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OUTBOUND ANSWER — called when a recovery callback is picked up
-# ─────────────────────────────────────────────────────────────────────────────
-@app.post("/outbound-answer")
-async def handle_outbound_answer(request: Request, db: Session = Depends(get_db)):
-    """
-    When a missed-call recovery callback is answered, connect the caller
-    to the same agent's Telnyx AI Assistant.
-    """
-    form = await request.form()
-    from_number = form.get("From")  # In outbound, From = agent's Telnyx number
-
-    agent = db.exec(select(Agent).where(Agent.phone_number == from_number)).first()
-    if not agent:
-        texml = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
-        return PlainTextResponse(texml, media_type="application/xml")
-
-    if not agent.telnyx_assistant_id:
-        try:
-            from backend.services.telnyx_assistant import sync_agent_with_telnyx
-            await sync_agent_with_telnyx(agent, db)
-        except Exception as e:
-            logger.error(f"Telnyx auto-sync failed on outbound answer: {e}")
-
-    if not agent.telnyx_assistant_id:
-        texml = """<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say>The assistant is temporarily unavailable. Please call back shortly.</Say>
-</Response>"""
-        return PlainTextResponse(texml, media_type="application/xml")
-
-    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Connect>
-        <AIAssistant id="{agent.telnyx_assistant_id}" />
-    </Connect>
-</Response>"""
-    return PlainTextResponse(texml, media_type="application/xml")
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CALL STATUS — missed call detection and auto-callback trigger
@@ -183,17 +143,12 @@ async def handle_call_status(
                 to_number=to_number or "unknown",
                 direction="inbound",
                 status="missed",
-                requires_callback=agent.auto_callback_enabled,
+                requires_callback=False,
             )
             db.add(new_call)
             db.commit()
             db.refresh(new_call)
-
-            if agent.auto_callback_enabled:
-                await schedule_missed_call(new_call.id, 60, background_tasks)
-                logger.info(f"Missed call from {from_number}. Recovery callback scheduled.")
-            else:
-                logger.info(f"Missed call from {from_number}. Auto-callback disabled.")
+            logger.info(f"Missed call from {from_number} recorded.")
 
     return {"status": "received"}
 
@@ -225,22 +180,6 @@ async def handle_forwarding_test_answer(request: Request):
 </Response>"""
     return PlainTextResponse(texml, media_type="application/xml")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# INTERNAL — dial recovery endpoint (triggered by BackgroundTasks)
-# ─────────────────────────────────────────────────────────────────────────────
-@app.post("/api/v1/internal/dial-recovery")
-async def dial_recovery_endpoint(request: Request, data: dict):
-    """Internal endpoint for executing delayed outbound recovery calls."""
-    if not _INTERNAL_API_KEY or request.headers.get("X-Internal-Key") != _INTERNAL_API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden — X-Internal-Key required")
-
-    call_record_id = data.get("call_record_id")
-    if not call_record_id:
-        raise HTTPException(status_code=400, detail="Missing call_record_id")
-
-    await execute_missed_call(uuid.UUID(call_record_id))
-    return {"status": "executed"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
