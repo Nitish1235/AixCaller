@@ -178,7 +178,7 @@ export default function DemoCallSection() {
                   Demo Line — Always On
                 </div>
                 <div style={{ color: "var(--text-muted)", fontWeight: 550, fontSize: "0.85rem", marginTop: 2 }}>
-                  Powered by AIxCaller · Telnyx Voice · OpenAI
+                  Powered by AIxCaller · Enterprise AI Voice Infrastructure
                 </div>
               </div>
             </div>

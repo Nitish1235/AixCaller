@@ -169,7 +169,7 @@ export default function Home() {
                 <div style={{ width: 3, height: 12, background: "var(--blue)", borderRadius: 99, animation: "eq 0.8s infinite alternate ease-in-out", animationDelay: "0.2s", transformOrigin: "bottom" }} />
                 <div style={{ width: 3, height: 6, background: "var(--blue)", borderRadius: 99, animation: "eq 0.8s infinite alternate ease-in-out", animationDelay: "0.4s", transformOrigin: "bottom" }} />
               </div>
-              <span>Telnyx Carrier-Level AI Assistant</span>
+              <span>Enterprise-Grade AI Voice Platform</span>
             </div>
             
             <h1 style={{
@@ -486,6 +486,165 @@ export default function Home() {
 
       {/* ── INTEGRATIONS SECTION ── */}
       <IntegrationsSection />
+
+      {/* ── OUTBOUND AI DIALER SECTION ── */}
+      <section id="outbound" style={{
+        padding: "8rem 5%",
+        background: "radial-gradient(ellipse at 0% 50%, rgba(29,78,216,0.04) 0%, transparent 60%), var(--bg)",
+        borderTop: "1.5px solid var(--border)",
+      }}>
+        <div style={{ maxWidth: 1300, margin: "0 auto" }}>
+
+          {/* Section Header */}
+          <div style={{ textAlign: "center", marginBottom: "5rem" }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "var(--blue-light)", border: "1.5px solid rgba(29, 78, 216, 0.15)",
+              padding: "0.5rem 1.4rem", borderRadius: 99, marginBottom: "1.5rem",
+              fontWeight: 700, fontSize: "0.82rem", textTransform: "uppercase" as const,
+              letterSpacing: 1, color: "var(--blue)",
+            }}>
+              📞 Outbound AI Calling
+            </div>
+            <h2 style={{
+              fontSize: "clamp(2.5rem, 5vw, 4rem)", fontWeight: 800,
+              letterSpacing: "-1.5px", lineHeight: 1.1, margin: "0 0 1.5rem", color: "var(--text)",
+            }}>
+              Your AI Sales Team,<br />
+              <span style={{ background: "linear-gradient(135deg, var(--blue) 0%, #3b82f6 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                Working Around the Clock
+              </span>
+            </h2>
+            <p style={{
+              fontSize: "1.15rem", fontWeight: 500, color: "var(--text-muted)",
+              maxWidth: 680, margin: "0 auto", lineHeight: 1.7,
+            }}>
+              Stop chasing leads manually. Upload your contact list, point it at a campaign — and let your AI agent call, qualify, and book appointments on your behalf. While you sleep.
+            </p>
+          </div>
+
+          {/* Two-column: left visual, right feature list */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "4rem", alignItems: "center", marginBottom: "6rem" }}>
+
+            {/* Left — Campaign Console Mock */}
+            <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 20, overflow: "hidden", boxShadow: "0 25px 50px rgba(0,0,0,0.05)" }}>
+              <div style={{ background: "#fff", borderBottom: "1.5px solid var(--border)", padding: "1rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text)" }}>Campaign: Q2 Lead Blitz</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.8rem", fontWeight: 700, color: "var(--green)" }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", animation: "pulseGlow 1.5s infinite", display: "inline-block" }} />
+                  DIALING LIVE
+                </div>
+              </div>
+              <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
+                {/* Stats row */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+                  {[
+                    { label: "Calls Placed", val: "847", color: "var(--blue)" },
+                    { label: "Answered",     val: "61%",  color: "var(--green)" },
+                    { label: "Booked",       val: "134",  color: "#7c3aed" },
+                  ].map((s) => (
+                    <div key={s.label} style={{ background: "#fff", border: "1.5px solid var(--border)", borderRadius: 12, padding: "0.75rem", textAlign: "center" }}>
+                      <div style={{ fontSize: "0.65rem", textTransform: "uppercase" as const, letterSpacing: 0.5, color: "var(--text-muted)", fontWeight: 700 }}>{s.label}</div>
+                      <div style={{ fontSize: "1.4rem", fontWeight: 800, color: s.color, marginTop: 4 }}>{s.val}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Live call log */}
+                <div className="mono" style={{ background: "var(--text)", borderRadius: 14, padding: "1.2rem 1.5rem", fontSize: "0.83rem", lineHeight: 2, color: "#94a3b8" }}>
+                  <div style={{ color: "#64748b", fontSize: "0.72rem", marginBottom: "0.5rem" }}>LIVE SESSION — LEAD #134</div>
+                  <div><span style={{ color: "#7c3aed" }}>AI Agent:</span> Hi James, I'm calling about your interest in solar installations. Got 2 minutes?</div>
+                  <div><span style={{ color: "#eff6ff" }}>Lead:</span> Sure, yeah — I did fill out a form last week.</div>
+                  <div><span style={{ color: "#7c3aed" }}>AI Agent:</span> Great! I can book a free site survey — how's Thursday at 10 AM?</div>
+                  <div style={{ color: "var(--green)", marginTop: "0.5rem" }}>✅ Appointment booked — synced to Google Calendar</div>
+                </div>
+                {/* Lead row */}
+                <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.5rem" }}>
+                  {[
+                    { name: "James Orton",   status: "Booked",     color: "var(--green)",  bg: "var(--green-light)" },
+                    { name: "Rachel Wu",     status: "Voicemail",  color: "#d97706",       bg: "#fffbeb" },
+                    { name: "Tom Bradley",   status: "Dialing…",   color: "var(--blue)",   bg: "var(--blue-light)" },
+                  ].map((l) => (
+                    <div key={l.name} style={{ background: "#fff", border: "1.5px solid var(--border)", borderRadius: 10, padding: "0.65rem 1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--text)" }}>{l.name}</span>
+                      <span style={{ fontWeight: 700, fontSize: "0.72rem", background: l.bg, color: l.color, padding: "2px 10px", borderRadius: 99 }}>{l.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right — Feature bullets */}
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: "2rem" }}>
+              {[
+                {
+                  icon: "📋",
+                  title: "Upload Any Lead List",
+                  desc: "Drop in a Google Sheet, Excel file, or CSV. Your AI reads the columns, maps the data, and starts calling immediately. No formatting required.",
+                },
+                {
+                  icon: "🧠",
+                  title: "AI Qualifies Every Lead",
+                  desc: "Before dialing, your AI scores each lead by interest level. Hot leads get called first. Cold leads are retried automatically on your cadence.",
+                },
+                {
+                  icon: "🌍",
+                  title: "Calls in the Right Timezone",
+                  desc: "The dialer detects each lead's timezone and only calls within business hours — no annoyed prospects, no compliance issues.",
+                },
+                {
+                  icon: "📅",
+                  title: "Books Straight to Your Calendar",
+                  desc: "When a lead says yes, the AI books the appointment directly into Google Calendar and sends a confirmation SMS — zero manual follow-up.",
+                },
+                {
+                  icon: "💬",
+                  title: "Smart Voicemail + SMS Follow-Up",
+                  desc: "No answer? The AI drops a personalized voicemail and sends a follow-up SMS automatically. Leads come back warmed up.",
+                },
+              ].map((f) => (
+                <div key={f.title} style={{ display: "flex", gap: "1.25rem", alignItems: "flex-start" }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 14, background: "var(--blue-light)", border: "1.5px solid rgba(29,78,216,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>{f.icon}</div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", marginBottom: "0.35rem" }}>{f.title}</div>
+                    <div style={{ fontSize: "0.92rem", color: "var(--text-muted)", lineHeight: 1.65 }}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom 3-card strip */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "2rem" }}>
+            {[
+              {
+                badge: "Speed to Lead",
+                badgeColor: "var(--green)",
+                title: "Call New Leads in Under 60 Seconds",
+                desc: "The moment a lead fills out your web form, your AI agent calls them — before your competitors even open their laptop. Speed-to-lead wins deals.",
+              },
+              {
+                badge: "Retry Cadence",
+                badgeColor: "var(--blue)",
+                title: "Smart Retry. Never Miss a Conversion",
+                desc: "Busy? Didn't answer? The system automatically retries at 2h, 24h, and 72h intervals. You configure the rules. The AI executes them perfectly — every time.",
+              },
+              {
+                badge: "Full Analytics",
+                badgeColor: "#7c3aed",
+                title: "See Every Call, Transcript & Outcome",
+                desc: "Every call is logged with sentiment analysis, AI summary, booking outcome, and full transcript. Know your answer rate, book rate, and ROI at a glance.",
+              },
+            ].map((c) => (
+              <div key={c.title} style={{ background: "#fff", border: "1.5px solid var(--border)", borderRadius: 20, padding: "2rem", boxShadow: "0 10px 30px rgba(0,0,0,0.02)" }}>
+                <div style={{ fontWeight: 700, fontSize: "0.72rem", textTransform: "uppercase" as const, letterSpacing: 1, color: c.badgeColor, marginBottom: "1rem" }}>{c.badge}</div>
+                <h3 style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--text)", margin: "0 0 0.75rem", lineHeight: 1.35 }}>{c.title}</h3>
+                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.65, margin: 0 }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </section>
 
       {/* ── TESTIMONIAL MARQUEE ── */}
       <div style={{ borderTop: "1.5px solid var(--border)", borderBottom: "1.5px solid var(--border)", background: "var(--surface)", padding: "4rem 0", overflow: "hidden", margin: "6rem 0" }}>

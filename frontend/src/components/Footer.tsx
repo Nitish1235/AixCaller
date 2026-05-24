@@ -20,9 +20,9 @@ export default function Footer() {
           {/* Product */}
           <div>
             <h4 style={{ fontWeight: 700, marginBottom: "1.25rem", fontSize: "0.85rem", letterSpacing: 0.5, textTransform: "uppercase", color: "var(--text)" }}>Product</h4>
-            {["Features", "Pricing", "Integrations"].map(l => (
+            {["Features", "Outbound Dialer", "Pricing", "Integrations"].map(l => (
               <div key={l} style={{ marginBottom: 12 }}>
-                <Link href={`/#${l.toLowerCase().replace(" ", "-")}`} style={{ color: "var(--text-muted)", fontSize: "0.9rem", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.color = "var(--blue)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-muted)"}>
+                <Link href={l === "Outbound Dialer" ? "/#outbound" : `/#${l.toLowerCase().replace(" ", "-")}`} style={{ color: "var(--text-muted)", fontSize: "0.9rem", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.color = "var(--blue)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-muted)"}>
                   {l}
                 </Link>
               </div>
