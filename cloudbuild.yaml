@@ -23,22 +23,22 @@ steps:
     id: 'build-backend'
     waitFor: ['-']
 
-  # 3. Build Voice Engine Image (Context is root)
+  # 3. Build Outbound Microservice Image (Context is root to include 'shared' folder)
   - name: 'gcr.io/cloud-builders/docker'
     args: 
       - 'build'
       - '-t'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/voice-engine:$COMMIT_SHA'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/outbound:$COMMIT_SHA'
       - '-f'
-      - 'voice_engine/Dockerfile'
+      - 'outbound/Dockerfile'
       - '.'
-    id: 'build-voice-engine'
+    id: 'build-outbound'
     waitFor: ['-']
 
 images:
   - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/frontend:$COMMIT_SHA'
   - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/backend:$COMMIT_SHA'
-  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/voice-engine:$COMMIT_SHA'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/outbound:$COMMIT_SHA'
 
 substitutions:
   _REGION: 'us-central1'

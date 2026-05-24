@@ -9,3 +9,5 @@ google-api-python-client>=2.90.0
 loguru>=0.7.0
 python-multipart>=0.0.6
 psycopg2-binary>=2.9.6
+openai>=1.0.0
+tzdata>=2024.1
