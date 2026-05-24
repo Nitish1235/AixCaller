@@ -9,6 +9,8 @@ Tables:
   - KnowledgeChunk  : pgvector KB chunks (OpenAI text-embedding-3-small, 1536 dims).
   - CallRecord      : Immutable call log. Analytics fields populated post-call.
   - Lead            : Structured CRM lead captured during a call.
+  - Campaign        : Outbound sales/booking calling campaign configuration.
+  - CampaignLead    : Leads assigned to an outbound campaign, with live synchronization states.
 
 Design rules:
   - All tables isolated by tenant_id (multi-tenant safety).
@@ -212,3 +214,113 @@ class SystemSettings(SQLModel, table=True):
     api_key: Optional[str] = Field(default=None)
     telnyx_secret_id: Optional[str] = Field(default=None)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CAMPAIGN
+# Outbound dialing campaign configuration.
+# ─────────────────────────────────────────────────────────────────────────────
+class Campaign(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", index=True)
+    agent_id: uuid.UUID = Field(foreign_key="agent.id", index=True)
+    name: str
+    status: str = Field(default="inactive")  # active | inactive | completed
+    max_concurrent_calls: int = Field(default=1)
+
+    # ── Timezone-Aware Calling Window ────────────────────────────────────────
+    # HH:MM strings in the lead's local time. Default: 9am-8pm.
+    calling_window_start: str = Field(default="09:00")
+    calling_window_end: str = Field(default="20:00")
+
+    # ── Smart Retry Cadence ──────────────────────────────────────────────────
+    # Hours between retry attempts. e.g. [2, 24, 72] = retry after 2h, 1 day, 3 days.
+    retry_cadence_hours: List[int] = Field(default_factory=lambda: [2, 24, 72], sa_column=Column(JSON))
+
+    # ── Speed-to-Lead ────────────────────────────────────────────────────────
+    # If True, a new lead arriving via webhook is dialed within 60 seconds.
+    speed_to_lead_enabled: bool = Field(default=False)
+
+    # ── Post-Call SMS Drip ───────────────────────────────────────────────────
+    sms_enabled: bool = Field(default=False)
+    # Template variables: {name}, {agent_name}, {booking_link}, {appointment_date}, {appointment_time}
+    sms_voicemail_template: Optional[str] = Field(default="Hi {name}! I just tried calling you. Want to find a time to connect? {booking_link}")
+    sms_no_answer_template: Optional[str] = Field(default="Hi {name}! I missed you earlier. Let's connect: {booking_link}")
+    sms_booked_template: Optional[str] = Field(default="Confirmed, {name}! Your appointment is on {appointment_date} at {appointment_time}. See you then! 🗓")
+    sms_reminder_template: Optional[str] = Field(default="Hi {name}! Reminder: your call is tomorrow at {appointment_time}. Reply YES to confirm or NO to reschedule.")
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CAMPAIGN LEAD
+# Individual contact details and live sync status for a campaign run.
+# ─────────────────────────────────────────────────────────────────────────────
+class CampaignLead(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    campaign_id: uuid.UUID = Field(foreign_key="campaign.id", index=True)
+    name: str = Field(default="Valued Customer")
+    phone: str
+    email: Optional[str] = None
+    status: str = Field(default="pending")  # pending | in_progress | answered | voicemail | failed | opted_out
+    attempts: int = Field(default=0)
+    variables: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    last_call_id: Optional[uuid.UUID] = Field(default=None, foreign_key="callrecord.id")
+
+    # ── Timezone & Smart Retry ───────────────────────────────────────────────
+    # IANA timezone string auto-detected from phone area code (e.g. "America/New_York").
+    timezone: str = Field(default="UTC")
+    # When None, lead is ready to dial immediately. When set, dialer waits until this UTC datetime.
+    next_retry_at: Optional[datetime] = None
+
+    # ── AI Lead Scoring ──────────────────────────────────────────────────────
+    lead_score: int = Field(default=5)           # 1-10 (10 = hottest)
+    lead_tier: str = Field(default="warm")       # hot | warm | cold
+
+    # ── Appointment Tracking ─────────────────────────────────────────────────
+    appointment_datetime: Optional[datetime] = None  # Confirmed booking datetime (UTC)
+
+    # ── DNC / Opt-Out ────────────────────────────────────────────────────────
+    opted_out: bool = Field(default=False)
+
+    # ── Post-Call Analytics ──────────────────────────────────────────────────
+    call_duration_seconds: int = Field(default=0)
+    call_transcript: Optional[str] = Field(default=None, sa_column=Column(Text))
+    call_summary: Optional[str] = None
+    call_sentiment: Optional[str] = None         # positive | neutral | negative
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DNC LIST
+# Per-tenant Do Not Call suppression registry.
+# Numbers here are NEVER dialed regardless of campaign status.
+# ─────────────────────────────────────────────────────────────────────────────
+class DNCList(SQLModel, table=True):
+    __tablename__ = "dnclist"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", index=True)
+    phone: str = Field(index=True)              # E.164 normalized number
+    reason: str = Field(default="opted_out")    # opted_out | user_requested | manual
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHONE POOL
+# Per-tenant pool of claimed Telnyx numbers for local-presence rotation.
+# The dialer picks the number whose area code best matches the lead's area code.
+# ─────────────────────────────────────────────────────────────────────────────
+class PhonePool(SQLModel, table=True):
+    __tablename__ = "phonepool"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", index=True)
+    phone_number: str                            # E.164 Telnyx claimed number
+    area_code: str                               # e.g. "415", "212"
+    is_active: bool = Field(default=True)
+    last_used_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)

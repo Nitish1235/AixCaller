@@ -11,7 +11,7 @@ from sqlmodel import SQLModel, create_engine, text, Session
 from loguru import logger
 
 # Import all models so SQLModel.metadata is fully populated
-from shared.models import Tenant, Agent, KnowledgeChunk, CallRecord, Lead, SystemSettings
+from shared.models import Tenant, Agent, KnowledgeChunk, CallRecord, Lead, SystemSettings, Campaign, CampaignLead, DNCList, PhonePool
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 DATABASE_DIRECT_URL = os.getenv("DATABASE_DIRECT_URL", DATABASE_URL)
