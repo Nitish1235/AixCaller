@@ -301,13 +301,13 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
       }}
     >
       {/* Top gradient bar */}
-      <div style={{ height: 6, background: "var(--accent-green)", borderBottom: "var(--border)" }} />
+      <div style={{ height: 6, background: "var(--primary)", borderBottom: "var(--border)" }} />
 
       {/* Header strip */}
       <div style={{ background: "#fff", borderBottom: "var(--border)", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: state === "active" ? "#10B981" : state === "connecting" ? "#F59E0B" : "#D1D5DB", boxShadow: state === "active" ? "0 0 0 3px #D1FAE5" : "none" }} />
-          <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#064E3B", letterSpacing: 0.3 }}>
+          <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--primary)", letterSpacing: 0.3 }}>
             {state === "idle" ? "ARIA · READY" : state === "connecting" ? "CONNECTING..." : state === "active" ? (aiSpeaking ? "ARIA · SPEAKING" : "ARIA · LISTENING") : "SESSION ENDED"}
           </span>
         </div>
@@ -328,7 +328,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
           </>}
           <div style={{
             width: 88, height: 88, borderRadius: "50%",
-            background: "var(--accent-green)",
+            background: "var(--primary)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "2.2rem", position: "relative", zIndex: 1,
             border: "var(--border)",
@@ -339,7 +339,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
 
         {/* Name & subtitle */}
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#064E3B" }}>Aria</div>
+          <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--primary)" }}>Aria</div>
           <div style={{ fontSize: "0.78rem", color: "#9CA3AF", marginTop: 2 }}>AI Call Assistant · AIxCaller</div>
         </div>
 
@@ -372,7 +372,7 @@ export function DemoCard({ wsUrl }: { wsUrl?: string }) {
             <>
               <button id="demo-start-btn" onClick={start} style={{
                 width: 72, height: 72, borderRadius: "50%",
-                background: "var(--accent-green)",
+                background: "var(--primary)",
                 border: "var(--border)", fontSize: "1.8rem", cursor: "pointer",
                 boxShadow: "4px 4px 0 var(--text)",
                 transition: "all 0.1s",

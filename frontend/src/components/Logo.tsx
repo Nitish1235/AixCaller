@@ -1,16 +1,13 @@
 // AIxCaller Brand Logo
 //
-// Seven rounded waveform bars on a white rounded square — symbolises live
-// voice/audio. Brand palette: light mint (#86EFAC) → emerald (#10B981) →
-// dark forest (#064E3B). The single source of truth for the mark is
-// /public/logo.svg; this component mirrors it so we don't pay an extra
-// network request inside the React tree.
+// Overlapping sine wave ribbons of dots on a rounded white square — symbolizes
+// live voice intelligence.
+// Brand palette: Dodger Blue (#3B82F6) → Sky Blue (#60A5FA) → Light Indigo (#93C5FD)
 //
 // Props:
 //   size      — pixel height of the logo block (default 36)
 //   showText  — render the "AIXCALLER" word-mark next to the icon
-//   dark      — for dark sidebars/footers: swaps mid-bars to light mint
-//               and uses an outlined white box so it stays legible
+//   dark      — renders light text for dark backgrounds
 
 interface LogoProps {
   size?: number;
@@ -19,12 +16,9 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 36, showText = true, dark = false }: LogoProps) {
-  // On dark backgrounds we keep the white inner block (the design IS a
-  // white-bg mark by spec) but add a subtle border so the block has a
-  // crisp edge against the dark surface.
-  const accentLight = "#86EFAC";
-  const accentMid = "#10B981";
-  const accentDark = dark ? "#A7F3D0" : "#064E3B";
+  // We align text and shadows to match the beautiful new premium blue palette
+  const text_color = dark ? "#FFFFFF" : "#1D4ED8"; // Premium brand blue
+  const shadow_color = "rgba(29, 78, 216, 0.12)";
 
   return (
     <div
@@ -34,7 +28,7 @@ export default function Logo({ size = 36, showText = true, dark = false }: LogoP
         gap: Math.round(size * 0.28),
       }}
     >
-      {/* Icon block — always white inside, optional outline on dark UIs */}
+      {/* Icon block — rounded white block with glowing dot ribbons */}
       <div
         style={{
           width: size,
@@ -45,25 +39,80 @@ export default function Logo({ size = 36, showText = true, dark = false }: LogoP
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
-          boxShadow: dark
-            ? "0 0 0 1.5px rgba(255,255,255,0.9)"
-            : "0 2px 8px rgba(16,185,129,0.18)",
+          boxShadow: `0 2px 8px ${shadow_color}`,
+          border: "1.5px solid rgba(29, 78, 216, 0.08)",
         }}
       >
         <svg
           width={Math.round(size * 0.84)}
           height={Math.round(size * 0.84)}
-          viewBox="0 0 100 100"
+          viewBox="0 0 400 400"
           style={{ display: "block" }}
           aria-hidden="true"
         >
-          <rect x="10" y="38" width="8" height="24" rx="4" fill={accentLight} />
-          <rect x="22" y="18" width="8" height="64" rx="4" fill={accentMid} />
-          <rect x="34" y="26" width="8" height="48" rx="4" fill={accentDark} />
-          <rect x="46" y="12" width="8" height="76" rx="4" fill={accentMid} />
-          <rect x="58" y="22" width="8" height="56" rx="4" fill={accentDark} />
-          <rect x="70" y="32" width="8" height="36" rx="4" fill={accentLight} />
-          <rect x="82" y="40" width="8" height="20" rx="4" fill={accentLight} />
+          <circle cx="50.0" cy="200.0" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="65.5" cy="224.0" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="81.0" cy="242.1" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="96.5" cy="249.9" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="112.0" cy="245.5" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="127.5" cy="229.9" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="143.0" cy="207.1" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="158.5" cy="182.5" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="174.0" cy="162.2" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="189.5" cy="151.1" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="205.0" cy="152.1" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="220.5" cy="164.7" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="236.0" cy="186.0" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="251.5" cy="210.8" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="267.0" cy="232.8" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="282.5" cy="246.9" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="298.0" cy="249.5" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="313.5" cy="239.9" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="329.0" cy="220.6" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <circle cx="344.5" cy="196.2" r="6.0" fill="#3b82f6" opacity="0.80" />
+          <path d="M 50.0,200.0 L 65.5,224.0 L 81.0,242.1 L 96.5,249.9 L 112.0,245.5 L 127.5,229.9 L 143.0,207.1 L 158.5,182.5 L 174.0,162.2 L 189.5,151.1 L 205.0,152.1 L 220.5,164.7 L 236.0,186.0 L 251.5,210.8 L 267.0,232.8 L 282.5,246.9 L 298.0,249.5 L 313.5,239.9 L 329.0,220.6 L 344.5,196.2" fill="none" stroke="#3b82f6" stroke-width="2.5" opacity="0.25" />
+          <circle cx="50.0" cy="243.3" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="65.5" cy="250.0" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="81.0" cy="244.4" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="96.5" cy="228.0" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="112.0" cy="204.7" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="127.5" cy="180.3" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="143.0" cy="160.7" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="158.5" cy="150.7" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="174.0" cy="152.8" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="189.5" cy="166.4" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="205.0" cy="188.3" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="220.5" cy="213.0" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="236.0" cy="234.6" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="251.5" cy="247.7" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="267.0" cy="249.1" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="282.5" cy="238.5" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="298.0" cy="218.4" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="313.5" cy="193.9" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="329.0" cy="170.8" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <circle cx="344.5" cy="154.9" r="6.0" fill="#60a5fa" opacity="0.80" />
+          <path d="M 50.0,243.3 L 65.5,250.0 L 81.0,244.4 L 96.5,228.0 L 112.0,204.7 L 127.5,180.3 L 143.0,160.7 L 158.5,150.7 L 174.0,152.8 L 189.5,166.4 L 205.0,188.3 L 220.5,213.0 L 236.0,234.6 L 251.5,247.7 L 267.0,249.1 L 282.5,238.5 L 298.0,218.4 L 313.5,193.9 L 329.0,170.8 L 344.5,154.9" fill="none" stroke="#60a5fa" stroke-width="2.5" opacity="0.25" />
+          <circle cx="50.0" cy="243.3" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="65.5" cy="226.0" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="81.0" cy="202.4" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="96.5" cy="178.1" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="112.0" cy="159.2" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="127.5" cy="150.3" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="143.0" cy="153.6" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="158.5" cy="168.2" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="174.0" cy="190.6" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="189.5" cy="215.3" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="205.0" cy="236.3" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="220.5" cy="248.3" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="236.0" cy="248.6" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="251.5" cy="236.9" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="267.0" cy="216.2" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="282.5" cy="191.6" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="298.0" cy="169.0" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="313.5" cy="154.0" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="329.0" cy="150.2" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <circle cx="344.5" cy="158.7" r="6.0" fill="#93c5fd" opacity="0.80" />
+          <path d="M 50.0,243.3 L 65.5,226.0 L 81.0,202.4 L 96.5,178.1 L 112.0,159.2 L 127.5,150.3 L 143.0,153.6 L 158.5,168.2 L 174.0,190.6 L 189.5,215.3 L 205.0,236.3 L 220.5,248.3 L 236.0,248.6 L 251.5,236.9 L 267.0,216.2 L 282.5,191.6 L 298.0,169.0 L 313.5,154.0 L 329.0,150.2 L 344.5,158.7" fill="none" stroke="#93c5fd" stroke-width="2.5" opacity="0.25" />
         </svg>
       </div>
 
@@ -74,7 +123,7 @@ export default function Logo({ size = 36, showText = true, dark = false }: LogoP
             style={{
               fontWeight: 900,
               fontSize: Math.round(size * 0.44),
-              color: dark ? "#FFFFFF" : "#064E3B",
+              color: text_color,
               letterSpacing: "-0.5px",
               textTransform: "uppercase",
             }}
