@@ -1,3 +1,4 @@
+'use client';
 import Link from "next/link";
 import ClaimNumberSection from "@/components/ClaimNumberSection";
 import DemoCallSection from "@/components/DemoCallSection";

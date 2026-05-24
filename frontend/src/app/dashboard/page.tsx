@@ -75,16 +75,7 @@ export default async function DashboardPage() {
               { label: "Monitor live calls",         href: "/dashboard/live",               icon: "🔴", desc: "Real-time transcripts" },
             ].map(a => (
               <Link key={a.href} href={a.href} style={{ textDecoration: "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border)", background: "#ffffff", transition: "var(--transition)", cursor: "pointer" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--blue)";
-                    e.currentTarget.style.background = "var(--blue-light)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.background = "#ffffff";
-                  }}
-                >
+                <div className="dashboard-action-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--border)", background: "#ffffff", transition: "var(--transition)", cursor: "pointer" }}
                   <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>{a.icon}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.label}</div>
