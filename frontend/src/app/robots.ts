@@ -1,14 +1,15 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aixcaller.com';
-
   return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/dashboard/', '/api/', '/admin/'],
-    },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: ['/dashboard/', '/api/', '/admin/'],
+      },
+    ],
+    sitemap: 'https://callerx.ai/sitemap.xml',
+    host: 'https://callerx.ai',
   };
 }

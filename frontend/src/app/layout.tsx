@@ -27,16 +27,16 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "AIxCaller — AI Receptionist & Phone Answering Service for Businesses",
+    default: "AIxCaller — AI Receptionist & Outbound AI Calling for Businesses",
     template: "%s | AIxCaller",
   },
   description:
-    "AIxCaller is the AI receptionist that answers every call 24/7. Book appointments, qualify leads, and handle inbound calls automatically — starting at $50/mo. No staff needed.",
+    "AIxCaller is the AI phone platform that answers every inbound call 24/7 AND dials your leads automatically with outbound AI calling campaigns. Book appointments, qualify leads, and close more deals — starting at $50/mo.",
 
   metadataBase: new URL("https://callerx.ai"),
 
   keywords: [
-    // ── Highest-intent (what buyers type right before purchasing) ──
+    // ── Highest-intent inbound (what buyers type right before purchasing) ──
     "AI receptionist",
     "AI phone answering service",
     "AI answering service for small business",
@@ -48,6 +48,22 @@ export const metadata: Metadata = {
     "after hours answering service",
     "AI call center software",
 
+    // ── Outbound AI calling (high-intent, fast-growing) ──
+    "AI outbound calling",
+    "AI outbound dialer",
+    "automated outbound calling software",
+    "AI sales dialer",
+    "AI cold calling software",
+    "AI lead calling",
+    "outbound call automation",
+    "AI appointment setter",
+    "AI appointment booking calls",
+    "outbound AI voice agent",
+    "automated lead follow-up calls",
+    "AI sales outreach tool",
+    "speed to lead software",
+    "AI lead dialer",
+
     // ── Voice agent & automation ──
     "AI voice agent",
     "AI voice assistant for business",
@@ -56,8 +72,6 @@ export const metadata: Metadata = {
     "voice AI for business",
     "conversational AI phone",
     "no-code AI voice agent",
-    "AI outbound caller",
-    "automated outbound calling",
     "AI inbound call handling",
 
     // ── Problem-driven searches ──
@@ -70,6 +84,8 @@ export const metadata: Metadata = {
     "AI customer service phone",
     "reduce missed calls small business",
     "replace receptionist with AI",
+    "how to automate sales calls",
+    "how to follow up leads automatically",
 
     // ── Vertical / niche ──
     "AI receptionist for dental office",
@@ -80,15 +96,27 @@ export const metadata: Metadata = {
     "AI receptionist for healthcare",
     "AI receptionist for e-commerce",
     "AI receptionist for plumbers",
+    "AI outbound calling for solar",
+    "AI outbound calling for insurance",
+    "AI sales calls for real estate",
 
     // ── Integration / technical ──
     "AI receptionist with CRM integration",
     "AI receptionist Google Calendar",
     "Shopify AI phone support",
     "Zoho CRM AI calling",
-    "Telnyx AI voice bot",
     "AI call transcription and summary",
     "call sentiment analysis AI",
+    "AI voicemail drop software",
+    "Google Sheets lead tracking AI",
+
+    // ── Competitor comparison (people searching alternatives) ──
+    "Bland AI alternative",
+    "Air AI alternative",
+    "Synthflow alternative",
+    "Vapi alternative",
+    "Retell AI alternative",
+    "cheaper AI calling software",
 
     // ── Brand ──
     "AIxCaller",
@@ -105,15 +133,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://callerx.ai",
     siteName: "AIxCaller",
-    title: "AIxCaller — AI Receptionist & Phone Answering Service",
+    title: "AIxCaller — AI Receptionist & Outbound AI Calling Platform",
     description:
-      "Never miss another business call. AIxCaller's AI receptionist answers 24/7, books appointments, qualifies leads, and syncs with your CRM — from $50/mo.",
+      "Never miss another business call. AIxCaller answers inbound calls 24/7 AND runs outbound AI calling campaigns — books appointments, qualifies leads, syncs CRM. From $50/mo.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "AIxCaller — AI Receptionist answering business calls 24/7",
+        alt: "AIxCaller — AI Receptionist & Outbound Calling Platform for Businesses",
       },
     ],
   },
@@ -122,9 +150,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@aixcaller",
     creator: "@aixcaller",
-    title: "AIxCaller — AI Receptionist & Phone Answering Service",
+    title: "AIxCaller — AI Receptionist & Outbound AI Calling Platform",
     description:
-      "AI that answers every call 24/7. Books appointments, qualifies leads, syncs CRM. Starts at $50/mo. No staff needed.",
+      "Inbound AI that answers every call 24/7 + Outbound AI that dials your leads automatically. Books appointments, qualifies leads, syncs CRM. From $50/mo.",
     images: ["/opengraph-image"],
   },
 
@@ -257,18 +285,27 @@ export default function RootLayout({
           "reviewCount": "128",
         },
         "featureList": [
-          "24/7 AI phone answering",
+          "24/7 AI inbound phone answering",
+          "AI outbound calling campaigns",
+          "Automated lead dialing and qualification",
+          "Speed-to-lead instant call back",
+          "Smart retry cadence for unanswered leads",
           "Appointment booking via Google Calendar",
-          "Lead qualification and scoring",
+          "Lead scoring and tier prioritization",
           "Missed call auto-recovery",
+          "Post-call SMS drip sequences",
           "AI-generated call transcripts and summaries",
           "Sentiment analysis on every call",
-          "Shopify order lookup",
-          "Zoho CRM sync",
-          "Human call transfer",
+          "Shopify order lookup during calls",
+          "Zoho CRM auto-sync",
+          "Google Sheets lead logging",
+          "Human call transfer with business hours routing",
           "Knowledge base training on PDFs and URLs",
           "31+ countries phone number support",
+          "Timezone-aware calling windows",
+          "DNC list compliance",
           "Custom AI voice selection",
+          "Voicemail drop automation",
         ],
       },
 
@@ -332,14 +369,86 @@ export default function RootLayout({
           },
           {
             "@type": "Question",
-            "name": "Does the AI receptionist integrate with CRM software?",
+            "name": "Does AIxCaller integrate with CRM software?",
             "acceptedAnswer": {
               "@type": "Answer",
               "text":
                 "Yes. AIxCaller integrates with Zoho CRM, automatically creating or updating lead records after every call. It also syncs with Shopify for e-commerce order lookups, and Google Sheets for lead logging.",
             },
           },
+          {
+            "@type": "Question",
+            "name": "What is AI outbound calling?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text":
+                "AI outbound calling is when an AI voice agent automatically dials leads from your contact list, qualifies them in conversation, and books appointments on your calendar — without any human sales rep involved. AIxCaller's outbound AI dialer supports timezone-aware calling, smart retry cadences, voicemail drops, and post-call SMS follow-up.",
+            },
+          },
+          {
+            "@type": "Question",
+            "name": "How does AIxCaller's outbound AI dialer work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text":
+                "You upload a Google Sheet or CSV with your leads. AIxCaller's AI scores each lead, calls them in the right timezone during business hours, has a natural conversation to qualify their interest, books appointments directly to Google Calendar, and sends a follow-up SMS if they don't answer. You see every call's transcript, sentiment, and outcome in your dashboard.",
+            },
+          },
+          {
+            "@type": "Question",
+            "name": "Can AI make outbound sales calls?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text":
+                "Yes. AIxCaller's outbound AI calling feature places automated sales calls to your leads list, holds a natural conversation using AI voice technology, qualifies prospects, and books appointments — all without a human sales rep. It works 24/7 and can handle hundreds of calls simultaneously.",
+            },
+          },
+          {
+            "@type": "Question",
+            "name": "What is speed to lead and why does it matter?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text":
+                "Speed to lead means calling a new prospect immediately after they express interest — for example, right after filling out a web form. Studies show businesses that call within 5 minutes are 100x more likely to reach the lead. AIxCaller can trigger an outbound AI call within 60 seconds of a new lead arriving, automatically.",
+            },
+          },
         ],
+      },
+
+      // ── Service schema for outbound ────────────────────────────────────────────────────────
+      {
+        "@type": "Service",
+        "@id": "https://callerx.ai/#outbound-service",
+        "name": "AI Outbound Calling & Sales Dialer",
+        "description": "Automated AI outbound calling service that dials leads from your contact list, qualifies prospects, books appointments, drops voicemails, and sends follow-up SMS — all without a human sales rep.",
+        "provider": { "@id": "https://callerx.ai/#organization" },
+        "serviceType": "AI Outbound Call Center Software",
+        "areaServed": "Worldwide",
+        "url": "https://callerx.ai/#outbound",
+        "offers": {
+          "@type": "Offer",
+          "price": "50",
+          "priceCurrency": "USD",
+          "description": "Outbound AI calling included in all plans from $50/month.",
+        },
+      },
+
+      // ── Service schema for inbound ────────────────────────────────────────────────────────
+      {
+        "@type": "Service",
+        "@id": "https://callerx.ai/#inbound-service",
+        "name": "AI Receptionist & 24/7 Phone Answering Service",
+        "description": "AI-powered 24/7 phone answering service for businesses. Greets callers, answers questions, books appointments, qualifies leads, and transfers to humans during business hours.",
+        "provider": { "@id": "https://callerx.ai/#organization" },
+        "serviceType": "AI Virtual Receptionist",
+        "areaServed": "Worldwide",
+        "url": "https://callerx.ai",
+        "offers": {
+          "@type": "Offer",
+          "price": "50",
+          "priceCurrency": "USD",
+          "description": "AI receptionist service starting at $50/month.",
+        },
       },
     ],
   };
