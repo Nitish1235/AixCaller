@@ -34,6 +34,7 @@ try:
     from backend.api import google as google_api
     from backend.api.auth import router as auth_router
     from backend.api import telnyx_ai
+    from backend.api import campaigns as campaigns_api
 except Exception:
     print(f"CRITICAL STARTUP CRASH: {traceback.format_exc()}")
     raise
@@ -58,6 +59,7 @@ app.include_router(shopify_api.router)
 app.include_router(zoho_api.router)
 app.include_router(google_api.router)
 app.include_router(telnyx_ai.router)
+app.include_router(campaigns_api.router)
 
 kb_service = IngestionService()
 

@@ -110,3 +110,69 @@ export async function createAgent(data: any) {
 export async function updateAgent(id: string, data: any) {
   return await apiPatch(`/agents/${id}`, data);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// PHONE NUMBERS
+// ─────────────────────────────────────────────────────────────────
+export async function searchNumbers(tenantId: string, countryCode = "US", areaCode = "") {
+  return await apiPost("/numbers/search", {
+    country_code: countryCode,
+    area_code: areaCode,
+    limit: 10,
+    tenant_id: tenantId,
+  });
+}
+
+export async function purchaseNumber(phoneNumber: string, tenantId: string, agentId: string) {
+  return await apiPost("/numbers/purchase", {
+    phone_number: phoneNumber,
+    tenant_id: tenantId,
+    agent_id: agentId,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CAMPAIGNS
+// ─────────────────────────────────────────────────────────────────
+export async function fetchCampaigns(tenantId: string) {
+  try {
+    const data = await apiGet(`/campaigns?tenant_id=${tenantId}`);
+    return data.campaigns || [];
+  } catch (error) {
+    console.error("[API Error] fetchCampaigns:", error);
+    return [];
+  }
+}
+
+export async function createCampaignAPI(data: {
+  tenant_id: string;
+  agent_id: string;
+  name: string;
+  max_concurrent_calls?: number;
+  calling_window_start?: string;
+  calling_window_end?: string;
+  speed_to_lead_enabled?: boolean;
+  sms_enabled?: boolean;
+}) {
+  return await apiPost("/campaigns", data);
+}
+
+export async function updateCampaign(campaignId: string, tenantId: string, data: any) {
+  return await apiPatch(`/campaigns/${campaignId}?tenant_id=${tenantId}`, data);
+}
+
+export async function deleteCampaign(campaignId: string, tenantId: string) {
+  return await apiDelete(`/campaigns/${campaignId}?tenant_id=${tenantId}`);
+}
+
+export async function uploadCampaignLeads(
+  campaignId: string,
+  tenantId: string,
+  leads: { name: string; phone: string; email?: string }[],
+) {
+  return await apiPost(`/campaigns/${campaignId}/leads?tenant_id=${tenantId}`, { leads });
+}
+
+export async function fetchCampaignStats(campaignId: string, tenantId: string) {
+  return await apiGet(`/campaigns/${campaignId}/stats?tenant_id=${tenantId}`);
+}

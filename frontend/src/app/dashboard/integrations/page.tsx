@@ -381,10 +381,17 @@ export default function IntegrationsPage() {
 
               {/* ── Trigger: read-only ── */}
               {(selectedNode === "trigger" || selectedNode === "ai_answers") && (
-                <div style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.6 }}>
-                  {selectedNode === "trigger"
-                    ? "This node fires automatically when an inbound call arrives on your connected phone number."
-                    : "Your AI agent picks up and begins the conversation. Configure the agent's voice, personality, and knowledge base in the Agents section."}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                  <div style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.6 }}>
+                    {selectedNode === "trigger"
+                      ? "This node fires automatically when an inbound call arrives on your connected phone number. Make sure a phone number is configured in the Phone Numbers section."
+                      : "Your AI agent picks up and begins the conversation. Configure the agent's voice, personality, and knowledge base in the Agents section."}
+                  </div>
+                  {selectedNode === "ai_answers" && (
+                    <a href="/dashboard/agents" style={{ textDecoration: "none" }}>
+                      <button style={{ width: "100%", background: "#2563eb", color: "#fff", border: "none", borderRadius: 9, padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>Configure Agent →</button>
+                    </a>
+                  )}
                 </div>
               )}
 
@@ -393,7 +400,7 @@ export default function IntegrationsPage() {
                 cfg.google_connected ? (
                   <>
                     <div style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 8, padding: "8px 12px", fontSize: "0.75rem", color: "#059669", fontWeight: 600 }}>✓ Google Workspace connected</div>
-                    <div><label style={lbl}>Calendar ID</label><input style={inp} value={settings.googleCalendarId} onChange={e => setSettings({ ...settings, googleCalendarId: e.target.value })} placeholder="primary" /></div>
+                    <div><label style={lbl}>Calendar ID</label><input style={inp} value={settings.googleCalendarId} onChange={e => setSettings({ ...settings, googleCalendarId: e.target.value })} placeholder="primary" onFocus={e => e.target.style.borderColor = "#2563eb"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} /></div>
                     <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Use &quot;primary&quot; for your main calendar, or paste a specific Google Calendar ID.</div>
                   </>
                 ) : (
@@ -419,8 +426,8 @@ export default function IntegrationsPage() {
               {selectedNode === "sheets_log" && (
                 cfg.google_connected ? (
                   <>
-                    <div><label style={lbl}>Spreadsheet ID</label><input style={inp} value={settings.googleSheetId} onChange={e => setSettings({ ...settings, googleSheetId: e.target.value })} placeholder="From URL: /d/YOUR_ID/edit" /></div>
-                    <div><label style={lbl}>Sheet Tab Name</label><input style={inp} value={settings.googleSheetName} onChange={e => setSettings({ ...settings, googleSheetName: e.target.value })} placeholder="Leads" /></div>
+                    <div><label style={lbl}>Spreadsheet ID</label><input style={inp} value={settings.googleSheetId} onChange={e => setSettings({ ...settings, googleSheetId: e.target.value })} placeholder="From URL: /d/YOUR_ID/edit" onFocus={e => e.target.style.borderColor = "#059669"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} /></div>
+                    <div><label style={lbl}>Sheet Tab Name</label><input style={inp} value={settings.googleSheetName} onChange={e => setSettings({ ...settings, googleSheetName: e.target.value })} placeholder="Leads" onFocus={e => e.target.style.borderColor = "#059669"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} /></div>
                   </>
                 ) : (
                   <button onClick={connectGoogle} style={{ width: "100%", background: "#059669", color: "#fff", border: "none", borderRadius: 9, padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>🔗 Connect Google first</button>
@@ -439,17 +446,21 @@ export default function IntegrationsPage() {
               {/* ── Email Summary ── */}
               {selectedNode === "email_summary" && (
                 <>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "#fdf2f8", borderRadius: 8 }}>
                     <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#0f172a" }}>Send summaries</span>
                     <input type="checkbox" checked={settings.emailEnabled} onChange={e => setSettings({ ...settings, emailEnabled: e.target.checked })} style={{ width: 18, height: 18, accentColor: "#db2777" }} />
                   </div>
-                  <div><label style={lbl}>Recipient Email</label><input type="email" style={inp} value={settings.contactEmail} onChange={e => setSettings({ ...settings, contactEmail: e.target.value })} placeholder="you@company.com" /></div>
+                  <div><label style={lbl}>Recipient Email</label><input type="email" style={inp} value={settings.contactEmail} onChange={e => setSettings({ ...settings, contactEmail: e.target.value })} placeholder="you@company.com" onFocus={e => e.target.style.borderColor = "#db2777"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} /></div>
                 </>
               )}
 
               {/* ── Webhook ── */}
               {selectedNode === "webhook" && (
-                <div><label style={lbl}>Webhook URL</label><input style={inp} value={settings.customWebhookUrl} onChange={e => setSettings({ ...settings, customWebhookUrl: e.target.value })} placeholder="https://your-server.com/call-logs" /></div>
+                <div>
+                  <label style={lbl}>Webhook URL</label>
+                  <input style={inp} value={settings.customWebhookUrl} onChange={e => setSettings({ ...settings, customWebhookUrl: e.target.value })} placeholder="https://your-server.com/call-logs" onFocus={e => e.target.style.borderColor = "#0ea5e9"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
+                  <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: 5, lineHeight: 1.5 }}>POST request with call transcript, caller info, and outcome fields in JSON.</div>
+                </div>
               )}
 
               {/* Save button for configurable nodes */}
