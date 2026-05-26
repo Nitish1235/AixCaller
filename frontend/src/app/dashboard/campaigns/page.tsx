@@ -511,7 +511,6 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                     {searchedNumbers.map(num => (
                       <div key={num.phone_number} onClick={() => upd({ selectedPhone: num.phone_number, phoneOption: "search" })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 13px", borderBottom: "1px solid #f1f5f9", cursor: "pointer", background: data.selectedPhone === num.phone_number ? "#eff6ff" : "#fff" }}>
                         <span style={{ fontFamily: "monospace", fontSize: "0.82rem", color: "#0f172a", fontWeight: 600, flex: 1 }}>{num.phone_number}</span>
-                        <span style={{ fontSize: "0.68rem", color: "#059669", fontWeight: 700 }}>${num.monthly_cost.toFixed(2)}/mo</span>
                         {data.selectedPhone === num.phone_number && <span style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: 800 }}>✓</span>}
                       </div>
                     ))}
