@@ -7,7 +7,7 @@ The platform consists of three Cloud Run services:
 | Service | Description | Port |
 |---|---|---|
 | `aixcaller-backend` | FastAPI — Telnyx webhooks, dashboard API, Telegram | 8080 |
-| `aixcaller-voice-engine` | FastAPI — Telnyx WebSocket `/ws`, Browser Demo `/demo` | 8080 |
+| `aixcaller-outbound` | FastAPI — Outbound dialer cron, appointment reminders, AI lead scoring | 8080 |
 | `aixcaller-frontend` | Next.js — User dashboard & landing page | 3000 |
 
 > **Infrastructure Note:** AIxCaller uses **Supabase (PostgreSQL + pgvector)** as its only database.
@@ -84,7 +84,6 @@ Instead of pasting API keys directly into Cloud Run environment variables, store
 | `DATABASE_DIRECT_URL` | Supabase **Direct Connection** URL (port 5432) |
 | `OPENAI_API_KEY` | OpenAI key — used for KB embeddings (`text-embedding-3-small`) |
 | `DEEPGRAM_API_KEY` | Your Deepgram STT/TTS key |
-| `XAI_API_KEY` | Your xAI / Grok LLM key |
 | `TELNYX_API_KEY` | Your Telnyx API Key V2 |
 | `JWT_SECRET` | A long random string (min 32 chars) |
 | `TELEGRAM_BOT_TOKEN` | Token from @BotFather |
@@ -109,39 +108,13 @@ Instead of pasting API keys directly into Cloud Run environment variables, store
 5. Verify that 3 images now appear in **Artifact Registry → aixcaller-repo**:
    - `frontend`
    - `backend`
-   - `voice-engine`
+   - `outbound`
 
 ---
 
 ## Step 6 — Deploy Cloud Run Services
 
-### 6A — Deploy the Voice Engine
-
-> Deploy this first so you have its URL ready for the Backend.
-
-1. Navigate to **Cloud Run → Create Service**.
-2. Click **Select** under Container Image → choose `voice-engine` from Artifact Registry.
-3. Configure:
-   - **Service name:** `aixcaller-voice-engine`
-   - **Region:** `us-central1`
-   - **Authentication:** Allow unauthenticated invocations ✅
-4. Expand **Container, Volumes, Networking, Security**:
-   - **Container port:** `8080`
-   - Under **Variables & Secrets**, add the following as **Secret References**:
-     - `DEEPGRAM_API_KEY`
-     - `XAI_API_KEY`
-     - `TELNYX_API_KEY`
-     - `JWT_SECRET`
-     - `DATABASE_URL`
-   - Add as plain **Environment Variables**:
-     - `PYTHONUNBUFFERED` = `1`
-5. Under the **Networking** tab, enable **Session Affinity** (required for WebSocket stability).
-6. Click **Create**.
-7. ✅ **Copy the generated service URL** (e.g., `https://aixcaller-voice-engine-xxxx.a.run.app`).
-
----
-
-### 6B — Deploy the Backend
+### 6A — Deploy the Backend
 
 1. Navigate to **Cloud Run → Create Service**.
 2. Select the `backend` image from Artifact Registry.
@@ -161,15 +134,13 @@ Instead of pasting API keys directly into Cloud Run environment variables, store
      - `TELEGRAM_BOT_TOKEN`
    - Add as plain **Environment Variables**:
      - `SERVER_HOST` = `aixcaller-backend-xxxx.a.run.app` *(your backend URL without https://)*
-     - `VOICE_ENGINE_URL` = `wss://aixcaller-voice-engine-xxxx.a.run.app/ws`
-     - `BACKEND_URL` = `https://aixcaller-backend-xxxx.a.run.app`
      - `PYTHONUNBUFFERED` = `1`
 5. Click **Create**.
 6. ✅ **Copy the generated service URL** (e.g., `https://aixcaller-backend-xxxx.a.run.app`).
 
 ---
 
-### 6C — Deploy the Frontend
+### 6B — Deploy the Frontend
 
 1. Navigate to **Cloud Run → Create Service**.
 2. Select the `frontend` image from Artifact Registry.
@@ -181,10 +152,34 @@ Instead of pasting API keys directly into Cloud Run environment variables, store
    - **Container port:** `3000`
    - Add as plain **Environment Variables**:
      - `NEXT_PUBLIC_API_URL` = `https://aixcaller-backend-xxxx.a.run.app`
-     - `NEXT_PUBLIC_VOICE_ENGINE_WS_URL` = `wss://aixcaller-voice-engine-xxxx.a.run.app`
      - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` = `AIxCaller_Alerts_Bot` *(your bot's username)*
 5. Click **Create**.
 6. ✅ Your frontend is now live at the generated URL.
+
+---
+
+### 6C — Deploy the Outbound Service
+
+1. Navigate to **Cloud Run → Create Service**.
+2. Select the `outbound` image from Artifact Registry.
+3. Configure:
+   - **Service name:** `aixcaller-outbound`
+   - **Region:** `us-central1`
+   - **Authentication:** Allow unauthenticated invocations ✅
+4. Expand **Container, Volumes, Networking, Security**:
+   - **Container port:** `8080`
+   - Add as **Secret References**:
+     - `DATABASE_URL`
+     - `OPENAI_API_KEY`
+     - `TELNYX_API_KEY`
+   - Add as plain **Environment Variables**:
+     - `SERVER_HOST` = `aixcaller-backend-xxxx.a.run.app` *(your backend URL without https://)*
+     - `TELNYX_CONNECTION_ID` = `your_telnyx_connection_id`
+     - `PYTHONUNBUFFERED` = `1`
+5. Click **Create**.
+6. ✅ **Copy the generated service URL** (e.g., `https://aixcaller-outbound-xxxx.a.run.app`).
+
+> **Note:** To trigger campaigns and reminders, you must set up **Cloud Scheduler** jobs to hit `/api/v1/outbound/cron` (every minute) and `/api/v1/outbound/cron-reminders` (every 15 minutes) on the outbound service URL.
 
 ---
 
@@ -250,9 +245,7 @@ This is a one-time setup that connects your Telegram bot to your backend.
 | Check | How to Verify |
 |---|---|
 | Backend is live | Visit `https://<backend-url>/docs` — FastAPI docs should load |
-| Voice Engine is live | Visit `https://<voice-engine-url>/docs` — FastAPI docs should load |
 | Frontend is live | Open the frontend URL — landing page should appear |
-| Demo works | Click 🎤 on the landing page, grant mic access, talk to the AI |
 | pgvector KB works | Upload a document in the dashboard → make a call and ask a question from it |
 | Inbound call works | Call your Telnyx number — AI should answer |
 | Missed call recovery | Call and hang up before AI answers — you should get a callback in 60s |
@@ -271,10 +264,9 @@ This is a one-time setup that connects your Telegram bot to your backend.
                     │              │                 │
   Telnyx ───────────▶  aixcaller-backend (FastAPI)  │
   Telegram ─────────▶        :8080                  │
-                    │              │                 │
-  Telnyx Audio ─────▶  aixcaller-voice-engine       │
-  Browser Demo ─────▶        :8080 /ws /demo        │
                     │                                │
+  Cron / Scheduler ─▶  aixcaller-outbound (FastAPI) │
+                    │        :8080 /cron             │
                     └────────────────────────────────┘
                                   │
                                   ▼
@@ -294,19 +286,16 @@ This is a one-time setup that connects your Telegram bot to your backend.
 
 | Variable | Used By | Description |
 |---|---|---|
-| `DATABASE_URL` | Backend, Voice Engine | Supabase Transaction Pooler URL (port 6543) |
+| `DATABASE_URL` | Backend, Outbound | Supabase Transaction Pooler URL (port 6543) |
 | `DATABASE_DIRECT_URL` | `init_db` job only | Supabase Direct Connection URL (port 5432) |
-| `OPENAI_API_KEY` | Backend | OpenAI `text-embedding-3-small` for KB vectors |
-| `DEEPGRAM_API_KEY` | Backend, Voice Engine | Deepgram STT & TTS |
-| `XAI_API_KEY` | Voice Engine | xAI / Grok LLM API key |
-| `TELNYX_API_KEY` | Backend, Voice Engine, Dialer | Telnyx API Key V2 |
-| `JWT_SECRET` | Backend, Voice Engine | Shared JWT signing secret |
-| `SERVER_HOST` | Backend | Backend hostname (no `https://`) |
-| `VOICE_ENGINE_URL` | Backend | `wss://` URL to Voice Engine `/ws` |
-| `BACKEND_URL` | Voice Engine | `https://` URL to Backend |
+| `OPENAI_API_KEY` | Backend, Outbound | OpenAI embeddings for KB vectors, AI Lead Scoring |
+| `DEEPGRAM_API_KEY` | Backend | Deepgram STT & TTS |
+| `TELNYX_API_KEY` | Backend, Outbound | Telnyx API Key V2 |
+| `TELNYX_CONNECTION_ID` | Outbound | Telnyx connection ID for outbound calls |
+| `JWT_SECRET` | Backend | Shared JWT signing secret |
+| `SERVER_HOST` | Backend, Outbound | Backend hostname (no `https://`) |
 | `TELEGRAM_BOT_TOKEN` | Backend | Token from @BotFather |
 | `NEXT_PUBLIC_API_URL` | Frontend | Backend public URL |
-| `NEXT_PUBLIC_VOICE_ENGINE_WS_URL` | Frontend | Voice Engine public `wss://` URL |
 | `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | Frontend | Telegram bot username |
 
 ---
