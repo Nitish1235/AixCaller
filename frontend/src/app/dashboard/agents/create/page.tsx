@@ -304,10 +304,39 @@ export default function CreateAgentPage() {
             )}
 
             <div>
-              <label style={lbl}>System Prompt & Instructions *</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                <label style={{ ...lbl, marginBottom: 0 }}>System Prompt & Instructions *</label>
+              </div>
+              
+              {/* Prompt Templates */}
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
+                {[
+                  { label: "General Support", text: "You are a helpful customer support agent for our business. Your goal is to answer FAQs, provide order status, and resolve issues politely. Keep answers concise." },
+                  { label: "Real Estate", text: "You are a friendly real estate receptionist. Your goal is to qualify leads by asking about their budget, timeline, and preferred neighborhoods, and then book a property viewing." },
+                  { label: "Dental Clinic", text: "You are a receptionist for a dental clinic. Your goal is to help patients book appointments, answer basic questions about our services (cleaning, whitening), and collect insurance info." },
+                  { label: "E-commerce Sales", text: "You are an energetic sales assistant for our e-commerce store. Your goal is to help customers find products, explain the return policy, and highlight our current promotions." },
+                  { label: "Restaurant Host", text: "You are a warm host for our restaurant. Your goal is to take table reservations, answer questions about the menu (including dietary restrictions), and explain parking availability." },
+                ].map(p => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setPrompt(p.text)}
+                    style={{
+                      background: prompt === p.text ? "var(--blue)" : "#f1f5f9",
+                      color: prompt === p.text ? "#fff" : "var(--text-muted)",
+                      border: prompt === p.text ? "1px solid var(--blue)" : "1px solid #e2e8f0",
+                      borderRadius: 20, padding: "4px 12px", fontSize: "0.75rem", fontWeight: 600,
+                      cursor: "pointer", transition: "all 0.2s ease"
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
               <textarea rows={7} value={prompt} onChange={e => setPrompt(e.target.value)}
                 required style={{ ...inp, resize: "vertical", lineHeight: 1.6 }} />
-              <p style={hint}>Describe your business, how to handle objections, and what to never say.</p>
+              <p style={hint}>Describe your business, how to handle objections, and what to never say. You can freely edit the text above.</p>
             </div>
 
             <div>
