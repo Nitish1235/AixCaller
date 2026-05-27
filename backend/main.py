@@ -19,7 +19,7 @@ _ALLOWED_ORIGINS = [
     o.strip() for o in
     os.environ.get(
         "ALLOWED_ORIGINS",
-        "https://callerx.ai,https://www.callerx.ai,http://localhost:3000,http://localhost:3001"
+        "https://aixcaller.com,https://www.aixcaller.com,http://localhost:3000,http://localhost:3001"
     ).split(",")
     if o.strip()
 ]

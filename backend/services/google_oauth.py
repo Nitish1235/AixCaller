@@ -12,7 +12,7 @@ Handles:
 Requires env vars:
   GOOGLE_CLIENT_ID
   GOOGLE_CLIENT_SECRET
-  GOOGLE_REDIRECT_URI   (e.g. https://api.callerx.ai/api/v1/google/callback)
+  GOOGLE_REDIRECT_URI   (e.g. https://api.aixcaller.com/api/v1/google/callback)
 """
 import os
 import time
@@ -23,7 +23,7 @@ from loguru import logger
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://api.callerx.ai/api/v1/google/callback")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://api.aixcaller.com/api/v1/google/callback")
 
 SCOPES = " ".join([
     "https://www.googleapis.com/auth/calendar",

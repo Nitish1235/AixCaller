@@ -29,7 +29,7 @@ from loguru import logger
 
 router = APIRouter(prefix="/api/v1", tags=["google"])
 
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://callerx.ai")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://aixcaller.com")
 
 
 # ─── OAuth Flow ───────────────────────────────────────────────────────────────
