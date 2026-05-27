@@ -101,11 +101,20 @@ async def generate_voice_previews(
         
     # Running bucket check in threadpool
     from fastapi.concurrency import run_in_threadpool
-    bucket_exists = await run_in_threadpool(bucket.exists)
-    if not bucket_exists:
+    try:
+        bucket_exists = await run_in_threadpool(bucket.exists)
+        if not bucket_exists:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Google Cloud Storage bucket '{bucket_name}' not found."
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"GCS permissions error: {e}")
         raise HTTPException(
-            status_code=404,
-            detail=f"Google Cloud Storage bucket '{bucket_name}' not found."
+            status_code=500,
+            detail=f"GCS permissions error. Make sure your Cloud Run service account has 'Storage Object Admin' access. Details: {str(e)}"
         )
         
     success_voices = []
