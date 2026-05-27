@@ -113,8 +113,6 @@ export default function AgentDetailsPage() {
   const [provLoading, setProvLoading] = useState(false);
   const [provError, setProvError] = useState("");
 
-  const [autoCallbackEnabled, setAutoCallbackEnabled] = useState(false);
-
   // Legacy number forwarding
   const [legacyNumber, setLegacyNumber]             = useState("");
   const [legacySaving, setLegacySaving]             = useState(false);
@@ -156,7 +154,6 @@ export default function AgentDetailsPage() {
           setVoice(found.voice_id || "Telnyx.Ultra.Grace");
           setForwardingNumber(found.forwarding_number || "");
           setTransferEnabled(!!found.human_transfer_enabled);
-          setAutoCallbackEnabled(!!found.auto_callback_enabled);
           setLegacyNumber(found.legacy_number || "");
           // Detect browser timezone for first-time users
           const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -202,7 +199,7 @@ export default function AgentDetailsPage() {
         human_transfer_enabled: transferEnabled,
         human_transfer_timezone: transferTz,
         human_transfer_hours: transferHours,
-        auto_callback_enabled: autoCallbackEnabled,
+
       });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch (e) { console.error(e); }
@@ -773,35 +770,7 @@ export default function AgentDetailsPage() {
                 )}
               </div>
 
-              {/* ── Auto Callback ───────────────────────────────────────── */}
-              <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
-                  <div>
-                    <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                      📞 Auto-Recovery Dialing
-                    </h3>
-                    <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "4px 0 0", lineHeight: 1.5, maxWidth: 480 }}>
-                      If a caller disconnects prematurely or the call is missed, the AI agent will automatically dial them back after 60 seconds.
-                    </p>
-                  </div>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    <input
-                      type="checkbox"
-                      checked={autoCallbackEnabled}
-                      onChange={e => setAutoCallbackEnabled(e.target.checked)}
-                      style={{ width: 18, height: 18, cursor: "pointer" }}
-                    />
-                    <span style={{ fontWeight: 700, fontSize: "0.82rem", color: autoCallbackEnabled ? "var(--green)" : "var(--text-muted)" }}>
-                      {autoCallbackEnabled ? "ENABLED" : "DISABLED"}
-                    </span>
-                  </label>
-                </div>
-                {!autoCallbackEnabled && (
-                  <div style={{ background: "var(--surface)", border: "1.5px dashed var(--border)", borderRadius: 9, padding: "10px 14px", fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 8 }}>
-                    Auto-callback is <strong>off</strong>. If a caller hangs up midway through a booking, the AI will <strong>not</strong> attempt to call them back.
-                  </div>
-                )}
-              </div>
+
 
               {/* ── Shopify Integration ─────────────────────────────────── */}
               <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.5rem", marginTop: "1.5rem" }}>

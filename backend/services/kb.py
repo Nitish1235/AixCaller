@@ -57,7 +57,7 @@ async def _trigger_telnyx_embeddings(bucket_name: str):
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                "https://api.telnyx.com/v2/ai/embeddings/embed-documents",
+                "https://api.telnyx.com/v2/ai/embeddings",
                 headers=headers,
                 json=payload,
                 timeout=30.0

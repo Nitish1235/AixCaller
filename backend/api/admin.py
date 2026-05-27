@@ -108,15 +108,16 @@ async def generate_voice_previews(
             v_name = voice["name"]
             text = f"Hello! I am {v_name}, one of the ultra premium voices provided by Telnyx. I am ready to be used for your AI voice assistant."
             
-            url = "https://api.telnyx.com/v2/text-to-speech"
+            url = "https://api.telnyx.com/v2/ai/audio/speech"
             headers = {
                 "Authorization": f"Bearer {telnyx_api_key}",
                 "Content-Type": "application/json"
             }
             payload = {
-                "text": text,
+                "model": "telnyx",
+                "input": text,
                 "voice": v_id,
-                "output_type": "binary_output"
+                "response_format": "mp3"
             }
             
             try:
