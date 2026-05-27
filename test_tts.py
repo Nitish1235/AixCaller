@@ -1,27 +1,18 @@
 import os
 import requests
-from dotenv import load_dotenv
+import re
 
-load_dotenv("backend/.env")
-key = os.environ.get("TELNYX_API_KEY")
-print("Key starts with:", key[:5] if key else "None")
+env_content = open("backend/.env.cloudrun.example").read()
+key = re.search(r'TELNYX_API_KEY=(.+)', env_content).group(1)
 
-payload = {
-    "model": "tts-1",
-    "input": "Hello",
-    "voice": "Telnyx.NaturalHD.astra"
-}
+url = "https://api.telnyx.com/v2/text-to-speech"
+headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+payload = {"text": "hello", "voice": "Grace", "output_type": "binary_output"}
 
-res = requests.post("https://api.telnyx.com/v2/ai/audio/speech", 
-    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-    json=payload)
-print("/v2/ai/audio/speech", res.status_code, res.text)
+r = requests.post(url, headers=headers, json=payload)
+print(r.status_code, r.text[:200])
 
-res2 = requests.post("https://api.telnyx.com/v2/text-to-speech",
-    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-    json={
-        "text": "Hello",
-        "voice": "Telnyx.NaturalHD.astra",
-        "output_type": "binary_output"
-    })
-print("/v2/text-to-speech", res2.status_code, res2.text)
+payload = {"text": "hello", "voice": "telnyx.ultra.grace", "output_type": "binary_output"}
+r = requests.post(url, headers=headers, json=payload)
+print(r.status_code, r.text[:200])
+

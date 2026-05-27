@@ -1370,25 +1370,18 @@ export default function AgentDetailsPage() {
           <div style={card()}>
             <h2 style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", marginBottom: "1.25rem" }}>Add Knowledge</h2>
 
-            {/* Sub-tabs — URL sync hidden for now, coming back soon */}
+            {/* Sub-tabs */}
             <div style={{ display: "flex", gap: 6, marginBottom: "1.25rem" }}>
-              {(["text", "file", "sheet"] as const).map(t => (
+              {(["text", "file", "url", "sheet"] as const).map(t => (
                 <button key={t} onClick={() => setKbTab(t)} style={{
                   padding: "6px 14px", borderRadius: 7, fontWeight: 700, fontSize: "0.8rem",
                   cursor: "pointer", border: "1.5px solid var(--border)",
                   background: kbTab === t ? "var(--blue)" : "var(--blue-light)",
                   color: kbTab === t ? "#fff" : "var(--blue)",
                 }}>
-                  {t === "text" ? "✏️ Text" : t === "file" ? "📄 File" : "📊 Google Sheet"}
+                  {t === "text" ? "✏️ Text" : t === "file" ? "📄 File" : t === "url" ? "🌐 Website" : "📊 Google Sheet"}
                 </button>
               ))}
-              <span style={{
-                padding: "6px 12px", borderRadius: 7, fontWeight: 600, fontSize: "0.75rem",
-                background: "var(--surface)", color: "var(--text-muted)",
-                border: "1.5px dashed var(--border)", display: "inline-flex", alignItems: "center", gap: 6,
-              }}>
-                🌐 Website Sync — coming soon
-              </span>
             </div>
 
             {/* Guide: what to upload */}

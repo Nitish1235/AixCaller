@@ -4,6 +4,10 @@ All routes require HTTP Basic authentication (ADMIN_USER + ADMIN_PASS env vars).
 """
 import os
 import secrets
+import json
+import base64
+import asyncio
+import websockets
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from typing import Optional
@@ -102,51 +106,58 @@ async def generate_voice_previews(
     success_voices = []
     failed_voices = []
     
-    async with httpx.AsyncClient() as client:
-        for voice in TELNYX_VOICES:
-            v_id = voice["voice_id"]
-            v_name = voice["name"]
-            text = f"Hello! I am {v_name}, one of the ultra premium voices provided by Telnyx. I am ready to be used for your AI voice assistant."
+    for voice in TELNYX_VOICES:
+        v_id = voice["voice_id"]
+        v_name = voice["name"]
+        text = f"Hello! I am {v_name}, one of the ultra premium voices provided by Telnyx. I am ready to be used for your AI voice assistant."
+        
+        uri = f"wss://api.telnyx.com/v2/text-to-speech/speech?voice={v_id}"
+        headers = {"Authorization": f"Bearer {telnyx_api_key}"}
+        
+        try:
+            audio_bytes = bytearray()
+            async with websockets.connect(uri, additional_headers=headers) as websocket:
+                await websocket.send(" ")
+                await asyncio.sleep(0.1)
+                await websocket.send(text)
+                await websocket.send("") # End of stream signal
+                
+                while True:
+                    try:
+                        message = await asyncio.wait_for(websocket.recv(), timeout=3.0)
+                        if isinstance(message, str):
+                            data = json.loads(message)
+                            if data.get("type") == "audio":
+                                audio_bytes.extend(base64.b64decode(data["data"]))
+                            elif data.get("type") == "end":
+                                break
+                    except asyncio.TimeoutError:
+                        break
             
-            url = "https://api.telnyx.com/v2/ai/audio/speech"
-            headers = {
-                "Authorization": f"Bearer {telnyx_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": "telnyx",
-                "input": text,
-                "voice": v_id,
-                "response_format": "mp3"
-            }
+            if not audio_bytes:
+                logger.error(f"Telnyx WS TTS failed for {v_name}: No audio received")
+                failed_voices.append(v_name)
+                continue
+                
+            blob_name = f"voices/telnyx_ultra_{v_name.lower()}.mp3"
+            blob = bucket.blob(blob_name)
+            
+            # Running in a threadpool to avoid blocking event loop
+            await run_in_threadpool(blob.upload_from_string, bytes(audio_bytes), "audio/mpeg")
             
             try:
-                response = await client.post(url, headers=headers, json=payload, timeout=30.0)
-                if response.status_code != 200:
-                    logger.error(f"Telnyx TTS failed for {v_name}: {response.status_code} - {response.text}")
-                    failed_voices.append(v_name)
-                    continue
-                    
-                audio_bytes = response.content
-                blob_name = f"voices/telnyx_ultra_{v_name.lower()}.mp3"
-                blob = bucket.blob(blob_name)
-                
-                # Running in a threadpool to avoid blocking event loop
-                await run_in_threadpool(blob.upload_from_string, audio_bytes, "audio/mpeg")
-                
-                try:
-                    await run_in_threadpool(blob.make_public)
-                    public_url = blob.public_url
-                except Exception as e:
-                    logger.warning(f"Could not make blob public: {e}")
-                    public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
-                    
-                logger.info(f"Uploaded preview for {v_name} to {public_url}")
-                success_voices.append({"name": v_name, "url": public_url})
-                
+                await run_in_threadpool(blob.make_public)
+                public_url = blob.public_url
             except Exception as e:
-                logger.error(f"Exception generating voice preview for {v_name}: {e}")
-                failed_voices.append(v_name)
+                logger.warning(f"Could not make blob public: {e}")
+                public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
+                
+            logger.info(f"Uploaded preview for {v_name} to {public_url}")
+            success_voices.append({"name": v_name, "url": public_url})
+            
+        except Exception as e:
+            logger.error(f"Exception generating voice preview for {v_name}: {e}")
+            failed_voices.append(v_name)
                 
     return {
         "message": f"Voice previews generation completed: {len(success_voices)} succeeded, {len(failed_voices)} failed.",

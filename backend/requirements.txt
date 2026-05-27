@@ -15,3 +15,4 @@ resend
 bcrypt
 boto3
 google-cloud-storage
+websockets
