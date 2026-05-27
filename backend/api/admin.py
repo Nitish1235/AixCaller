@@ -25,26 +25,28 @@ ADMIN_USER = os.environ.get("ADMIN_USER", "Nitish165")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
 
 # Telnyx Ultra voice catalogue — presented in the dashboard voice selector
+# IMPORTANT: Replace the placeholders below with the actual UUIDs from your Telnyx Voice Playground!
 TELNYX_VOICES = [
-    {"voice_id": "Telnyx.Ultra.Grace",    "name": "Grace",    "gender": "Female", "style": "Professional / Warm"},
-    {"voice_id": "Telnyx.Ultra.George",   "name": "George",   "gender": "Male",   "style": "Professional / Confident"},
-    {"voice_id": "Telnyx.Ultra.Ava",      "name": "Ava",      "gender": "Female", "style": "Friendly / Bright"},
-    {"voice_id": "Telnyx.Ultra.James",    "name": "James",    "gender": "Male",   "style": "Calm / Authoritative"},
-    {"voice_id": "Telnyx.Ultra.Emma",     "name": "Emma",     "gender": "Female", "style": "Empathetic / Sincere"},
-    {"voice_id": "Telnyx.Ultra.Daniel",   "name": "Daniel",   "gender": "Male",   "style": "Warm / Trustworthy"},
-    {"voice_id": "Telnyx.Ultra.Allie",    "name": "Allie",    "gender": "Female", "style": "Friendly / Expressive"},
-    {"voice_id": "Telnyx.Ultra.Benji",    "name": "Benji",    "gender": "Male",   "style": "Playful / High-energy"},
-    {"voice_id": "Telnyx.Ultra.Ronald",   "name": "Ronald",   "gender": "Male",   "style": "Mature / Reassuring"},
-    {"voice_id": "Telnyx.Ultra.Wesley",   "name": "Wesley",   "gender": "Male",   "style": "Clean / Clear"},
-    {"voice_id": "Telnyx.Ultra.Mia",      "name": "Mia",      "gender": "Female", "style": "Direct / Business"},
-    {"voice_id": "Telnyx.Ultra.Howard",   "name": "Howard",   "gender": "Male",   "style": "Deep / Narrative"},
-    {"voice_id": "Telnyx.Ultra.Harry",    "name": "Harry",    "gender": "Male",   "style": "Youthful / Casual"},
-    {"voice_id": "Telnyx.Ultra.Jasper",   "name": "Jasper",   "gender": "Male",   "style": "Smooth / Conversational"},
-    {"voice_id": "Telnyx.Ultra.Arvin",    "name": "Arvin",    "gender": "Male",   "style": "Energetic / Direct"},
-    {"voice_id": "Telnyx.Ultra.Callie",   "name": "Callie",   "gender": "Female", "style": "Bright / Engaging"},
-    {"voice_id": "Telnyx.Ultra.Skyler",   "name": "Skyler",   "gender": "Female", "style": "Natural / Conversational"},
-    {"voice_id": "Telnyx.Ultra.Darius",   "name": "Darius",   "gender": "Male",   "style": "Professional / Grounded"},
-    {"voice_id": "Telnyx.Ultra.Kelsey",   "name": "Kelsey",   "gender": "Female", "style": "Soft / Gentle"},
+    {"voice_id": "Telnyx.Ultra.f786b574-daa5-4673-aa0c-cbe3e8534c02", "name": "Katie",  "gender": "Female", "style": "Friendly Fixer"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_GRACE_UUID>",    "name": "Grace",    "gender": "Female", "style": "Professional / Warm"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_GEORGE_UUID>",   "name": "George",   "gender": "Male",   "style": "Professional / Confident"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_AVA_UUID>",      "name": "Ava",      "gender": "Female", "style": "Friendly / Bright"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_JAMES_UUID>",    "name": "James",    "gender": "Male",   "style": "Calm / Authoritative"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_EMMA_UUID>",     "name": "Emma",     "gender": "Female", "style": "Empathetic / Sincere"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_DANIEL_UUID>",   "name": "Daniel",   "gender": "Male",   "style": "Warm / Trustworthy"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_ALLIE_UUID>",    "name": "Allie",    "gender": "Female", "style": "Friendly / Expressive"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_BENJI_UUID>",    "name": "Benji",    "gender": "Male",   "style": "Playful / High-energy"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_RONALD_UUID>",   "name": "Ronald",   "gender": "Male",   "style": "Mature / Reassuring"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_WESLEY_UUID>",   "name": "Wesley",   "gender": "Male",   "style": "Clean / Clear"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_MIA_UUID>",      "name": "Mia",      "gender": "Female", "style": "Direct / Business"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_HOWARD_UUID>",   "name": "Howard",   "gender": "Male",   "style": "Deep / Narrative"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_HARRY_UUID>",    "name": "Harry",    "gender": "Male",   "style": "Youthful / Casual"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_JASPER_UUID>",   "name": "Jasper",   "gender": "Male",   "style": "Smooth / Conversational"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_ARVIN_UUID>",    "name": "Arvin",    "gender": "Male",   "style": "Energetic / Direct"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_CALLIE_UUID>",   "name": "Callie",   "gender": "Female", "style": "Bright / Engaging"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_SKYLER_UUID>",   "name": "Skyler",   "gender": "Female", "style": "Natural / Conversational"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_DARIUS_UUID>",   "name": "Darius",   "gender": "Male",   "style": "Professional / Grounded"},
+    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_KELSEY_UUID>",   "name": "Kelsey",   "gender": "Female", "style": "Soft / Gentle"},
 ]
 
 
@@ -111,31 +113,26 @@ async def generate_voice_previews(
         v_name = voice["name"]
         text = f"Hello! I am {v_name}, one of the ultra premium voices provided by Telnyx. I am ready to be used for your AI voice assistant."
         
-        uri = f"wss://api.telnyx.com/v2/text-to-speech/speech?voice={v_id}"
-        headers = {"Authorization": f"Bearer {telnyx_api_key}"}
+        url = "https://api.telnyx.com/v2/text-to-speech/speech"
+        headers = {"Authorization": f"Bearer {telnyx_api_key}", "Content-Type": "application/json"}
+        payload = {
+            "voice": v_id,
+            "text": text
+        }
         
         try:
-            audio_bytes = bytearray()
-            async with websockets.connect(uri, additional_headers=headers) as websocket:
-                await websocket.send(" ")
-                await asyncio.sleep(0.1)
-                await websocket.send(text)
-                await websocket.send("") # End of stream signal
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload, timeout=30.0)
                 
-                while True:
-                    try:
-                        message = await asyncio.wait_for(websocket.recv(), timeout=3.0)
-                        if isinstance(message, str):
-                            data = json.loads(message)
-                            if data.get("type") == "audio":
-                                audio_bytes.extend(base64.b64decode(data["data"]))
-                            elif data.get("type") == "end":
-                                break
-                    except asyncio.TimeoutError:
-                        break
+            if response.status_code != 200:
+                logger.error(f"Telnyx HTTP TTS failed for {v_name}: {response.status_code} - {response.text}")
+                failed_voices.append(v_name)
+                continue
+                
+            audio_bytes = response.content
             
             if not audio_bytes:
-                logger.error(f"Telnyx WS TTS failed for {v_name}: No audio received")
+                logger.error(f"Telnyx HTTP TTS failed for {v_name}: No audio received")
                 failed_voices.append(v_name)
                 continue
                 
