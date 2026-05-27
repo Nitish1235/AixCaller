@@ -108,7 +108,7 @@ export default function CreateAgentPage() {
   const [name, setName]     = useState("");
   const [businessName, setBusinessName] = useState("");
   const [prompt, setPrompt] = useState("You are a helpful AI assistant for our business. Be warm, concise, and professional.");
-  const [voice, setVoice]   = useState("Telnyx.Ultra.Grace");
+  const [voice, setVoice]   = useState("Telnyx.Ultra.a4a16c5e-5902-4732-b9b6-2a48efd2e11b");
   const [voiceList, setVoiceList] = useState<any[]>([]);
 
   useEffect(() => {
@@ -351,25 +351,26 @@ export default function CreateAgentPage() {
                     ))
                   ) : (
                     <>
-                      <option value="Telnyx.Ultra.Grace">Grace (F - Professional / Warm)</option>
-                      <option value="Telnyx.Ultra.George">George (M - Professional / Confident)</option>
-                      <option value="Telnyx.Ultra.Ava">Ava (F - Friendly / Bright)</option>
-                      <option value="Telnyx.Ultra.James">James (M - Calm / Authoritative)</option>
-                      <option value="Telnyx.Ultra.Emma">Emma (F - Empathetic / Sincere)</option>
-                      <option value="Telnyx.Ultra.Daniel">Daniel (M - Warm / Trustworthy)</option>
-                      <option value="Telnyx.Ultra.Allie">Allie (F - Friendly / Expressive)</option>
-                      <option value="Telnyx.Ultra.Benji">Benji (M - Playful / High-energy)</option>
-                      <option value="Telnyx.Ultra.Ronald">Ronald (M - Mature / Reassuring)</option>
-                      <option value="Telnyx.Ultra.Wesley">Wesley (M - Clean / Clear)</option>
-                      <option value="Telnyx.Ultra.Mia">Mia (F - Direct / Business)</option>
-                      <option value="Telnyx.Ultra.Howard">Howard (M - Deep / Narrative)</option>
-                      <option value="Telnyx.Ultra.Harry">Harry (M - Youthful / Casual)</option>
-                      <option value="Telnyx.Ultra.Jasper">Jasper (M - Smooth / Conversational)</option>
-                      <option value="Telnyx.Ultra.Arvin">Arvin (M - Energetic / Direct)</option>
-                      <option value="Telnyx.Ultra.Callie">Callie (F - Bright / Engaging)</option>
-                      <option value="Telnyx.Ultra.Skyler">Skyler (F - Natural / Conversational)</option>
-                      <option value="Telnyx.Ultra.Darius">Darius (M - Professional / Grounded)</option>
-                      <option value="Telnyx.Ultra.Kelsey">Kelsey (F - Soft / Gentle)</option>
+                      <option value="Telnyx.Ultra.f786b574-daa5-4673-aa0c-cbe3e8534c02">Katie (F - Friendly Fixer)</option>
+                      <option value="Telnyx.Ultra.a4a16c5e-5902-4732-b9b6-2a48efd2e11b">Grace (F - Professional / Warm)</option>
+                      <option value="Telnyx.Ultra.ebecd063-10f4-422e-a8ff-556ce5c4d4e4">Ava (F - Friendly / Bright)</option>
+                      <option value="Telnyx.Ultra.f6ff7c0c-e396-40a9-a70b-f7607edb6937">Emma (F - Empathetic / Sincere)</option>
+                      <option value="Telnyx.Ultra.2747b6cf-fa34-460c-97db-267566918881">Allie (F - Friendly / Expressive)</option>
+                      <option value="Telnyx.Ultra.1d3ba41a-96e6-44ad-aabb-9817c56caa68">Mia (F - Direct / Business)</option>
+                      <option value="Telnyx.Ultra.00a77add-48d5-4ef6-8157-71e5437b282d">Callie (F - Bright / Engaging)</option>
+                      <option value="Telnyx.Ultra.01fd7d67-d2a0-4e4e-8c48-42611c71a926">Skyler (F - Natural / Conversational)</option>
+                      <option value="Telnyx.Ultra.050f5a7a-9d2b-4b76-84e3-2d056a0a3eb0">Kelsey (F - Soft / Gentle)</option>
+                      <option value="Telnyx.Ultra.d132064c-b931-4a80-bf0d-02a331ec4572">George (M - Professional / Confident)</option>
+                      <option value="Telnyx.Ultra.42b39f37-515f-4eee-8546-73e841679c1d">James (M - Calm / Authoritative)</option>
+                      <option value="Telnyx.Ultra.47c38ca4-5f35-497b-b1a3-415245fb35e1">Daniel (M - Warm / Trustworthy)</option>
+                      <option value="Telnyx.Ultra.2d5b8c3a-116c-4741-acaf-ba4fa289eba2">Benji (M - Playful / High-energy)</option>
+                      <option value="Telnyx.Ultra.bbee10a8-4f08-4c5c-8282-e69299115055">Ben (M - Helpful man)</option>
+                      <option value="Telnyx.Ultra.6fccb471-26f7-4f7a-93dd-542935db6c20">Wesley (M - Clean / Clear)</option>
+                      <option value="Telnyx.Ultra.0d42f0f6-c019-4082-b250-1c16133d1c82">Howard (M - Deep / Narrative)</option>
+                      <option value="Telnyx.Ultra.3dcaa773-fb1a-47f7-82a4-1bf756c4e1fb">Harry (M - Youthful / Casual)</option>
+                      <option value="Telnyx.Ultra.3faa81ae-d3d8-4ab1-9e44-e50e46d33c30">Jasper (M - Smooth / Conversational)</option>
+                      <option value="Telnyx.Ultra.3f04e815-3260-4f50-8fd9-af9c657be4c2">Arvin (M - Energetic / Direct)</option>
+                      <option value="Telnyx.Ultra.23112795-d54e-4560-9568-791a87c30201">Darian (M - Professional / Grounded)</option>
                     </>
                   )}
                 </select>

@@ -10,6 +10,7 @@ import asyncio
 import websockets
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.concurrency import run_in_threadpool
 from typing import Optional
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
@@ -25,28 +26,29 @@ ADMIN_USER = os.environ.get("ADMIN_USER", "Nitish165")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
 
 # Telnyx Ultra voice catalogue — presented in the dashboard voice selector
-# IMPORTANT: Replace the placeholders below with the actual UUIDs from your Telnyx Voice Playground!
+# IMPORTANT: To add more voices, you MUST get their actual UUIDs from the Telnyx Voice Playground.
+# The Telnyx API does not provide a way to fetch these UUIDs automatically.
 TELNYX_VOICES = [
     {"voice_id": "Telnyx.Ultra.f786b574-daa5-4673-aa0c-cbe3e8534c02", "name": "Katie",  "gender": "Female", "style": "Friendly Fixer"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_GRACE_UUID>",    "name": "Grace",    "gender": "Female", "style": "Professional / Warm"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_GEORGE_UUID>",   "name": "George",   "gender": "Male",   "style": "Professional / Confident"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_AVA_UUID>",      "name": "Ava",      "gender": "Female", "style": "Friendly / Bright"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_JAMES_UUID>",    "name": "James",    "gender": "Male",   "style": "Calm / Authoritative"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_EMMA_UUID>",     "name": "Emma",     "gender": "Female", "style": "Empathetic / Sincere"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_DANIEL_UUID>",   "name": "Daniel",   "gender": "Male",   "style": "Warm / Trustworthy"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_ALLIE_UUID>",    "name": "Allie",    "gender": "Female", "style": "Friendly / Expressive"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_BENJI_UUID>",    "name": "Benji",    "gender": "Male",   "style": "Playful / High-energy"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_RONALD_UUID>",   "name": "Ronald",   "gender": "Male",   "style": "Mature / Reassuring"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_WESLEY_UUID>",   "name": "Wesley",   "gender": "Male",   "style": "Clean / Clear"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_MIA_UUID>",      "name": "Mia",      "gender": "Female", "style": "Direct / Business"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_HOWARD_UUID>",   "name": "Howard",   "gender": "Male",   "style": "Deep / Narrative"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_HARRY_UUID>",    "name": "Harry",    "gender": "Male",   "style": "Youthful / Casual"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_JASPER_UUID>",   "name": "Jasper",   "gender": "Male",   "style": "Smooth / Conversational"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_ARVIN_UUID>",    "name": "Arvin",    "gender": "Male",   "style": "Energetic / Direct"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_CALLIE_UUID>",   "name": "Callie",   "gender": "Female", "style": "Bright / Engaging"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_SKYLER_UUID>",   "name": "Skyler",   "gender": "Female", "style": "Natural / Conversational"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_DARIUS_UUID>",   "name": "Darius",   "gender": "Male",   "style": "Professional / Grounded"},
-    {"voice_id": "Telnyx.Ultra.<REPLACE_WITH_KELSEY_UUID>",   "name": "Kelsey",   "gender": "Female", "style": "Soft / Gentle"},
+    {"voice_id": "Telnyx.Ultra.a4a16c5e-5902-4732-b9b6-2a48efd2e11b", "name": "Grace",  "gender": "Female", "style": "Professional / Warm"},
+    {"voice_id": "Telnyx.Ultra.ebecd063-10f4-422e-a8ff-556ce5c4d4e4", "name": "Ava",    "gender": "Female", "style": "Friendly / Bright"},
+    {"voice_id": "Telnyx.Ultra.f6ff7c0c-e396-40a9-a70b-f7607edb6937", "name": "Emma",   "gender": "Female", "style": "Empathetic / Sincere"},
+    {"voice_id": "Telnyx.Ultra.2747b6cf-fa34-460c-97db-267566918881", "name": "Allie",  "gender": "Female", "style": "Friendly / Expressive"},
+    {"voice_id": "Telnyx.Ultra.1d3ba41a-96e6-44ad-aabb-9817c56caa68", "name": "Mia",    "gender": "Female", "style": "Direct / Business"},
+    {"voice_id": "Telnyx.Ultra.00a77add-48d5-4ef6-8157-71e5437b282d", "name": "Callie", "gender": "Female", "style": "Bright / Engaging"},
+    {"voice_id": "Telnyx.Ultra.01fd7d67-d2a0-4e4e-8c48-42611c71a926", "name": "Skyler", "gender": "Female", "style": "Natural / Conversational"},
+    {"voice_id": "Telnyx.Ultra.050f5a7a-9d2b-4b76-84e3-2d056a0a3eb0", "name": "Kelsey", "gender": "Female", "style": "Soft / Gentle"},
+    {"voice_id": "Telnyx.Ultra.d132064c-b931-4a80-bf0d-02a331ec4572", "name": "George", "gender": "Male",   "style": "Professional / Confident"},
+    {"voice_id": "Telnyx.Ultra.42b39f37-515f-4eee-8546-73e841679c1d", "name": "James",  "gender": "Male",   "style": "Calm / Authoritative"},
+    {"voice_id": "Telnyx.Ultra.47c38ca4-5f35-497b-b1a3-415245fb35e1", "name": "Daniel", "gender": "Male",   "style": "Warm / Trustworthy"},
+    {"voice_id": "Telnyx.Ultra.2d5b8c3a-116c-4741-acaf-ba4fa289eba2", "name": "Benji",  "gender": "Male",   "style": "Playful / High-energy"},
+    {"voice_id": "Telnyx.Ultra.bbee10a8-4f08-4c5c-8282-e69299115055", "name": "Ben",    "gender": "Male",   "style": "Helpful man"},
+    {"voice_id": "Telnyx.Ultra.6fccb471-26f7-4f7a-93dd-542935db6c20", "name": "Wesley", "gender": "Male",   "style": "Clean / Clear"},
+    {"voice_id": "Telnyx.Ultra.0d42f0f6-c019-4082-b250-1c16133d1c82", "name": "Howard", "gender": "Male",   "style": "Deep / Narrative"},
+    {"voice_id": "Telnyx.Ultra.3dcaa773-fb1a-47f7-82a4-1bf756c4e1fb", "name": "Harry",  "gender": "Male",   "style": "Youthful / Casual"},
+    {"voice_id": "Telnyx.Ultra.3faa81ae-d3d8-4ab1-9e44-e50e46d33c30", "name": "Jasper", "gender": "Male",   "style": "Smooth / Conversational"},
+    {"voice_id": "Telnyx.Ultra.3f04e815-3260-4f50-8fd9-af9c657be4c2", "name": "Arvin",  "gender": "Male",   "style": "Energetic / Direct"},
+    {"voice_id": "Telnyx.Ultra.23112795-d54e-4560-9568-791a87c30201", "name": "Darian", "gender": "Male",   "style": "Professional / Grounded"},
 ]
 
 
