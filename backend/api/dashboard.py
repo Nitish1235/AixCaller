@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from shared.database import get_db
 from shared.models import Agent, CallRecord, Tenant
 from backend.services.analytics import AnalyticsService
-from backend.services.crm import ZohoCRMService
+from backend.services.airtable import AirtableService
 from backend.services.email import send_call_summary_email
 from loguru import logger
 
@@ -52,6 +52,9 @@ def _count_active_agents(db: Session, tenant_id: uuid.UUID) -> int:
 class IntegrationSettings(BaseModel):
     email_summary_enabled: Optional[bool] = None
     contact_email: Optional[str] = None
+    airtable_pat: Optional[str] = None
+    airtable_base_id: Optional[str] = None
+    airtable_table_name: Optional[str] = None
 
 
 @router.get("/integrations")
@@ -65,6 +68,9 @@ async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
         "contact_email":         tenant.contact_email,
         "google_connected":      tenant.google_connected,
         "google_calendar_id":    tenant.google_calendar_id,
+        "airtable_connected":    bool(tenant.airtable_pat and tenant.airtable_base_id),
+        "airtable_base_id":      tenant.airtable_base_id or "",
+        "airtable_table_name":   tenant.airtable_table_name or "Call Log",
     }
 
 
@@ -83,6 +89,12 @@ async def save_integrations(
         tenant.email_summary_enabled = settings.email_summary_enabled
     if settings.contact_email is not None:
         tenant.contact_email = settings.contact_email
+    if settings.airtable_pat is not None:
+        tenant.airtable_pat = settings.airtable_pat or None
+    if settings.airtable_base_id is not None:
+        tenant.airtable_base_id = settings.airtable_base_id or None
+    if settings.airtable_table_name is not None:
+        tenant.airtable_table_name = settings.airtable_table_name or None
 
     db.add(tenant)
     db.commit()
@@ -102,14 +114,38 @@ async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends
         t.google_calendar_id = "primary"
         t.google_connected = False
 
+    def _disconnect_airtable(t: Tenant):
+        t.airtable_pat = None
+        t.airtable_base_id = None
+        t.airtable_table_name = None
+
     field_map = {
         "google": _disconnect_google,
+        "airtable": _disconnect_airtable,
     }
     if key in field_map:
         field_map[key](tenant)
         db.add(tenant)
         db.commit()
     return {"status": "disconnected", "key": key}
+
+
+@router.post("/integrations/airtable/test")
+async def test_airtable(tenant_id: str, db: Session = Depends(get_db)):
+    """Test the Airtable connection using saved PAT + base ID."""
+    tenant = db.get(Tenant, uuid.UUID(tenant_id))
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    if not tenant.airtable_pat or not tenant.airtable_base_id:
+        raise HTTPException(status_code=400, detail="Airtable PAT and Base ID are required. Save them first.")
+    try:
+        svc = AirtableService(tenant)
+        result = await svc.test_connection()
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Connection test failed: {str(e)}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

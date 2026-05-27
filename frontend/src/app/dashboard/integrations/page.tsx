@@ -156,7 +156,11 @@ export default function IntegrationsPage() {
     googleCalendarId: "primary",
     emailEnabled: true,
     contactEmail: "",
+    airtablePat: "",
+    airtableBaseId: "",
+    airtableTableName: "Call Log",
   });
+  const [airtableTesting, setAirtableTesting] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 4000); };
 
@@ -170,6 +174,9 @@ export default function IntegrationsPage() {
           googleCalendarId: data.google_calendar_id || "primary",
           emailEnabled: data.email_summary_enabled ?? true,
           contactEmail: data.contact_email || "",
+          airtablePat: "",  // never expose token back
+          airtableBaseId: data.airtable_base_id || "",
+          airtableTableName: data.airtable_table_name || "Call Log",
         }));
       }
     } catch {}
@@ -221,6 +228,52 @@ export default function IntegrationsPage() {
       showToast("✅ Email settings saved!");
     } catch {
       showToast("⚠️ Failed to save email settings.");
+    }
+    setSaving(null);
+  };
+
+  /* ─── Airtable save ─── */
+  const saveAirtableSettings = async () => {
+    setSaving("airtable");
+    try {
+      await apiPatch(`/integrations?tenant_id=${getTenantId()}`, {
+        airtable_pat: settings.airtablePat || null,
+        airtable_base_id: settings.airtableBaseId || null,
+        airtable_table_name: settings.airtableTableName || "Call Log",
+      });
+      await load();
+      showToast("✅ Airtable settings saved!");
+    } catch {
+      showToast("⚠️ Failed to save Airtable settings.");
+    }
+    setSaving(null);
+  };
+
+  const testAirtable = async () => {
+    setAirtableTesting(true);
+    try {
+      const resp = await fetch(`${API_BASE_URL}/integrations/airtable/test?tenant_id=${getTenantId()}`, { method: "POST" });
+      const data = await resp.json();
+      if (resp.ok) {
+        showToast(`✅ Airtable connected! Table: ${data.table}`);
+      } else {
+        showToast(`⚠️ ${data.detail || "Connection failed"}`);
+      }
+    } catch {
+      showToast("⚠️ Connection test failed.");
+    }
+    setAirtableTesting(false);
+  };
+
+  const disconnectAirtable = async () => {
+    setSaving("airtable");
+    try {
+      await fetch(`${API_BASE_URL}/integrations/airtable?tenant_id=${getTenantId()}`, { method: "DELETE" });
+      await load();
+      setSettings(prev => ({ ...prev, airtablePat: "", airtableBaseId: "", airtableTableName: "Call Log" }));
+      showToast("✅ Airtable disconnected");
+    } catch {
+      showToast("⚠️ Disconnect failed.");
     }
     setSaving(null);
   };
@@ -400,6 +453,161 @@ export default function IntegrationsPage() {
             </IntegrationCard>
           </div>
 
+          {/* ── Airtable ── */}
+          <div className="int-card">
+            <IntegrationCard
+              icon="📊" title="Airtable" description="Auto-log calls to your base"
+              connected={!!cfg.airtable_connected} accentColor="#18bfff"
+            >
+              {cfg.airtable_connected ? (
+                <>
+                  <div style={{
+                    background: "#ecfeff", border: "1px solid rgba(24,191,255,0.15)",
+                    borderRadius: 10, padding: "10px 14px", fontSize: "0.82rem", color: "#0891b2", fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <span>✓</span> Every call auto-logged to "{cfg.airtable_table_name || "Call Log"}"
+                  </div>
+                  <div>
+                    <label style={lbl}>Base ID</label>
+                    <input
+                      style={inp} value={settings.airtableBaseId}
+                      onChange={e => setSettings({ ...settings, airtableBaseId: e.target.value })}
+                      placeholder="appXXXXXXXXXXXXXX"
+                      onFocus={e => e.target.style.borderColor = "#18bfff"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div>
+                    <label style={lbl}>Table Name</label>
+                    <input
+                      style={inp} value={settings.airtableTableName}
+                      onChange={e => setSettings({ ...settings, airtableTableName: e.target.value })}
+                      placeholder="Call Log"
+                      onFocus={e => e.target.style.borderColor = "#18bfff"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div>
+                    <label style={lbl}>Personal Access Token (update)</label>
+                    <input
+                      type="password" style={inp} value={settings.airtablePat}
+                      onChange={e => setSettings({ ...settings, airtablePat: e.target.value })}
+                      placeholder="pat•••••••• (leave blank to keep current)"
+                      onFocus={e => e.target.style.borderColor = "#18bfff"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      className="int-btn" onClick={saveAirtableSettings} disabled={saving === "airtable"}
+                      style={{
+                        flex: 1, background: "#18bfff", color: "#fff", border: "none", borderRadius: 10,
+                        padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem",
+                        boxShadow: "0 2px 8px rgba(24,191,255,0.2)", opacity: saving === "airtable" ? 0.7 : 1,
+                      }}
+                    >
+                      {saving === "airtable" ? "Saving…" : "Save Settings"}
+                    </button>
+                    <button
+                      className="int-btn" onClick={testAirtable} disabled={airtableTesting}
+                      style={{
+                        background: "none", border: "1.5px solid #18bfff", color: "#18bfff",
+                        borderRadius: 10, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
+                        opacity: airtableTesting ? 0.6 : 1,
+                      }}
+                    >
+                      {airtableTesting ? "Testing…" : "Test"}
+                    </button>
+                    <button
+                      className="int-btn" onClick={disconnectAirtable} disabled={saving === "airtable"}
+                      style={{
+                        background: "none", border: "1.5px solid #fecaca", color: "#ef4444",
+                        borderRadius: 10, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Auto-log every call to your Airtable base. Phone, summary, sentiment, duration, and action items — all captured as a row.
+                  </div>
+                  <div style={{
+                    background: "#ecfeff", border: "1px solid rgba(24,191,255,0.15)",
+                    borderRadius: 10, padding: "10px 14px", fontSize: "0.78rem", color: "#155e75", lineHeight: 1.5,
+                  }}>
+                    <strong>How to connect:</strong><br />
+                    1. Go to <a href="https://airtable.com/create/tokens" target="_blank" rel="noopener noreferrer" style={{ color: "#0891b2", fontWeight: 700 }}>airtable.com/create/tokens</a><br />
+                    2. Create a token with scopes: <strong>data.records:write</strong>, <strong>data.records:read</strong><br />
+                    3. Grant access to the base you want to log calls to<br />
+                    4. Create a table named &quot;Call Log&quot; with columns: Phone, Summary, Sentiment, Duration (s), Action Items, Agent, Call ID, Timestamp
+                  </div>
+                  <div>
+                    <label style={lbl}>Personal Access Token</label>
+                    <input
+                      type="password" style={inp} value={settings.airtablePat}
+                      onChange={e => setSettings({ ...settings, airtablePat: e.target.value })}
+                      placeholder="patXXXXXXXXXXXXXX.XXXXXXXXXXXXXXX"
+                      onFocus={e => e.target.style.borderColor = "#18bfff"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div>
+                    <label style={lbl}>Base ID</label>
+                    <input
+                      style={inp} value={settings.airtableBaseId}
+                      onChange={e => setSettings({ ...settings, airtableBaseId: e.target.value })}
+                      placeholder="appXXXXXXXXXXXXXX"
+                      onFocus={e => e.target.style.borderColor = "#18bfff"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>
+                      Find this in your Airtable base URL: airtable.com/<strong>appXXXXXXXX</strong>/...
+                    </div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Table Name</label>
+                    <input
+                      style={inp} value={settings.airtableTableName}
+                      onChange={e => setSettings({ ...settings, airtableTableName: e.target.value })}
+                      placeholder="Call Log"
+                      onFocus={e => e.target.style.borderColor = "#18bfff"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      className="int-btn" onClick={saveAirtableSettings}
+                      disabled={!settings.airtablePat || !settings.airtableBaseId || saving === "airtable"}
+                      style={{
+                        flex: 1, background: "#18bfff", color: "#fff", border: "none", borderRadius: 10,
+                        padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                        boxShadow: "0 4px 14px rgba(24,191,255,0.2)",
+                        opacity: (!settings.airtablePat || !settings.airtableBaseId || saving === "airtable") ? 0.5 : 1,
+                      }}
+                    >
+                      {saving === "airtable" ? "Saving…" : "💾 Save & Connect"}
+                    </button>
+                    <button
+                      className="int-btn" onClick={testAirtable}
+                      disabled={!cfg.airtable_connected || airtableTesting}
+                      style={{
+                        background: "none", border: "1.5px solid #18bfff", color: "#18bfff",
+                        borderRadius: 10, padding: "11px 16px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
+                        opacity: (!cfg.airtable_connected || airtableTesting) ? 0.5 : 1,
+                      }}
+                    >
+                      {airtableTesting ? "Testing…" : "🧪 Test"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </IntegrationCard>
+          </div>
+
           {/* ── Telegram Alerts ── */}
           <div className="int-card">
             <IntegrationCard
@@ -518,10 +726,10 @@ export default function IntegrationsPage() {
             <FlowStep icon="🗓️" label="Book meeting" active={!!cfg.google_connected} color="#2563eb" />
             <FlowArrow active={true} color="var(--text-muted)" />
             <FlowStep icon="📝" label="Record lead" active={true} color="var(--green)" />
+            <FlowArrow active={!!cfg.airtable_connected} color="#18bfff" />
+            <FlowStep icon="📊" label="Airtable log" active={!!cfg.airtable_connected} color="#18bfff" />
             <FlowArrow active={!!(settings.emailEnabled && settings.contactEmail)} color="#db2777" />
             <FlowStep icon="📧" label="Email summary" active={!!(settings.emailEnabled && settings.contactEmail)} color="#db2777" />
-            <FlowArrow active={false} color="#ff7a59" />
-            <FlowStep icon="🔄" label="CRM sync" active={false} color="#ff7a59" />
             <FlowArrow active={!!cfg.telegram_chat_id} color="#0ea5e9" />
             <FlowStep icon="✈️" label="Telegram alert" active={!!cfg.telegram_chat_id} color="#0ea5e9" />
           </div>

@@ -65,6 +65,11 @@ class Tenant(SQLModel, table=True):
     google_calendar_id: Optional[str] = Field(default="primary")
     google_connected: bool = Field(default=False)
 
+    # ── Airtable (Personal Access Token — auto-log calls) ────────────────
+    airtable_pat: Optional[str] = None              # Personal Access Token
+    airtable_base_id: Optional[str] = None          # e.g. "appXXXXXXXXXXXXXX"
+    airtable_table_name: Optional[str] = None       # e.g. "Call Log"
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

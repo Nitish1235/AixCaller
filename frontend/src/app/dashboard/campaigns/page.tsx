@@ -554,6 +554,20 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                       <span style={{ fontSize: "0.62rem", fontWeight: 800, color: "#92400e", background: "#fef3c7", padding: "2px 8px", borderRadius: 5 }}>SOON</span>
                     </div>
 
+                    {/* Airtable */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.airtable_connected ? "#18bfff" : "#e2e8f0"}`, background: integrationStatus.airtable_connected ? "#ecfeff" : "#fff" }}>
+                      <span style={{ fontSize: "1rem" }}>📊</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Airtable</div>
+                        <div style={{ fontSize: "0.68rem", color: integrationStatus.airtable_connected ? "#0891b2" : "#94a3b8" }}>{integrationStatus.airtable_connected ? "✓ Connected — Call logging active" : "Not connected"}</div>
+                      </div>
+                      {integrationStatus.airtable_connected ? (
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#0891b2", background: "#ecfeff", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
+                      ) : (
+                        <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "#94a3b8" }}>Set up in Integrations</span>
+                      )}
+                    </div>
+
                     <div style={{ fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.5, marginTop: 4 }}>
                       You can also configure integrations later from the Integrations page.
                     </div>

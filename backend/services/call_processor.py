@@ -9,6 +9,7 @@ from sqlalchemy import text
 from shared.models import CallRecord, Tenant, Agent
 from backend.services.analytics import AnalyticsService
 from backend.services.email import send_call_summary_email
+from backend.services.airtable import AirtableService
 
 analytics_service = AnalyticsService()
 
@@ -27,7 +28,7 @@ async def process_completed_call(
     1. Inserts a new CallRecord to the database.
     2. Calculates duration and updates tenant's minutes_used atomically.
     3. Triggers AnalyticsService to parse call type, summary, sentiment, action items.
-    4. Syncs leads to Zoho CRM if enabled.
+    4. Syncs call to Airtable if connected.
     5. Sends HTML summary emails using Resend.
     """
     logger.info(f"Processing completed call for tenant {tenant_id}, agent {agent_id}, call {call_id}")
@@ -102,7 +103,24 @@ async def process_completed_call(
         logger.error(f"Tenant {tenant_id} not found downstream in call processor")
         return {"status": "success", "call_record_id": str(new_call.id)}
 
-    # 5. HTML Summary Email via Resend
+    # 5. Airtable Call Log
+    if tenant.airtable_pat and tenant.airtable_base_id:
+        try:
+            airtable = AirtableService(tenant)
+            await airtable.log_call(
+                phone=new_call.from_number,
+                summary=new_call.summary or "",
+                sentiment=new_call.sentiment or "neutral",
+                duration=duration_seconds,
+                action_items=new_call.action_items or "[]",
+                agent_name=agent_name,
+                call_id=str(new_call.id),
+            )
+            logger.info(f"Airtable sync complete for call {new_call.id}")
+        except Exception as e:
+            logger.warning(f"Airtable sync failed (non-blocking): {e}")
+
+    # 6. HTML Summary Email via Resend
     if tenant.email_summary_enabled and tenant.contact_email:
         try:
             await send_call_summary_email(
