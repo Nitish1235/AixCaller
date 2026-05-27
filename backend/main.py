@@ -32,9 +32,12 @@ try:
     from backend.api import shopify as shopify_api
 
     from backend.api import google as google_api
-    from backend.api.auth import router as auth_router
+    from backend.api import auth as auth_router_mod
+    auth_router = auth_router_mod.router
     from backend.api import telnyx_ai
     from backend.api import campaigns as campaigns_api
+    from backend.api import hubspot as hubspot_api
+    from backend.api import salesforce as salesforce_api
 except Exception:
     print(f"CRITICAL STARTUP CRASH: {traceback.format_exc()}")
     raise
@@ -60,6 +63,8 @@ app.include_router(shopify_api.router)
 app.include_router(google_api.router)
 app.include_router(telnyx_ai.router)
 app.include_router(campaigns_api.router)
+app.include_router(hubspot_api.router)
+app.include_router(salesforce_api.router)
 
 kb_service = IngestionService()
 

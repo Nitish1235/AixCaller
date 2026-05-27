@@ -544,14 +544,60 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                       )}
                     </div>
 
-                    {/* HubSpot CRM (Coming Soon) */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: "1.5px solid #e2e8f0", background: "#fff", opacity: 0.7 }}>
+                    {/* HubSpot CRM */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.hubspot_connected ? "#ff7a59" : "#e2e8f0"}`, background: integrationStatus.hubspot_connected ? "#fff7ed" : "#fff" }}>
                       <span style={{ fontSize: "1rem" }}>🟠</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>HubSpot CRM</div>
-                        <div style={{ fontSize: "0.68rem", color: "#d97706" }}>✨ Coming Soon</div>
+                        <div style={{ fontSize: "0.68rem", color: integrationStatus.hubspot_connected ? "#d97706" : "#94a3b8" }}>{integrationStatus.hubspot_connected ? "✓ Connected — Syncing leads" : "Not connected"}</div>
                       </div>
-                      <span style={{ fontSize: "0.62rem", fontWeight: 800, color: "#92400e", background: "#fef3c7", padding: "2px 8px", borderRadius: 5 }}>SOON</span>
+                      {integrationStatus.hubspot_connected ? (
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#d97706", background: "#fef3c7", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
+                      ) : (
+                        <a href={`${API_BASE_URL}/hubspot/install?tenant_id=${tenantId}`} style={{ textDecoration: "none" }}><button style={{ padding: "5px 12px", borderRadius: 7, fontSize: "0.72rem", fontWeight: 700, border: "1.5px solid #ff7a59", background: "#fff", color: "#ff7a59", cursor: "pointer" }}>Connect →</button></a>
+                      )}
+                    </div>
+
+                    {/* Salesforce */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.salesforce_connected ? "#00a1e0" : "#e2e8f0"}`, background: integrationStatus.salesforce_connected ? "#f0f9ff" : "#fff" }}>
+                      <span style={{ fontSize: "1rem" }}>☁️</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Salesforce</div>
+                        <div style={{ fontSize: "0.68rem", color: integrationStatus.salesforce_connected ? "#0c4a6e" : "#94a3b8" }}>{integrationStatus.salesforce_connected ? "✓ Connected — Enterprise sync" : "Not connected"}</div>
+                      </div>
+                      {integrationStatus.salesforce_connected ? (
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#00a1e0", background: "#e0f2fe", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
+                      ) : (
+                        <a href={`${API_BASE_URL}/salesforce/install?tenant_id=${tenantId}`} style={{ textDecoration: "none" }}><button style={{ padding: "5px 12px", borderRadius: 7, fontSize: "0.72rem", fontWeight: 700, border: "1.5px solid #00a1e0", background: "#fff", color: "#00a1e0", cursor: "pointer" }}>Connect →</button></a>
+                      )}
+                    </div>
+
+                    {/* Shopify */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.shopify_store_url ? "#10b981" : "#e2e8f0"}`, background: integrationStatus.shopify_store_url ? "#ecfdf5" : "#fff" }}>
+                      <span style={{ fontSize: "1rem" }}>🛍️</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Shopify</div>
+                        <div style={{ fontSize: "0.68rem", color: integrationStatus.shopify_store_url ? "#047857" : "#94a3b8" }}>{integrationStatus.shopify_store_url ? `✓ Connected to ${integrationStatus.shopify_store_url}` : "Not connected"}</div>
+                      </div>
+                      {integrationStatus.shopify_store_url ? (
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#059669", background: "#d1fae5", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
+                      ) : (
+                        <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "#94a3b8" }}>Set up in Integrations</span>
+                      )}
+                    </div>
+
+                    {/* Webhook */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.webhook_url ? "#8b5cf6" : "#e2e8f0"}`, background: integrationStatus.webhook_url ? "#f5f3ff" : "#fff" }}>
+                      <span style={{ fontSize: "1rem" }}>🔗</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Custom Webhook</div>
+                        <div style={{ fontSize: "0.68rem", color: integrationStatus.webhook_url ? "#5b21b6" : "#94a3b8" }}>{integrationStatus.webhook_url ? "✓ Active — Data forwarding" : "Not connected"}</div>
+                      </div>
+                      {integrationStatus.webhook_url ? (
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#7c3aed", background: "#ede9fe", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
+                      ) : (
+                        <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "#94a3b8" }}>Set up in Integrations</span>
+                      )}
                     </div>
 
                     {/* Airtable */}

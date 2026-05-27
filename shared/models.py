@@ -49,11 +49,19 @@ class Tenant(SQLModel, table=True):
     # ── Notification settings ────────────────────────────────────────────────
     email_summary_enabled: bool = Field(default=True)
 
-    # ── Zoho CRM OAuth (refresh token only — access token is ephemeral) ──────
-    zoho_refresh_token: Optional[str] = None
-    zoho_domain: Optional[str] = None              # zohoapis.com | zohoapis.eu | ...
-    zoho_token_expires_at: Optional[int] = None    # unix-ts for refresh scheduling
-    zoho_org_id: Optional[str] = None
+    # ── HubSpot OAuth (refresh token + access token) ─────────────────────────
+    hubspot_access_token: Optional[str] = None
+    hubspot_refresh_token: Optional[str] = None
+    hubspot_token_expires_at: Optional[int] = None # unix-ts
+
+    # ── Salesforce OAuth (refresh token + access token + instance URL) ───────
+    salesforce_access_token: Optional[str] = None
+    salesforce_refresh_token: Optional[str] = None
+    salesforce_token_expires_at: Optional[int] = None # unix-ts
+    salesforce_instance_url: Optional[str] = None
+
+    # ── Custom Webhook ───────────────────────────────────────────────────────
+    webhook_url: Optional[str] = None
 
     # ── Shopify (per-tenant token-based) ────────────────────────────────────
     shopify_domain: Optional[str] = None

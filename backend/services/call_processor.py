@@ -10,6 +10,9 @@ from shared.models import CallRecord, Tenant, Agent
 from backend.services.analytics import AnalyticsService
 from backend.services.email import send_call_summary_email
 from backend.services.airtable import AirtableService
+from backend.services.hubspot import log_call_to_hubspot
+from backend.services.salesforce import log_call_to_salesforce
+import httpx
 
 analytics_service = AnalyticsService()
 
@@ -144,5 +147,53 @@ async def process_completed_call(
             logger.info(f"Successfully sent summary email to {tenant.contact_email}")
         except Exception as e:
             logger.error(f"Resend email error: {e}")
+
+    # 7. Custom Webhook
+    if tenant.webhook_url:
+        try:
+            async with httpx.AsyncClient() as client:
+                webhook_payload = {
+                    "event": "call.completed",
+                    "tenant_id": str(tenant.id),
+                    "call_id": str(new_call.id),
+                    "agent_name": agent_name,
+                    "phone": new_call.from_number,
+                    "duration_seconds": duration_seconds,
+                    "summary": new_call.summary,
+                    "sentiment": new_call.sentiment,
+                    "action_items": new_call.action_items,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+                await client.post(tenant.webhook_url, json=webhook_payload, timeout=10.0)
+                logger.info(f"Successfully dispatched webhook to {tenant.webhook_url}")
+        except Exception as e:
+            logger.error(f"Webhook dispatch failed: {e}")
+
+    # 8. HubSpot Sync (if connected)
+    if tenant.hubspot_access_token:
+        try:
+            # Prepare payload for HubSpot sync
+            hubspot_data = {
+                "call_id": str(new_call.id),
+                "phone": new_call.from_number,
+                "summary": new_call.summary,
+                "duration": duration_seconds,
+            }
+            await log_call_to_hubspot(tenant, hubspot_data)
+        except Exception as e:
+            logger.error(f"HubSpot sync error: {e}")
+
+    # 9. Salesforce Sync (if connected)
+    if tenant.salesforce_access_token:
+        try:
+            salesforce_data = {
+                "call_id": str(new_call.id),
+                "phone": new_call.from_number,
+                "summary": new_call.summary,
+                "duration": duration_seconds,
+            }
+            await log_call_to_salesforce(tenant, salesforce_data)
+        except Exception as e:
+            logger.error(f"Salesforce sync error: {e}")
 
     return {"status": "success", "call_record_id": str(new_call.id)}

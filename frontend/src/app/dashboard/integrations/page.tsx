@@ -159,6 +159,9 @@ export default function IntegrationsPage() {
     airtablePat: "",
     airtableBaseId: "",
     airtableTableName: "Call Log",
+    shopifyStoreUrl: "",
+    shopifyApiKey: "",
+    webhookUrl: "",
   });
   const [airtableTesting, setAirtableTesting] = useState(false);
 
@@ -177,6 +180,9 @@ export default function IntegrationsPage() {
           airtablePat: "",  // never expose token back
           airtableBaseId: data.airtable_base_id || "",
           airtableTableName: data.airtable_table_name || "Call Log",
+          shopifyStoreUrl: data.shopify_store_url || "",
+          shopifyApiKey: "", // never expose token back
+          webhookUrl: data.webhook_url || "",
         }));
       }
     } catch {}
@@ -245,6 +251,96 @@ export default function IntegrationsPage() {
       showToast("✅ Airtable settings saved!");
     } catch {
       showToast("⚠️ Failed to save Airtable settings.");
+    }
+    setSaving(null);
+  };
+
+  /* ─── Shopify save ─── */
+  const saveShopifySettings = async () => {
+    setSaving("shopify");
+    try {
+      await apiPatch(`/integrations?tenant_id=${getTenantId()}`, {
+        shopify_store_url: settings.shopifyStoreUrl || null,
+        shopify_api_key: settings.shopifyApiKey || null,
+      });
+      await load();
+      showToast("✅ Shopify settings saved!");
+    } catch {
+      showToast("⚠️ Failed to save Shopify settings.");
+    }
+    setSaving(null);
+  };
+
+  const disconnectShopify = async () => {
+    setSaving("shopify");
+    try {
+      await fetch(`${API_BASE_URL}/integrations/shopify?tenant_id=${getTenantId()}`, { method: "DELETE" });
+      await load();
+      setSettings(prev => ({ ...prev, shopifyStoreUrl: "", shopifyApiKey: "" }));
+      showToast("✅ Shopify disconnected");
+    } catch {
+      showToast("⚠️ Disconnect failed.");
+    }
+    setSaving(null);
+  };
+
+  /* ─── Webhook save ─── */
+  const saveWebhookSettings = async () => {
+    setSaving("webhook");
+    try {
+      await apiPatch(`/integrations?tenant_id=${getTenantId()}`, {
+        webhook_url: settings.webhookUrl || null,
+      });
+      await load();
+      showToast("✅ Webhook URL saved!");
+    } catch {
+      showToast("⚠️ Failed to save Webhook URL.");
+    }
+    setSaving(null);
+  };
+
+  const disconnectWebhook = async () => {
+    setSaving("webhook");
+    try {
+      await fetch(`${API_BASE_URL}/integrations/webhook?tenant_id=${getTenantId()}`, { method: "DELETE" });
+      await load();
+      setSettings(prev => ({ ...prev, webhookUrl: "" }));
+      showToast("✅ Webhook disconnected");
+    } catch {
+      showToast("⚠️ Disconnect failed.");
+    }
+    setSaving(null);
+  };
+
+  /* ─── HubSpot & Salesforce OAuth ─── */
+  const connectHubspot = () => {
+    window.location.href = `${API_BASE_URL}/hubspot/install?tenant_id=${getTenantId()}`;
+  };
+
+  const disconnectHubspot = async () => {
+    setSaving("hubspot");
+    try {
+      await fetch(`${API_BASE_URL}/integrations/hubspot?tenant_id=${getTenantId()}`, { method: "DELETE" });
+      await load();
+      showToast("✅ HubSpot disconnected");
+    } catch {
+      showToast("⚠️ Disconnect failed.");
+    }
+    setSaving(null);
+  };
+
+  const connectSalesforce = () => {
+    window.location.href = `${API_BASE_URL}/salesforce/install?tenant_id=${getTenantId()}`;
+  };
+
+  const disconnectSalesforce = async () => {
+    setSaving("salesforce");
+    try {
+      await fetch(`${API_BASE_URL}/integrations/salesforce?tenant_id=${getTenantId()}`, { method: "DELETE" });
+      await load();
+      showToast("✅ Salesforce disconnected");
+    } catch {
+      showToast("⚠️ Disconnect failed.");
     }
     setSaving(null);
   };
@@ -395,30 +491,45 @@ export default function IntegrationsPage() {
           <div className="int-card">
             <IntegrationCard
               icon="🟠" title="HubSpot CRM" description="Automatic lead & deal sync"
-              connected={false} accentColor="#ff7a59" comingSoon
+              connected={!!cfg.hubspot_connected} accentColor="#ff7a59"
             >
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-                Automatically push leads, call transcripts, and deal updates to your HubSpot CRM after every AI call.
-              </div>
-              <div style={{
-                background: "#fff7ed", border: "1px solid rgba(255,122,89,0.15)",
-                borderRadius: 10, padding: "10px 14px", fontSize: "0.78rem", color: "#9a3412", lineHeight: 1.5,
-              }}>
-                <strong>What&apos;s coming:</strong><br />
-                • Auto-create contacts & deals from calls<br />
-                • Bi-directional sync of lead status<br />
-                • Call recordings attached to contact timeline
-              </div>
-              <button
-                className="int-btn" disabled
-                style={{
-                  width: "100%", background: "#ff7a59", color: "#fff", border: "none", borderRadius: 10,
-                  padding: "11px", fontWeight: 700, cursor: "not-allowed", fontSize: "0.88rem",
-                  opacity: 0.5,
-                }}
-              >
-                🔗 Connect HubSpot — Coming Soon
-              </button>
+              {cfg.hubspot_connected ? (
+                <>
+                  <div style={{
+                    background: "#fff7ed", border: "1px solid rgba(255,122,89,0.15)",
+                    borderRadius: 10, padding: "10px 14px", fontSize: "0.82rem", color: "#9a3412", fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <span>✓</span> HubSpot connected securely
+                  </div>
+                  <button
+                    className="int-btn" onClick={disconnectHubspot} disabled={saving === "hubspot"}
+                    style={{
+                      width: "100%", background: "none", border: "1.5px solid #fecaca", color: "#ef4444",
+                      borderRadius: 10, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
+                      marginTop: 10,
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Automatically push leads, call transcripts, and deal updates to your HubSpot CRM after every AI call.
+                  </div>
+                  <button
+                    className="int-btn" onClick={connectHubspot}
+                    style={{
+                      width: "100%", background: "#ff7a59", color: "#fff", border: "none", borderRadius: 10,
+                      padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                      boxShadow: "0 4px 14px rgba(255,122,89,0.2)",
+                    }}
+                  >
+                    🔗 Connect HubSpot
+                  </button>
+                </>
+              )}
             </IntegrationCard>
           </div>
 
@@ -426,30 +537,213 @@ export default function IntegrationsPage() {
           <div className="int-card">
             <IntegrationCard
               icon="☁️" title="Salesforce" description="Enterprise CRM sync"
-              connected={false} accentColor="#00a1e0" comingSoon
+              connected={!!cfg.salesforce_connected} accentColor="#00a1e0"
             >
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-                Sync leads, opportunities, and call activity directly to your Salesforce org. Built for enterprise teams.
-              </div>
-              <div style={{
-                background: "#f0f9ff", border: "1px solid rgba(0,161,224,0.15)",
-                borderRadius: 10, padding: "10px 14px", fontSize: "0.78rem", color: "#0c4a6e", lineHeight: 1.5,
-              }}>
-                <strong>What&apos;s coming:</strong><br />
-                • OAuth-based Salesforce connection<br />
-                • Custom field mapping for leads<br />
-                • Activity logging on contact records
-              </div>
-              <button
-                className="int-btn" disabled
-                style={{
-                  width: "100%", background: "#00a1e0", color: "#fff", border: "none", borderRadius: 10,
-                  padding: "11px", fontWeight: 700, cursor: "not-allowed", fontSize: "0.88rem",
-                  opacity: 0.5,
-                }}
-              >
-                🔗 Connect Salesforce — Coming Soon
-              </button>
+              {cfg.salesforce_connected ? (
+                <>
+                  <div style={{
+                    background: "#f0f9ff", border: "1px solid rgba(0,161,224,0.15)",
+                    borderRadius: 10, padding: "10px 14px", fontSize: "0.82rem", color: "#0c4a6e", fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <span>✓</span> Salesforce connected securely
+                  </div>
+                  <button
+                    className="int-btn" onClick={disconnectSalesforce} disabled={saving === "salesforce"}
+                    style={{
+                      width: "100%", background: "none", border: "1.5px solid #fecaca", color: "#ef4444",
+                      borderRadius: 10, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
+                      marginTop: 10,
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Sync leads, opportunities, and call activity directly to your Salesforce org. Built for enterprise teams.
+                  </div>
+                  <button
+                    className="int-btn" onClick={connectSalesforce}
+                    style={{
+                      width: "100%", background: "#00a1e0", color: "#fff", border: "none", borderRadius: 10,
+                      padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                      boxShadow: "0 4px 14px rgba(0,161,224,0.2)",
+                    }}
+                  >
+                    🔗 Connect Salesforce
+                  </button>
+                </>
+              )}
+            </IntegrationCard>
+          </div>
+
+          {/* ── Shopify ── */}
+          <div className="int-card">
+            <IntegrationCard
+              icon="🛍️" title="Shopify" description="Real-time order & inventory checks"
+              connected={!!cfg.shopify_store_url} accentColor="#10b981"
+            >
+              {cfg.shopify_store_url ? (
+                <>
+                  <div style={{
+                    background: "#ecfdf5", border: "1px solid rgba(16,185,129,0.15)",
+                    borderRadius: 10, padding: "10px 14px", fontSize: "0.82rem", color: "#047857", fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <span>✓</span> Connected to {cfg.shopify_store_url}
+                  </div>
+                  <div>
+                    <label style={lbl}>Admin API Access Token (update)</label>
+                    <input
+                      type="password" style={inp} value={settings.shopifyApiKey}
+                      onChange={e => setSettings({ ...settings, shopifyApiKey: e.target.value })}
+                      placeholder="shpat_•••••••• (leave blank to keep current)"
+                      onFocus={e => e.target.style.borderColor = "#10b981"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      className="int-btn" onClick={saveShopifySettings} disabled={saving === "shopify" || !settings.shopifyApiKey}
+                      style={{
+                        flex: 1, background: "#10b981", color: "#fff", border: "none", borderRadius: 10,
+                        padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem",
+                        boxShadow: "0 2px 8px rgba(16,185,129,0.2)", opacity: (saving === "shopify" || !settings.shopifyApiKey) ? 0.7 : 1,
+                      }}
+                    >
+                      {saving === "shopify" ? "Saving…" : "Save Token"}
+                    </button>
+                    <button
+                      className="int-btn" onClick={disconnectShopify} disabled={saving === "shopify"}
+                      style={{
+                        background: "none", border: "1.5px solid #fecaca", color: "#ef4444",
+                        borderRadius: 10, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Let your AI check real-time order status and inventory directly from your Shopify store during calls.
+                  </div>
+                  <div>
+                    <label style={lbl}>Store URL</label>
+                    <input
+                      style={inp} value={settings.shopifyStoreUrl}
+                      onChange={e => setSettings({ ...settings, shopifyStoreUrl: e.target.value })}
+                      placeholder="your-store.myshopify.com"
+                      onFocus={e => e.target.style.borderColor = "#10b981"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div>
+                    <label style={lbl}>Admin API Access Token</label>
+                    <input
+                      type="password" style={inp} value={settings.shopifyApiKey}
+                      onChange={e => setSettings({ ...settings, shopifyApiKey: e.target.value })}
+                      placeholder="shpat_••••••••"
+                      onFocus={e => e.target.style.borderColor = "#10b981"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <button
+                    className="int-btn" onClick={saveShopifySettings}
+                    disabled={!settings.shopifyStoreUrl || !settings.shopifyApiKey || saving === "shopify"}
+                    style={{
+                      width: "100%", background: "#10b981", color: "#fff", border: "none", borderRadius: 10,
+                      padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                      boxShadow: "0 4px 14px rgba(16,185,129,0.2)",
+                      opacity: (!settings.shopifyStoreUrl || !settings.shopifyApiKey || saving === "shopify") ? 0.5 : 1,
+                    }}
+                  >
+                    {saving === "shopify" ? "Saving…" : "💾 Save & Connect"}
+                  </button>
+                </>
+              )}
+            </IntegrationCard>
+          </div>
+
+          {/* ── Custom Webhook ── */}
+          <div className="int-card">
+            <IntegrationCard
+              icon="🔗" title="Custom Webhook" description="Send data to Zapier/Make"
+              connected={!!cfg.webhook_url} accentColor="#8b5cf6"
+            >
+              {cfg.webhook_url ? (
+                <>
+                  <div style={{
+                    background: "#f5f3ff", border: "1px solid rgba(139,92,246,0.15)",
+                    borderRadius: 10, padding: "10px 14px", fontSize: "0.82rem", color: "#5b21b6", fontWeight: 600,
+                    wordBreak: "break-all"
+                  }}>
+                    <span>✓</span> {cfg.webhook_url}
+                  </div>
+                  <div>
+                    <label style={lbl}>Update Webhook URL</label>
+                    <input
+                      style={inp} value={settings.webhookUrl}
+                      onChange={e => setSettings({ ...settings, webhookUrl: e.target.value })}
+                      placeholder="https://hooks.zapier.com/..."
+                      onFocus={e => e.target.style.borderColor = "#8b5cf6"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      className="int-btn" onClick={saveWebhookSettings} disabled={saving === "webhook"}
+                      style={{
+                        flex: 1, background: "#8b5cf6", color: "#fff", border: "none", borderRadius: 10,
+                        padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem",
+                        boxShadow: "0 2px 8px rgba(139,92,246,0.2)", opacity: saving === "webhook" ? 0.7 : 1,
+                      }}
+                    >
+                      {saving === "webhook" ? "Saving…" : "Save URL"}
+                    </button>
+                    <button
+                      className="int-btn" onClick={disconnectWebhook} disabled={saving === "webhook"}
+                      style={{
+                        background: "none", border: "1.5px solid #fecaca", color: "#ef4444",
+                        borderRadius: 10, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Send a POST request with the call transcript, summary, and sentiment to any custom URL instantly after a call ends.
+                  </div>
+                  <div>
+                    <label style={lbl}>Webhook URL</label>
+                    <input
+                      style={inp} value={settings.webhookUrl}
+                      onChange={e => setSettings({ ...settings, webhookUrl: e.target.value })}
+                      placeholder="https://hooks.zapier.com/..."
+                      onFocus={e => e.target.style.borderColor = "#8b5cf6"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  </div>
+                  <button
+                    className="int-btn" onClick={saveWebhookSettings}
+                    disabled={!settings.webhookUrl || saving === "webhook"}
+                    style={{
+                      width: "100%", background: "#8b5cf6", color: "#fff", border: "none", borderRadius: 10,
+                      padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                      boxShadow: "0 4px 14px rgba(139,92,246,0.2)",
+                      opacity: (!settings.webhookUrl || saving === "webhook") ? 0.5 : 1,
+                    }}
+                  >
+                    {saving === "webhook" ? "Saving…" : "🔗 Connect Webhook"}
+                  </button>
+                </>
+              )}
             </IntegrationCard>
           </div>
 

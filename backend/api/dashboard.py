@@ -55,6 +55,9 @@ class IntegrationSettings(BaseModel):
     airtable_pat: Optional[str] = None
     airtable_base_id: Optional[str] = None
     airtable_table_name: Optional[str] = None
+    webhook_url: Optional[str] = None
+    shopify_store_url: Optional[str] = None
+    shopify_api_key: Optional[str] = None
 
 
 @router.get("/integrations")
@@ -71,6 +74,11 @@ async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
         "airtable_connected":    bool(tenant.airtable_pat and tenant.airtable_base_id),
         "airtable_base_id":      tenant.airtable_base_id or "",
         "airtable_table_name":   tenant.airtable_table_name or "Call Log",
+        "webhook_url":           tenant.webhook_url or "",
+        "shopify_store_url":     tenant.shopify_domain or "",
+        "shopify_api_key":       tenant.shopify_token or "",
+        "hubspot_connected":     bool(tenant.hubspot_access_token),
+        "salesforce_connected":  bool(tenant.salesforce_access_token),
     }
 
 
@@ -95,6 +103,12 @@ async def save_integrations(
         tenant.airtable_base_id = settings.airtable_base_id or None
     if settings.airtable_table_name is not None:
         tenant.airtable_table_name = settings.airtable_table_name or None
+    if settings.webhook_url is not None:
+        tenant.webhook_url = settings.webhook_url or None
+    if settings.shopify_store_url is not None:
+        tenant.shopify_domain = settings.shopify_store_url or None
+    if settings.shopify_api_key is not None:
+        tenant.shopify_token = settings.shopify_api_key or None
 
     db.add(tenant)
     db.commit()
@@ -119,9 +133,31 @@ async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends
         t.airtable_base_id = None
         t.airtable_table_name = None
 
+    def _disconnect_shopify(t: Tenant):
+        t.shopify_domain = None
+        t.shopify_token = None
+
+    def _disconnect_webhook(t: Tenant):
+        t.webhook_url = None
+
+    def _disconnect_hubspot(t: Tenant):
+        t.hubspot_access_token = None
+        t.hubspot_refresh_token = None
+        t.hubspot_token_expires_at = None
+
+    def _disconnect_salesforce(t: Tenant):
+        t.salesforce_access_token = None
+        t.salesforce_refresh_token = None
+        t.salesforce_token_expires_at = None
+        t.salesforce_instance_url = None
+
     field_map = {
         "google": _disconnect_google,
         "airtable": _disconnect_airtable,
+        "shopify": _disconnect_shopify,
+        "webhook": _disconnect_webhook,
+        "hubspot": _disconnect_hubspot,
+        "salesforce": _disconnect_salesforce,
     }
     if key in field_map:
         field_map[key](tenant)
