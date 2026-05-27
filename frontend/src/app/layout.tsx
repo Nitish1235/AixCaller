@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   description:
     "AIxCaller is the AI phone platform that answers every inbound call 24/7 AND dials your leads automatically with outbound AI calling campaigns. Book appointments, qualify leads, and close more deals — starting at $50/mo.",
 
-  metadataBase: new URL("https://callerx.ai"),
+  metadataBase: new URL("https://aixcaller.com"),
 
   keywords: [
     // ── Highest-intent inbound (what buyers type right before purchasing) ──
@@ -121,17 +121,17 @@ export const metadata: Metadata = {
     // ── Brand ──
     "AIxCaller",
     "callerx",
-    "callerx.ai",
+    "aixcaller.com",
   ],
 
-  authors: [{ name: "AIxCaller", url: "https://callerx.ai" }],
+  authors: [{ name: "AIxCaller", url: "https://aixcaller.com" }],
   creator: "AIxCaller",
   publisher: "AIxCaller",
 
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://callerx.ai",
+    url: "https://aixcaller.com",
     siteName: "AIxCaller",
     title: "AIxCaller — AI Receptionist & Outbound AI Calling Platform",
     description:
@@ -179,7 +179,7 @@ export const metadata: Metadata = {
   },
 
   alternates: {
-    canonical: "https://callerx.ai",
+    canonical: "https://aixcaller.com",
   },
 
   category: "technology",
@@ -196,17 +196,17 @@ export default function RootLayout({
       // ── Organization ──────────────────────────────────────────────
       {
         "@type": "Organization",
-        "@id": "https://callerx.ai/#organization",
+        "@id": "https://aixcaller.com/#organization",
         "name": "AIxCaller",
-        "url": "https://callerx.ai/",
+        "url": "https://aixcaller.com/",
         "logo": {
           "@type": "ImageObject",
-          "url": "https://callerx.ai/logo.svg",
+          "url": "https://aixcaller.com/logo.svg",
           "width": 512,
           "height": 512,
           "caption": "AIxCaller — AI Receptionist & Phone Answering Service",
         },
-        "image": "https://callerx.ai/logo.svg",
+        "image": "https://aixcaller.com/logo.svg",
         "description":
           "AIxCaller provides AI receptionist and automated phone answering services that handle inbound calls, book appointments, qualify leads, and integrate with CRMs — 24 hours a day.",
         "foundingDate": "2024",
@@ -219,11 +219,11 @@ export default function RootLayout({
       // ── WebSite ───────────────────────────────────────────────────
       {
         "@type": "WebSite",
-        "@id": "https://callerx.ai/#website",
-        "url": "https://callerx.ai/",
+        "@id": "https://aixcaller.com/#website",
+        "url": "https://aixcaller.com/",
         "name": "AIxCaller",
         "description": "AI receptionist and phone answering service for businesses of any size.",
-        "publisher": { "@id": "https://callerx.ai/#organization" },
+        "publisher": { "@id": "https://aixcaller.com/#organization" },
         "inLanguage": "en-US",
       },
 
@@ -231,12 +231,12 @@ export default function RootLayout({
       {
         "@type": "SoftwareApplication",
         "name": "AIxCaller",
-        "url": "https://callerx.ai",
+        "url": "https://aixcaller.com",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web, iOS, Android",
         "description":
           "AI-powered phone answering service and virtual receptionist platform. Answers inbound calls 24/7, books appointments via Google Calendar, qualifies leads, handles Shopify orders, and syncs with HubSpot CRM.",
-        "screenshot": "https://callerx.ai/opengraph-image",
+        "screenshot": "https://aixcaller.com/opengraph-image",
         "offers": [
           {
             "@type": "Offer",
@@ -418,13 +418,13 @@ export default function RootLayout({
       // ── Service schema for outbound ────────────────────────────────────────────────────────
       {
         "@type": "Service",
-        "@id": "https://callerx.ai/#outbound-service",
+        "@id": "https://aixcaller.com/#outbound-service",
         "name": "AI Outbound Calling & Sales Dialer",
         "description": "Automated AI outbound calling service that dials leads from your contact list, qualifies prospects, books appointments, drops voicemails, and sends follow-up SMS — all without a human sales rep.",
-        "provider": { "@id": "https://callerx.ai/#organization" },
+        "provider": { "@id": "https://aixcaller.com/#organization" },
         "serviceType": "AI Outbound Call Center Software",
         "areaServed": "Worldwide",
-        "url": "https://callerx.ai/#outbound",
+        "url": "https://aixcaller.com/#outbound",
         "offers": {
           "@type": "Offer",
           "price": "50",
@@ -436,13 +436,13 @@ export default function RootLayout({
       // ── Service schema for inbound ────────────────────────────────────────────────────────
       {
         "@type": "Service",
-        "@id": "https://callerx.ai/#inbound-service",
+        "@id": "https://aixcaller.com/#inbound-service",
         "name": "AI Receptionist & 24/7 Phone Answering Service",
         "description": "AI-powered 24/7 phone answering service for businesses. Greets callers, answers questions, books appointments, qualifies leads, and transfers to humans during business hours.",
-        "provider": { "@id": "https://callerx.ai/#organization" },
+        "provider": { "@id": "https://aixcaller.com/#organization" },
         "serviceType": "AI Virtual Receptionist",
         "areaServed": "Worldwide",
-        "url": "https://callerx.ai",
+        "url": "https://aixcaller.com",
         "offers": {
           "@type": "Offer",
           "price": "50",

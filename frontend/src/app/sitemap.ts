@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://callerx.ai';
+  const baseUrl = 'https://aixcaller.com';
 
   const now = new Date();
 

@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/dashboard/', '/api/', '/admin/'],
       },
     ],
-    sitemap: 'https://callerx.ai/sitemap.xml',
-    host: 'https://callerx.ai',
+    sitemap: 'https://aixcaller.com/sitemap.xml',
+    host: 'https://aixcaller.com',
   };
 }

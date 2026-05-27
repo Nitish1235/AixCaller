@@ -388,7 +388,7 @@ export default function Home() {
               borderRadius: 16, padding: "1.5rem", fontWeight: 600, boxShadow: "0 10px 30px rgba(0,0,0,0.02)"
             }}>
               <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginBottom: "0.6rem", display: "flex", justifyContent: "space-between" }}>
-                <span>FROM: agent@callerx.ai</span>
+                <span>FROM: agent@aixcaller.com</span>
                 <span>1 min ago</span>
               </div>
               <div style={{ color: "var(--text)", fontSize: "0.95rem", marginBottom: "1rem", borderBottom: "1.5px solid var(--border)", paddingBottom: "0.8rem", fontWeight: 700 }}>

@@ -151,7 +151,7 @@ export default function TermsOfService() {
             fontWeight: 500,
             color: "var(--text-body)"
           }}>
-            Legal inquiries can be directed to <strong style={{ color: "var(--blue)" }}>legal@callerx.ai</strong>.
+            Legal inquiries can be directed to <strong style={{ color: "var(--blue)" }}>legal@aixcaller.com</strong>.
           </p>
         </section>
       </div>

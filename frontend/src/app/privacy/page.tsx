@@ -133,7 +133,7 @@ export default function PrivacyPolicy() {
             fontWeight: 500,
             color: "var(--text-body)"
           }}>
-            If you have any questions or concerns about this Privacy Policy, please contact us at <strong style={{ color: "var(--blue)" }}>privacy@callerx.ai</strong>.
+            If you have any questions or concerns about this Privacy Policy, please contact us at <strong style={{ color: "var(--blue)" }}>privacy@aixcaller.com</strong>.
           </p>
         </section>
       </div>
