@@ -519,18 +519,24 @@ export default function CreateAgentPage() {
               </div>
             </div>
 
-            {/* Website URL sync — coming soon */}
+            {/* Website URL sync */}
             <div style={{
-              border: "1.5px dashed var(--border)", borderRadius: 12, overflow: "hidden", opacity: 0.7,
+              border: "1.5px dashed var(--border)", borderRadius: 12, overflow: "hidden"
             }}>
-              <div style={{ background: "var(--surface)", padding: "10px 16px", borderBottom: "1.5px dashed var(--border)", fontWeight: 600, fontSize: "0.82rem", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ background: "var(--surface)", padding: "10px 16px", borderBottom: "1.5px dashed var(--border)", fontWeight: 600, fontSize: "0.82rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8 }}>
                 <span>🌐 Sync Website URL</span>
-                <span style={{ fontSize: "0.7rem", padding: "2px 8px", background: "#E2E8F0", borderRadius: 99, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 0.5 }}>
-                  COMING SOON
-                </span>
               </div>
-              <div style={{ padding: "0.85rem 1.25rem", fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                Automated website scraping is coming soon. For now, please copy the relevant content from your site and paste it as text above.
+              <div style={{ padding: "0.85rem 1.25rem" }}>
+                <input
+                  type="url"
+                  value={kbUrl}
+                  onChange={e => setKbUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  style={{ ...inp, padding: "8px 12px" }}
+                />
+                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 8 }}>
+                  We will extract the text content from this webpage.
+                </div>
               </div>
             </div>
 

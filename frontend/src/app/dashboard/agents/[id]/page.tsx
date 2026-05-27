@@ -128,7 +128,7 @@ export default function AgentDetailsPage() {
   const [kbSources, setKbSources] = useState<any[]>([]);
   const [kbTotal, setKbTotal] = useState(0);
   const [kbLoading, setKbLoading] = useState(false);
-  const [kbTab, setKbTab] = useState<"text" | "file" | "sheet">("text");
+  const [kbTab, setKbTab] = useState<"text" | "file" | "sheet" | "url">("text");
   const [kbText, setKbText] = useState("");
   const [kbUrl, setKbUrl] = useState("");
   const [kbFile, setKbFile] = useState<File | null>(null);
@@ -1436,6 +1436,31 @@ export default function AgentDetailsPage() {
                 </div>
                 <button onClick={ingestFile} disabled={kbBusy || !kbFile} style={btn("var(--blue)", { opacity: kbBusy || !kbFile ? 0.6 : 1, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}>
                   {kbBusy ? "Uploading..." : "Upload File"}
+                </button>
+              </div>
+            )}
+
+            {kbTab === "url" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div>
+                  <label style={lbl}>Website URL</label>
+                  <input
+                    type="url"
+                    value={kbUrl}
+                    onChange={e => setKbUrl(e.target.value)}
+                    placeholder="https://example.com"
+                    style={inp}
+                  />
+                  <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>
+                    We will extract the text content from this webpage.
+                  </p>
+                </div>
+                <button
+                  onClick={ingestUrl}
+                  disabled={kbBusy || !kbUrl.trim()}
+                  style={btn("var(--blue)", { opacity: kbBusy || !kbUrl.trim() ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}
+                >
+                  {kbBusy ? "Syncing..." : "⚡ Sync Website Content"}
                 </button>
               </div>
             )}
