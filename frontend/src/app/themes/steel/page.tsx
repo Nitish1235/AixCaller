@@ -54,7 +54,7 @@ export default function SteelTheme() {
             { icon: "🧠", title: "Smart Knowledge Base", desc: "Answers from your docs only. Zero hallucinations." },
             { icon: "🗣️", title: "Natural Conversations", desc: "Human-like voice with full interruption support." },
             { icon: "📊", title: "Analytics Dashboard", desc: "Transcripts, sentiment, and real-time call metrics." },
-            { icon: "🔗", title: "Enterprise Integrations", desc: "Zoho CRM, Shopify, Slack, Google Workspace, and other systems." },
+            { icon: "🔗", title: "Enterprise Integrations", desc: "HubSpot, Shopify, Slack, Google Workspace, and other systems." },
           ].map(f => (
             <div key={f.title} style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 14, padding: "1.75rem", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
               <div style={{ fontSize: "1.6rem", marginBottom: "0.75rem" }}>{f.icon}</div>

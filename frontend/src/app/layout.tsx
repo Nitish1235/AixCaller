@@ -104,7 +104,7 @@ export const metadata: Metadata = {
     "AI receptionist with CRM integration",
     "AI receptionist Google Calendar",
     "Shopify AI phone support",
-    "Zoho CRM AI calling",
+    "HubSpot CRM AI calling",
     "AI call transcription and summary",
     "call sentiment analysis AI",
     "AI voicemail drop software",
@@ -235,7 +235,7 @@ export default function RootLayout({
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web, iOS, Android",
         "description":
-          "AI-powered phone answering service and virtual receptionist platform. Answers inbound calls 24/7, books appointments via Google Calendar, qualifies leads, handles Shopify orders, and syncs with Zoho CRM.",
+          "AI-powered phone answering service and virtual receptionist platform. Answers inbound calls 24/7, books appointments via Google Calendar, qualifies leads, handles Shopify orders, and syncs with HubSpot CRM.",
         "screenshot": "https://callerx.ai/opengraph-image",
         "offers": [
           {
@@ -297,7 +297,7 @@ export default function RootLayout({
           "AI-generated call transcripts and summaries",
           "Sentiment analysis on every call",
           "Shopify order lookup during calls",
-          "Zoho CRM auto-sync",
+          "HubSpot CRM auto-sync",
           "Google Sheets lead logging",
           "Human call transfer with business hours routing",
           "Knowledge base training on PDFs and URLs",
@@ -373,7 +373,7 @@ export default function RootLayout({
             "acceptedAnswer": {
               "@type": "Answer",
               "text":
-                "Yes. AIxCaller integrates with Zoho CRM, automatically creating or updating lead records after every call. It also syncs with Shopify for e-commerce order lookups, and Google Sheets for lead logging.",
+                "Yes. AIxCaller integrates with HubSpot CRM, automatically creating or updating lead records after every call. It also syncs with Shopify for e-commerce order lookups, and Google Sheets for lead logging.",
             },
           },
           {

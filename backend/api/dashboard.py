@@ -50,8 +50,8 @@ def _count_active_agents(db: Session, tenant_id: uuid.UUID) -> int:
 # INTEGRATION SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
 class IntegrationSettings(BaseModel):
-    zoho_org_id: Optional[str] = None
     email_summary_enabled: Optional[bool] = None
+    contact_email: Optional[str] = None
 
 
 @router.get("/integrations")
@@ -61,9 +61,6 @@ async def get_integrations(tenant_id: str, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     return {
-        "zoho_connected":        bool(tenant.zoho_refresh_token),
-        "zoho_org_id":           tenant.zoho_org_id,
-        "zoho_domain":           tenant.zoho_domain,
         "email_summary_enabled": tenant.email_summary_enabled,
         "contact_email":         tenant.contact_email,
         "google_connected":      tenant.google_connected,
@@ -82,10 +79,10 @@ async def save_integrations(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    if settings.zoho_org_id is not None:
-        tenant.zoho_org_id = settings.zoho_org_id
     if settings.email_summary_enabled is not None:
         tenant.email_summary_enabled = settings.email_summary_enabled
+    if settings.contact_email is not None:
+        tenant.contact_email = settings.contact_email
 
     db.add(tenant)
     db.commit()
@@ -99,12 +96,6 @@ async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    def _disconnect_zoho(t: Tenant):
-        t.zoho_refresh_token = None
-        t.zoho_domain = None
-        t.zoho_token_expires_at = None
-        t.zoho_org_id = None
-
     def _disconnect_google(t: Tenant):
         t.google_refresh_token = None
         t.google_token_expires_at = None
@@ -112,7 +103,6 @@ async def disconnect_integration(key: str, tenant_id: str, db: Session = Depends
         t.google_connected = False
 
     field_map = {
-        "zoho":   _disconnect_zoho,
         "google": _disconnect_google,
     }
     if key in field_map:

@@ -38,7 +38,7 @@ export default function CobaltTheme() {
               ["🧠", "Zero Hallucinations", "AI trained exclusively on your approved documents."],
               ["🗣️", "Natural Voice", "Human-like with full context and interruption support."],
               ["📊", "Full Analytics", "Transcripts, sentiment, and live performance metrics."],
-              ["🔗", "Deep Integrations", "Shopify, Calendly, Zoho CRM, Google Workspace, and more."]].map(([icon, title, desc]) => (
+              ["🔗", "Deep Integrations", "Shopify, Calendly, HubSpot, Google Workspace, and more."]].map(([icon, title, desc]) => (
               <div key={title} style={{ background: "#fff", borderRadius: 14, padding: "2rem", borderTop: `4px solid ${cobalt}`, boxShadow: "0 2px 10px rgba(0,71,171,0.07)" }}>
                 <div style={{ fontSize: "1.8rem", marginBottom: "0.75rem" }}>{icon}</div>
                 <h3 style={{ fontWeight: 800, fontSize: "0.95rem", marginBottom: 6, color: cobalt }}>{title}</h3>

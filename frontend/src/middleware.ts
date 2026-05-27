@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/api/auth", "/contact", "/terms", "/privacy", "/themes"];
+const PUBLIC_PATHS = [
+  "/", "/login", "/signup", "/api/auth", "/contact", "/terms", "/privacy", "/themes",
+  "/sitemap.xml", "/robots.txt", "/use-cases", "/compare", "/opengraph-image", "/icon",
+  "/apple-icon", "/logo.svg", "/manifest.webmanifest",
+];
 
 export async function middleware(req: NextNextRequest) {
   const { pathname } = req.nextUrl;

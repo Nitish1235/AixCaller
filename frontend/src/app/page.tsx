@@ -132,7 +132,7 @@ const jsonLd = {
           "name": "Does the AI phone answering service integrate with CRM software?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. AIxCaller integrates with Zoho CRM, Shopify, and Google Sheets. After every call, lead data is automatically synced to your CRM — no manual entry required."
+            "text": "Yes. AIxCaller integrates with HubSpot, Shopify, and Google Sheets. After every call, lead data is automatically synced to your CRM — no manual entry required."
           }
         }
       ]
@@ -659,7 +659,7 @@ export default function Home() {
               <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--blue)", marginBottom: "2rem" }}>Includes 500 Minutes</div>
               
               <ul style={{ listStyle: "none", padding: 0, fontSize: "0.95rem", fontWeight: 600, textAlign: "left", margin: "2rem 0 3rem", color: "var(--text-muted)" }}>
-                {["2 Active Agents", "Enhanced Vector Training", "Google Calendar Sync", "Zoho CRM & Shopify Sync", "Call Recording & Logs"].map(item => (
+                {["2 Active Agents", "Enhanced Vector Training", "Google Calendar Sync", "HubSpot & Shopify Sync", "Call Recording & Logs"].map(item => (
                   <li key={item} style={{ marginBottom: "1rem", display: "flex", gap: 10, alignItems: "center" }}>
                     <span style={{ color: "var(--green)", fontWeight: 800, fontSize: "1.15rem" }}>✓</span> {item}
                   </li>

@@ -67,7 +67,7 @@ export default function AuroraTheme() {
             { icon: "🗣️", title: "Natural Conversations", desc: "Human-like voice with interruption support, contextual memory, and natural pacing.", color: "#8B5CF6", bg: "#F5F3FF" },
             { icon: "🧠", title: "Smart Knowledge Base", desc: "Your AI answers accurately from your documents only. Zero hallucinations.", color: "#F59E0B", bg: "#FFFBEB" },
             { icon: "📊", title: "Analytics Dashboard", desc: "Full call transcripts, AI-powered sentiment analysis, and real-time metrics.", color: "#EF4444", bg: "#FFF1F2" },
-            { icon: "🔗", title: "Easy Integrations", desc: "Connect to Shopify, Calendly, Zoho CRM, Google Workspace, and more in one click.", color: "#06B6D4", bg: "#ECFEFF" },
+            { icon: "🔗", title: "Easy Integrations", desc: "Connect to Shopify, Calendly, HubSpot, Google Workspace, and more in one click.", color: "#06B6D4", bg: "#ECFEFF" },
           ].map(f => (
             <div key={f.title} style={{ background: "#FFFFFF", borderRadius: 20, padding: "2rem", border: "1px solid #E2E8F0", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", transition: "all 0.2s" }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: f.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", marginBottom: "1.25rem", border: `1px solid ${f.bg}` }}>

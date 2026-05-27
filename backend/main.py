@@ -30,7 +30,7 @@ try:
     from backend.services.kb import IngestionService
     from backend.api import admin, dashboard, kb, billing, numbers
     from backend.api import shopify as shopify_api
-    from backend.api import zoho as zoho_api
+
     from backend.api import google as google_api
     from backend.api.auth import router as auth_router
     from backend.api import telnyx_ai
@@ -56,7 +56,7 @@ app.include_router(kb.router)
 app.include_router(billing.router)
 app.include_router(numbers.router)
 app.include_router(shopify_api.router)
-app.include_router(zoho_api.router)
+
 app.include_router(google_api.router)
 app.include_router(telnyx_ai.router)
 app.include_router(campaigns_api.router)

@@ -60,7 +60,7 @@ export default function IvoryTheme() {
             { icon: "📞", title: "Real Numbers", desc: "Buy local or toll-free numbers, or connect your existing lines." },
             { icon: "🧠", title: "Always Accurate", desc: "AI trained on your exact business knowledge. No hallucinations." },
             { icon: "📊", title: "Rich Analytics", desc: "Call transcripts, sentiment scores, and performance dashboards." },
-            { icon: "🔗", title: "Integrations", desc: "Shopify, Zoho CRM, Google Workspace, Calendly and more." },
+            { icon: "🔗", title: "Integrations", desc: "Shopify, HubSpot, Google Workspace, Calendly and more." },
             { icon: "🌍", title: "Multilingual", desc: "Serve global customers in 30+ languages, naturally." },
           ].map(f => (
             <div key={f.title} style={{ background: "#FFFFFF", borderRadius: 12, padding: "2rem", border: "1px solid #EDE9E1", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>

@@ -544,18 +544,14 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                       )}
                     </div>
 
-                    {/* Zoho */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.zoho_connected ? "#7c3aed" : "#e2e8f0"}`, background: integrationStatus.zoho_connected ? "#f5f3ff" : "#fff" }}>
-                      <span style={{ fontSize: "1rem" }}>💼</span>
+                    {/* HubSpot CRM (Coming Soon) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: "1.5px solid #e2e8f0", background: "#fff", opacity: 0.7 }}>
+                      <span style={{ fontSize: "1rem" }}>🟠</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Zoho CRM</div>
-                        <div style={{ fontSize: "0.68rem", color: integrationStatus.zoho_connected ? "#7c3aed" : "#94a3b8" }}>{integrationStatus.zoho_connected ? "✓ Connected — Leads syncing" : "Not connected"}</div>
+                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>HubSpot CRM</div>
+                        <div style={{ fontSize: "0.68rem", color: "#d97706" }}>✨ Coming Soon</div>
                       </div>
-                      {integrationStatus.zoho_connected ? (
-                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
-                      ) : (
-                        <a href={`${API_BASE_URL}/zoho/install?tenant_id=${tenantId}`} style={{ textDecoration: "none" }}><button style={{ padding: "5px 12px", borderRadius: 7, fontSize: "0.72rem", fontWeight: 700, border: "1.5px solid #7c3aed", background: "#fff", color: "#7c3aed", cursor: "pointer" }}>Connect →</button></a>
-                      )}
+                      <span style={{ fontSize: "0.62rem", fontWeight: 800, color: "#92400e", background: "#fef3c7", padding: "2px 8px", borderRadius: 5 }}>SOON</span>
                     </div>
 
                     <div style={{ fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.5, marginTop: 4 }}>

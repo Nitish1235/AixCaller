@@ -44,7 +44,7 @@ export default function ZenithTheme() {
             { icon: "🧠", title: "Smart Knowledge", desc: "Your AI answers accurately from your docs. Hallucination-free, every time." },
             { icon: "🗣️", title: "Natural Voice", desc: "Human-like conversation with interruption support and long-term context." },
             { icon: "📊", title: "Full Analytics", desc: "Transcripts, sentiment scoring, and real-time call performance metrics." },
-            { icon: "🔗", title: "Integrations", desc: "Shopify, Calendly, Zoho, Google Workspace and other platforms." },
+            { icon: "🔗", title: "Integrations", desc: "Shopify, Calendly, HubSpot, Google Workspace and other platforms." },
           ].map(f => (
             <div key={f.title} style={{ background: "#FFFFFF", borderRadius: 14, padding: "1.75rem 1.75rem 1.75rem 2.25rem", border: "1px solid #E5E7EB", borderLeft: `4px solid ${green}`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
               <div style={{ fontSize: "1.6rem", marginBottom: "0.75rem" }}>{f.icon}</div>
