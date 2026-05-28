@@ -58,7 +58,7 @@ app.include_router(dashboard.router)
 app.include_router(kb.router)
 app.include_router(billing.router)
 app.include_router(numbers.router)
-app.include_router(shopify_api.router)
+# app.include_router(shopify_api.router) # Disabled: Public OAuth flow not required right now
 
 app.include_router(google_api.router)
 app.include_router(telnyx_ai.router)

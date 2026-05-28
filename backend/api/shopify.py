@@ -31,7 +31,9 @@ from backend.services.shopify_oauth import (
 
 router = APIRouter(prefix="/api/v1/shopify", tags=["shopify"])
 
+# --- DISABLED FOR NOW (We only need manual custom app API Key logic on the integrations dashboard) ---
 
+'''
 @router.get("/install")
 async def start_install(
     agent_id: str,
@@ -303,3 +305,4 @@ async def disconnect(agent_id: str, db: Session = Depends(get_db)):
     db.commit()
     logger.info(f"🔌 Shopify disconnected for agent {agent.id}")
     return {"status": "disconnected"}
+'''

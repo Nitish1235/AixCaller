@@ -65,9 +65,9 @@ function ComingSoonBadge() {
 }
 
 /* ─── INTEGRATION CARD WRAPPER ─────────────────────────────────── */
-function IntegrationCard({ icon, title, description, connected, accentColor, comingSoon, children }: {
+function IntegrationCard({ icon, title, description, connected, accentColor, comingSoon, onGuideClick, children }: {
   icon: string; title: string; description: string; connected: boolean; accentColor: string;
-  comingSoon?: boolean; children: React.ReactNode;
+  comingSoon?: boolean; onGuideClick?: () => void; children: React.ReactNode;
 }) {
   return (
     <div style={{
@@ -101,7 +101,18 @@ function IntegrationCard({ icon, title, description, connected, accentColor, com
             <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 2 }}>{description}</div>
           </div>
         </div>
-        {comingSoon ? <ComingSoonBadge /> : <StatusBadge connected={connected} />}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {onGuideClick && (
+            <button onClick={onGuideClick} style={{
+              background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 99,
+              padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, color: "var(--text)",
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "var(--transition)"
+            }}>
+              📖 Guide
+            </button>
+          )}
+          {comingSoon ? <ComingSoonBadge /> : <StatusBadge connected={connected} />}
+        </div>
       </div>
 
       {/* Body */}
@@ -146,11 +157,125 @@ function FlowArrow({ active, color }: { active: boolean; color: string }) {
   );
 }
 
+/* ─── INTEGRATION GUIDE MODAL ──────────────────────────────────── */
+function IntegrationGuideModal({
+  isOpen,
+  onClose,
+  title,
+  steps,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  steps: { title: string; desc: React.ReactNode }[];
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      background: "rgba(15,23,42,0.4)", backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
+    }} onClick={onClose}>
+      <div style={{
+        background: "#fff", borderRadius: 20, width: "100%", maxWidth: 600,
+        maxHeight: "90vh", overflowY: "auto", position: "relative",
+        boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
+      }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{
+          padding: "1.5rem", borderBottom: "1.5px solid var(--border)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          position: "sticky", top: 0, background: "#fff", zIndex: 10
+        }}>
+          <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800 }}>{title} Setup Guide</h2>
+          <button onClick={onClose} style={{
+            background: "var(--surface)", border: "none", width: 32, height: 32,
+            borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", fontSize: "1.2rem", color: "var(--text-muted)"
+          }}>×</button>
+        </div>
+
+        {/* Body (Steps) */}
+        <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {steps.map((step, i) => (
+            <div key={i} style={{
+              display: "flex", gap: "1rem", background: "var(--surface)",
+              padding: "1.25rem", borderRadius: 12, border: "1px solid var(--border)"
+            }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%", background: "var(--blue)", color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800, fontSize: "0.85rem", flexShrink: 0
+              }}>{i + 1}</div>
+              <div>
+                <h4 style={{ margin: "0 0 4px 0", fontSize: "0.95rem", fontWeight: 700, color: "var(--text)" }}>{step.title}</h4>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>{step.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const GUIDES: Record<string, { title: string, steps: { title: string; desc: React.ReactNode }[] }> = {
+  shopify: {
+    title: "Shopify",
+    steps: [
+      { title: "Develop Apps", desc: "Go to your Shopify Admin Dashboard. Navigate to Settings > Apps and sales channels > Develop apps." },
+      { title: "Create Custom App", desc: "Click 'Create an app'. Name it something like 'AIxCaller Integration'." },
+      { title: "Configure API Scopes", desc: "Click the 'Configuration' tab. Under Admin API integration, click 'Configure'. Check the boxes for 'read_customers', 'read_orders', and 'read_products'." },
+      { title: "Install & Get Token", desc: "Click Save, then switch to the 'API credentials' tab and click 'Install app'. Reveal and copy the Admin API access token (starts with shpat_) and paste it here." },
+    ]
+  },
+  airtable: {
+    title: "Airtable",
+    steps: [
+      { title: "Create Token", desc: "Go to airtable.com/create/tokens. Click 'Create new token'." },
+      { title: "Add Scopes", desc: "Add scopes: data.records:read, data.records:write." },
+      { title: "Add Base Access", desc: "Under 'Access', select the specific Base you want the AI to read/write to. Click Create." },
+      { title: "Get Base ID", desc: "Open your Airtable Base in the browser. The URL will look like airtable.com/appXXXXX/.... The 'appXXXXX' part is your Base ID." },
+    ]
+  },
+  webhook: {
+    title: "Custom Webhook",
+    steps: [
+      { title: "Create Catch Hook", desc: "Go to Zapier or Make.com and create a new workflow starting with a 'Webhooks' trigger (Catch Hook)." },
+      { title: "Copy URL", desc: "Copy the provided webhook URL from Zapier/Make and paste it here." },
+      { title: "Test Call", desc: "Make a test call to your AI agent. After the call ends, we will POST the call transcript, summary, and extracted data to your webhook." },
+    ]
+  },
+  hubspot: {
+    title: "HubSpot",
+    steps: [
+      { title: "Click Connect", desc: "Simply click the 'Connect HubSpot' button." },
+      { title: "Authorize", desc: "You will be redirected to HubSpot to log in and authorize AIxCaller to sync calls and contacts." },
+    ]
+  },
+  salesforce: {
+    title: "Salesforce",
+    steps: [
+      { title: "Click Connect", desc: "Simply click the 'Connect Salesforce' button." },
+      { title: "Authorize", desc: "You will be redirected to Salesforce to log in and authorize AIxCaller to sync leads and activities." },
+    ]
+  },
+  google: {
+    title: "Google Calendar",
+    steps: [
+      { title: "Click Connect", desc: "Click the 'Connect Google Calendar' button and select the Google account you want the AI to schedule appointments on." },
+      { title: "Select Calendar", desc: "Once connected, you can specify the exact Calendar ID if you don't want to use your primary calendar." },
+    ]
+  }
+};
+
 /* ─── MAIN PAGE ────────────────────────────────────────────────── */
 export default function IntegrationsPage() {
   const [cfg, setCfg] = useState<any>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [toast, setToast] = useState("");
+  const [guideOpen, setGuideOpen] = useState<string | null>(null);
 
   const [settings, setSettings] = useState({
     googleCalendarId: "primary",
@@ -422,6 +547,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon="🗓️" title="Google Workspace" description="Calendar booking & availability"
               connected={!!cfg.google_connected} accentColor="#2563eb"
+              onGuideClick={() => setGuideOpen("google")}
             >
               {cfg.google_connected ? (
                 <>
@@ -492,6 +618,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon="🟠" title="HubSpot CRM" description="Automatic lead & deal sync"
               connected={!!cfg.hubspot_connected} accentColor="#ff7a59"
+              onGuideClick={() => setGuideOpen("hubspot")}
             >
               {cfg.hubspot_connected ? (
                 <>
@@ -538,6 +665,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon="☁️" title="Salesforce" description="Enterprise CRM sync"
               connected={!!cfg.salesforce_connected} accentColor="#00a1e0"
+              onGuideClick={() => setGuideOpen("salesforce")}
             >
               {cfg.salesforce_connected ? (
                 <>
@@ -584,6 +712,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon="🛍️" title="Shopify" description="Real-time order & inventory checks"
               connected={!!cfg.shopify_store_url} accentColor="#10b981"
+              onGuideClick={() => setGuideOpen("shopify")}
             >
               {cfg.shopify_store_url ? (
                 <>
@@ -673,6 +802,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon="🔗" title="Custom Webhook" description="Send data to Zapier/Make"
               connected={!!cfg.webhook_url} accentColor="#8b5cf6"
+              onGuideClick={() => setGuideOpen("webhook")}
             >
               {cfg.webhook_url ? (
                 <>
@@ -751,7 +881,8 @@ export default function IntegrationsPage() {
           <div className="int-card">
             <IntegrationCard
               icon="📊" title="Airtable" description="Auto-log calls to your base"
-              connected={!!cfg.airtable_connected} accentColor="#18bfff"
+              connected={!!cfg.airtable_base_id} accentColor="#18bfff"
+              onGuideClick={() => setGuideOpen("airtable")}
             >
               {cfg.airtable_connected ? (
                 <>
@@ -1049,6 +1180,13 @@ export default function IntegrationsPage() {
           🔧 Need help connecting? Check the <a href="/docs" style={{ color: "var(--blue)", fontWeight: 700, textDecoration: "underline" }}>Integration Guide</a> or contact support.
         </div>
       </div>
+
+      <IntegrationGuideModal
+        isOpen={!!guideOpen}
+        onClose={() => setGuideOpen(null)}
+        title={guideOpen ? GUIDES[guideOpen]?.title : ""}
+        steps={guideOpen ? GUIDES[guideOpen]?.steps : []}
+      />
     </>
   );
 }
