@@ -163,6 +163,7 @@ class CallRecord(SQLModel, table=True):
     agent_id: uuid.UUID = Field(foreign_key="agent.id", index=True)
 
     # ── Call metadata ────────────────────────────────────────────────────────
+    call_control_id: Optional[str] = None  # Telnyx Call Control ID or CallSid
     from_number: str                       # Caller's E.164 number
     to_number: str                         # Agent's Telnyx number
     direction: str = Field(default="inbound")   # inbound | outbound

@@ -117,6 +117,27 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         <AIAssistant id="{agent.telnyx_assistant_id}" />
     </Connect>
 </Response>"""
+
+    # Pre-create the CallRecord to track from_number
+    call_control_id = form.get("CallControlId") or form.get("CallSid")
+    if call_control_id:
+        try:
+            from shared.models import CallRecord
+            new_call = CallRecord(
+                tenant_id=agent.tenant_id,
+                agent_id=agent.id,
+                from_number=from_number or "unknown",
+                to_number=to_number or "unknown",
+                direction="inbound",
+                status="in_progress",
+                call_control_id=call_control_id
+            )
+            db.add(new_call)
+            db.commit()
+            logger.info(f"Pre-created CallRecord for {call_control_id} tracking from_number: {from_number}")
+        except Exception as e:
+            logger.error(f"Failed to pre-create CallRecord: {e}")
+
     logger.info(f"Inbound call {from_number} → {to_number} routed to assistant {agent.telnyx_assistant_id}")
     return PlainTextResponse(texml, media_type="application/xml")
 

@@ -42,17 +42,43 @@ async def process_completed_call(
     else:
         transcript_str = str(transcript or "")
 
-    # 1. Create CallRecord
-    new_call = CallRecord(
-        id=uuid.uuid4(),
-        tenant_id=tenant_id,
-        agent_id=agent_id,
-        from_number=from_number or "unknown",
-        to_number=to_number or "unknown",
-        transcript=transcript_str,
-        duration_seconds=duration_seconds,
-        status="completed"
-    )
+    # 1. Update existing CallRecord or Create a new one
+    from sqlmodel import select, desc
+    existing_call = None
+    if call_id and call_id != "unknown":
+        existing_call = db.exec(select(CallRecord).where(CallRecord.call_control_id == call_id)).first()
+        
+    # Fallback: if we don't have a call_control_id from the webhook, find the most recent in_progress call for this agent
+    if not existing_call:
+        existing_call = db.exec(
+            select(CallRecord)
+            .where(CallRecord.agent_id == agent_id)
+            .where(CallRecord.status == "in_progress")
+            .order_by(desc(CallRecord.created_at))
+        ).first()
+
+    if existing_call:
+        logger.info(f"Updating existing CallRecord for {call_id}")
+        existing_call.transcript = transcript_str
+        existing_call.duration_seconds = duration_seconds
+        existing_call.status = "completed"
+        # Only overwrite from_number if it was previously unknown, so we preserve the original
+        if existing_call.from_number == "unknown" and from_number != "unknown" and from_number != "Customer":
+            existing_call.from_number = from_number
+        new_call = existing_call
+    else:
+        logger.info(f"No existing CallRecord found for {call_id}, creating a new one")
+        new_call = CallRecord(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            from_number=from_number or "unknown",
+            to_number=to_number or "unknown",
+            transcript=transcript_str,
+            duration_seconds=duration_seconds,
+            status="completed",
+            call_control_id=call_id if call_id != "unknown" else None
+        )
 
     # 2. Fetch Agent Context for Analytics Hints
     agent_context = None
