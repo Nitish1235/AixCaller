@@ -32,7 +32,7 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
 
     # Build tools array
     tools = [
-        {"type": "hangup"}
+        {"type": "hangup", "hangup": {}}
     ]
     
     # 1. Knowledge Base synchronous Webhook Tool
