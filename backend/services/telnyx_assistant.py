@@ -102,10 +102,17 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
         global_model = settings.global_model
         telnyx_secret_id = settings.telnyx_secret_id
 
+    # Enforce transfer behavior securely at the backend level
+    final_instructions = agent.system_prompt
+    if agent.human_transfer_enabled and agent.forwarding_number:
+        final_instructions += "\n\nCRITICAL INSTRUCTION: You have access to a 'transfer' tool. ONLY use this tool to transfer the call if the user explicitly asks to speak to a human/representative, or if the user is highly upset. Otherwise, you MUST attempt to answer the question yourself using your knowledge base."
+    else:
+        final_instructions += "\n\nCRITICAL INSTRUCTION: You DO NOT have the ability to transfer calls to a human or live representative. Do NOT offer to transfer the call under any circumstances. If you cannot help the user, apologize and suggest they email support or check the website."
+
     # Define full request payload
     payload = {
         "name": f"AixCaller_{agent.name}_{str(agent.id)[:8]}",
-        "instructions": agent.system_prompt,
+        "instructions": final_instructions,
         "greeting": greeting_text,
         "voice_settings": {
             "voice": telnyx_voice,
