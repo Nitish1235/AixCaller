@@ -79,14 +79,13 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
 
     # Use voice_id directly (now stored as Telnyx voice name, e.g. 'Telnyx.Ultra.Grace')
     ui_voice = agent.voice_id or DEFAULT_VOICE
-    telnyx_voice = "shimmer" # Default to female OpenAI voice
+    telnyx_voice = ui_voice # Default to what is in the db
     
     try:
         from backend.api.admin import TELNYX_VOICES
         for v in TELNYX_VOICES:
-            if v["voice_id"] == ui_voice or v["name"] in ui_voice:
-                if v["gender"] == "Male":
-                    telnyx_voice = "echo"
+            if v["name"].lower() in ui_voice.lower() or v["voice_id"] == ui_voice:
+                telnyx_voice = v["voice_id"] # Use the exact UUID from the catalogue
                 break
     except Exception:
         pass
