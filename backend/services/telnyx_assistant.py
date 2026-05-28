@@ -78,7 +78,18 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
         greeting_text = f"Hi there, this is {agent.name}. How can I help you today?"
 
     # Use voice_id directly (now stored as Telnyx voice name, e.g. 'Telnyx.Ultra.Grace')
-    telnyx_voice = agent.voice_id or DEFAULT_VOICE
+    ui_voice = agent.voice_id or DEFAULT_VOICE
+    telnyx_voice = "shimmer" # Default to female OpenAI voice
+    
+    try:
+        from backend.api.admin import TELNYX_VOICES
+        for v in TELNYX_VOICES:
+            if v["voice_id"] == ui_voice or v["name"] in ui_voice:
+                if v["gender"] == "Male":
+                    telnyx_voice = "echo"
+                break
+    except Exception:
+        pass
 
     # Fetch global system settings (singleton id=1)
     from shared.models import SystemSettings
