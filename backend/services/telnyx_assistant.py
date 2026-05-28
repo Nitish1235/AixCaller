@@ -65,7 +65,7 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
                 "targets": [
                     {
                         "name": "Live Support Representative",
-                        "phone_number": agent.forwarding_number
+                        "to": agent.forwarding_number
                     }
                 ]
             }
