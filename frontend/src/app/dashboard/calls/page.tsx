@@ -34,7 +34,7 @@ export default function CallsPage() {
           <p>Your call history will appear here once your agents start talking!</p>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
           {calls.map((call: any) => {
             const isUnknown = !call.from_number || call.from_number.toLowerCase() === 'unknown';
             const callerDisplay = isUnknown ? 'Caller' : call.from_number;

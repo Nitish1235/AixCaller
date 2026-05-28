@@ -104,17 +104,17 @@ export default function DashboardShell({ user, children }: { user: User; childre
             position: "fixed", inset: 0, background: "rgba(15,23,42,0.15)",
             backdropFilter: "blur(4px)",
             WebkitBackdropFilter: "blur(4px)",
-            zIndex: 49, display: "none",
+            zIndex: 49,
           }}
-          className="mobile-overlay"
+          className={`mobile-overlay ${sidebarOpen ? 'open' : ''}`}
         />
       )}
 
       {/* ── Sidebar ── */}
       <aside
-        className="dashboard-sidebar"
+        className={`dashboard-sidebar ${sidebarOpen ? 'open' : ''}`}
         style={{
-          width: 250, flexShrink: 0, 
+          flexShrink: 0, 
           background: "var(--surface)", 
           borderRight: "1.5px solid var(--border)",
           display: "flex", flexDirection: "column",
@@ -131,7 +131,7 @@ export default function DashboardShell({ user, children }: { user: User; childre
             onClick={() => setSidebarOpen(false)}
             className="sidebar-close-btn"
             style={{
-              display: "none", background: "none", border: "none",
+              background: "none", border: "none",
               color: "var(--text-muted)", fontSize: "1.5rem", cursor: "pointer",
               padding: "4px 8px", lineHeight: 1,
             }}
@@ -192,7 +192,7 @@ export default function DashboardShell({ user, children }: { user: User; childre
       </aside>
 
       {/* ── Main area ── */}
-      <div className="dashboard-main" style={{ marginLeft: 250, flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <div className="dashboard-main" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
         {/* Top bar */}
         <div style={{
           height: 64, background: "#ffffff", borderBottom: "1.5px solid var(--border)",
@@ -206,7 +206,7 @@ export default function DashboardShell({ user, children }: { user: User; childre
               className="hamburger-btn"
               aria-label="Open navigation"
               style={{
-                display: "none", background: "none", border: "1.5px solid var(--border)",
+                background: "none", border: "1.5px solid var(--border)",
                 borderRadius: 8, padding: "6px 10px", cursor: "pointer",
                 color: "var(--text)", fontSize: "1.1rem", lineHeight: 1,
               }}
