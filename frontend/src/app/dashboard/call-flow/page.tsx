@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { fetchAgents, apiGet, apiPut, apiPost, getTenantId } from "@/lib/api";
+import { fetchAgents, apiGet, apiPut, apiPost, apiPatch, getTenantId } from "@/lib/api";
 
 const containerStyle: React.CSSProperties = { display: "flex", flexDirection: "column", height: "calc(100vh - 80px)", overflow: "hidden" };
 const headerStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 30px", borderBottom: "1px solid var(--border)", background: "#fff" };
@@ -41,19 +41,24 @@ export default function CallFlowPage() {
   const [testResult, setTestResult] = useState<{success: boolean, message: string} | null>(null);
   const [testing, setTesting] = useState(false);
 
+  const [savingInt, setSavingInt] = useState(false);
+  const [intForm, setIntForm] = useState<any>({});
+
   useEffect(() => {
     const loadAgents = async () => {
       const tid = getTenantId();
       if (tid) {
         const list = await fetchAgents(tid);
         setAgents(list);
-        if (!agentId && list.length > 0) {
+        // Auto-select first agent only if none is pre-selected from URL
+        if (!searchParams.get("agent") && list.length > 0 && !agentId) {
           setAgentId(list[0].id);
         }
       }
     };
     loadAgents();
-  }, [agentId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!agentId) return;
@@ -68,6 +73,13 @@ export default function CallFlowPage() {
           setCallFlow(JSON.parse(JSON.stringify(defaultFlow)));
         }
         setIntegrations(res.integrations || {});
+        setIntForm({
+          shopify_store_url: res.integrations?.shopify_domain || "",
+          shopify_api_key: "", // Don't return secrets, user enters new if needed
+          airtable_pat: "",
+          airtable_base_id: res.integrations?.airtable_base_id || "",
+          webhook_url: res.integrations?.webhook_url || ""
+        });
       } catch (e) {
         console.error(e);
       }
@@ -136,6 +148,21 @@ export default function CallFlowPage() {
     }
   };
 
+  const saveIntegration = async (fields: any) => {
+    setSavingInt(true);
+    try {
+      const tid = getTenantId();
+      await apiPatch(`/integrations?tenant_id=${tid}`, fields);
+      alert("Integration saved successfully!");
+      // Reload integrations
+      const res = await apiGet(`/agents/${agentId}/call-flow`);
+      setIntegrations(res.integrations || {});
+    } catch (e) {
+      alert("Failed to save integration.");
+    }
+    setSavingInt(false);
+  };
+
   const renderTimelineCard = (title: string, subtitle: string, items: {id: string, label: string, icon: string, phase: string}[]) => (
     <div style={{ width: 600, background: "#fff", border: "1.5px solid var(--border)", borderRadius: 16, padding: 24, boxShadow: "0 4px 15px rgba(0,0,0,0.02)" }}>
       <h2 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 4px", color: "var(--text)" }}>{title}</h2>
@@ -184,25 +211,53 @@ export default function CallFlowPage() {
         return (
           <div>
             <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>Shopify Setup</h3>
-            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 20 }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 10 }}>
               Allow your AI agent to look up order status and product information in real-time.
             </p>
-            {integrations.shopify_connected ? (
-              <div style={{ padding: 15, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.9rem", marginBottom: 20 }}>
+            
+            <div style={{ background: "#f8fafc", padding: 15, borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 20, fontSize: "0.85rem", color: "#475569" }}>
+              <strong>How to connect:</strong>
+              <ol style={{ paddingLeft: 20, marginTop: 8, marginBottom: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <li>Go to Shopify Admin → Settings → Apps and sales channels</li>
+                <li>Click <strong>Develop apps</strong> → Create an app (e.g. "AIxCaller")</li>
+                <li>Go to Configuration → Admin API Integration → Configure</li>
+                <li>Select <strong>read_orders</strong>, <strong>read_products</strong>, and <strong>read_customers</strong></li>
+                <li>Click Install app, then copy the generated <code>shpat_...</code> token below.</li>
+              </ol>
+            </div>
+
+            {integrations.shopify_connected && (
+              <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", marginBottom: 20 }}>
                 ✓ Connected to {integrations.shopify_domain}
               </div>
-            ) : (
-              <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20 }}>
-                Not connected. Go to the Integrations page to link your Shopify store.
-              </div>
             )}
-            <button 
-              onClick={() => testConnection("shopify")} 
-              disabled={testing || !integrations.shopify_connected}
-              style={{ ...btn("#f1f5f9"), color: "#334155", width: "100%", border: "1px solid #cbd5e1" }}
-            >
-              {testing ? "Testing..." : "Test Connection"}
-            </button>
+            
+            <div style={{ marginBottom: 15 }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: 5 }}>Store URL (e.g. mystore.myshopify.com)</label>
+              <input style={inp} value={intForm.shopify_store_url} onChange={e => setIntForm({...intForm, shopify_store_url: e.target.value})} placeholder="mystore.myshopify.com" />
+            </div>
+            <div style={{ marginBottom: 15 }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: 5 }}>Admin API Access Token (shpat_...)</label>
+              <input type="password" style={inp} value={intForm.shopify_api_key} onChange={e => setIntForm({...intForm, shopify_api_key: e.target.value})} placeholder="shpat_xxxxxxxxxxxxxxxxx" />
+            </div>
+            
+            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+              <button 
+                onClick={() => saveIntegration({ shopify_store_url: intForm.shopify_store_url, shopify_api_key: intForm.shopify_api_key })}
+                disabled={savingInt}
+                style={{ ...btn(), flex: 1 }}
+              >
+                {savingInt ? "Saving..." : "Save Credentials"}
+              </button>
+              <button 
+                onClick={() => testConnection("shopify")} 
+                disabled={testing || !integrations.shopify_connected}
+                style={{ ...btn("#f1f5f9"), color: "#334155", flex: 1, border: "1px solid #cbd5e1" }}
+              >
+                {testing ? "Testing..." : "Test Connection"}
+              </button>
+            </div>
+            
             {testResult && (
               <div style={{ marginTop: 15, padding: 10, borderRadius: 8, fontSize: "0.85rem", background: testResult.success ? "#dcfce7" : "#fee2e2", color: testResult.success ? "#166534" : "#991b1b" }}>
                 {testResult.message}
@@ -214,25 +269,52 @@ export default function CallFlowPage() {
         return (
           <div>
             <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>Airtable Log</h3>
-            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 20 }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 10 }}>
               Automatically log every completed call, transcript, and summary to an Airtable base.
             </p>
-            {integrations.airtable_connected ? (
-              <div style={{ padding: 15, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.9rem", marginBottom: 20 }}>
+
+            <div style={{ background: "#f8fafc", padding: 15, borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 20, fontSize: "0.85rem", color: "#475569" }}>
+              <strong>How to connect:</strong>
+              <ol style={{ paddingLeft: 20, marginTop: 8, marginBottom: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <li>Go to <a href="https://airtable.com/create/tokens" target="_blank" style={{ color: "var(--blue)" }}>airtable.com/create/tokens</a></li>
+                <li>Create a new token and add scopes: <code>data.records:read</code> and <code>data.records:write</code></li>
+                <li>Under Access, select the Base you want to connect to.</li>
+                <li>Copy the Token below. To find your Base ID, look at the URL of your Airtable base (it starts with <code>app...</code>).</li>
+              </ol>
+            </div>
+
+            {integrations.airtable_connected && (
+              <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", marginBottom: 20 }}>
                 ✓ Airtable Connected
               </div>
-            ) : (
-              <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20 }}>
-                Not connected. Go to the Integrations page to set your Personal Access Token.
-              </div>
             )}
-            <button 
-              onClick={() => testConnection("airtable")} 
-              disabled={testing || !integrations.airtable_connected}
-              style={{ ...btn("#f1f5f9"), color: "#334155", width: "100%", border: "1px solid #cbd5e1" }}
-            >
-              {testing ? "Testing..." : "Test Connection"}
-            </button>
+            
+            <div style={{ marginBottom: 15 }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: 5 }}>Base ID</label>
+              <input style={inp} value={intForm.airtable_base_id} onChange={e => setIntForm({...intForm, airtable_base_id: e.target.value})} placeholder="appXXXXXXXXXXXXXX" />
+            </div>
+            <div style={{ marginBottom: 15 }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: 5 }}>Personal Access Token</label>
+              <input type="password" style={inp} value={intForm.airtable_pat} onChange={e => setIntForm({...intForm, airtable_pat: e.target.value})} placeholder="patXXXXXXXXXXXXXX.xxxx..." />
+            </div>
+            
+            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+              <button 
+                onClick={() => saveIntegration({ airtable_base_id: intForm.airtable_base_id, airtable_pat: intForm.airtable_pat })}
+                disabled={savingInt}
+                style={{ ...btn(), flex: 1 }}
+              >
+                {savingInt ? "Saving..." : "Save Credentials"}
+              </button>
+              <button 
+                onClick={() => testConnection("airtable")} 
+                disabled={testing || !integrations.airtable_connected}
+                style={{ ...btn("#f1f5f9"), color: "#334155", flex: 1, border: "1px solid #cbd5e1" }}
+              >
+                {testing ? "Testing..." : "Test Connection"}
+              </button>
+            </div>
+            
             {testResult && (
               <div style={{ marginTop: 15, padding: 10, borderRadius: 8, fontSize: "0.85rem", background: testResult.success ? "#dcfce7" : "#fee2e2", color: testResult.success ? "#166534" : "#991b1b" }}>
                 {testResult.message}
@@ -244,25 +326,47 @@ export default function CallFlowPage() {
         return (
           <div>
             <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>Post-call Webhook</h3>
-            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 20 }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 10 }}>
               Send a POST request to a Zapier, Make, or custom URL after every call ends.
             </p>
-            {integrations.webhook_connected ? (
-              <div style={{ padding: 15, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.9rem", marginBottom: 20 }}>
+
+            <div style={{ background: "#f8fafc", padding: 15, borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 20, fontSize: "0.85rem", color: "#475569" }}>
+              <strong>How to connect:</strong>
+              <ul style={{ paddingLeft: 20, marginTop: 8, marginBottom: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <li>Create a Catch Hook in Zapier or a Custom Webhook in Make.com.</li>
+                <li>Copy the provided Webhook URL and paste it below.</li>
+                <li>We will send a POST request containing the call transcript, summary, and sentiment analysis immediately after the call finishes.</li>
+              </ul>
+            </div>
+
+            {integrations.webhook_connected && (
+              <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", marginBottom: 20 }}>
                 ✓ Webhook URL is set
               </div>
-            ) : (
-              <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20 }}>
-                Not connected. Set your Webhook URL in the Integrations page.
-              </div>
             )}
-            <button 
-              onClick={() => testConnection("webhook")} 
-              disabled={testing || !integrations.webhook_connected}
-              style={{ ...btn("#f1f5f9"), color: "#334155", width: "100%", border: "1px solid #cbd5e1" }}
-            >
-              {testing ? "Testing..." : "Send Test Webhook"}
-            </button>
+            
+            <div style={{ marginBottom: 15 }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: 5 }}>Webhook URL</label>
+              <input style={inp} value={intForm.webhook_url} onChange={e => setIntForm({...intForm, webhook_url: e.target.value})} placeholder="https://hooks.zapier.com/..." />
+            </div>
+            
+            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+              <button 
+                onClick={() => saveIntegration({ webhook_url: intForm.webhook_url })}
+                disabled={savingInt}
+                style={{ ...btn(), flex: 1 }}
+              >
+                {savingInt ? "Saving..." : "Save Webhook"}
+              </button>
+              <button 
+                onClick={() => testConnection("webhook")} 
+                disabled={testing || !integrations.webhook_connected}
+                style={{ ...btn("#f1f5f9"), color: "#334155", flex: 1, border: "1px solid #cbd5e1" }}
+              >
+                {testing ? "Testing..." : "Send Test Webhook"}
+              </button>
+            </div>
+            
             {testResult && (
               <div style={{ marginTop: 15, padding: 10, borderRadius: 8, fontSize: "0.85rem", background: testResult.success ? "#dcfce7" : "#fee2e2", color: testResult.success ? "#166534" : "#991b1b" }}>
                 {testResult.message}
@@ -350,28 +454,47 @@ export default function CallFlowPage() {
     }
   };
 
+  const selectedAgent = agents.find((a: any) => a.id === agentId);
+
   return (
     <div style={containerStyle}>
       <div style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
           <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 900, color: "var(--text)" }}>Call Flow Builder</h1>
-          {agents.length > 0 && (
-            <select style={{ ...inp, width: 250, padding: "8px 12px" }} value={agentId} onChange={e => setAgentId(e.target.value)}>
-              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+          <select
+            style={{ ...inp, width: 280, padding: "8px 14px", fontWeight: 600 }}
+            value={agentId}
+            onChange={e => setAgentId(e.target.value)}
+          >
+            {agents.length === 0 && <option value="">Loading agents...</option>}
+            {agents.length > 0 && !agentId && <option value="">— Select an Agent —</option>}
+            {agents.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          {selectedAgent && (
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", background: "var(--surface)", padding: "4px 10px", borderRadius: 6 }}>
+              {selectedAgent.phone_number || selectedAgent.legacy_number || "No phone number"}
+            </span>
           )}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => router.push(`/dashboard/agents/${agentId}`)} style={btn("var(--bg)", { color: "var(--text)", border: "1.5px solid var(--border)" })}>
-            Back to Agent
-          </button>
-          <button onClick={saveFlow} disabled={saving || !agentId} style={btn()}>
+          {agentId && (
+            <button onClick={() => router.push(`/dashboard/agents/${agentId}`)} style={btn("var(--bg)", { color: "var(--text)", border: "1.5px solid var(--border)" })}>
+              ← Agent Settings
+            </button>
+          )}
+          <button onClick={saveFlow} disabled={saving || !agentId} style={{ ...btn(), opacity: !agentId ? 0.5 : 1 }}>
             {saving ? "Saving..." : "Deploy Flow"}
           </button>
         </div>
       </div>
 
-      {loading ? (
+      {!agentId ? (
+        <div style={{ display: "flex", flex: 1, justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 15, color: "var(--text-muted)" }}>
+          <span style={{ fontSize: "3.5rem" }}>🤖</span>
+          <h2 style={{ margin: 0, fontWeight: 800 }}>Select an Agent</h2>
+          <p style={{ fontSize: "0.95rem", maxWidth: 400, textAlign: "center", lineHeight: 1.6 }}>Choose an agent from the dropdown above to configure its call flow — which tools it can use during calls and what automations fire after.</p>
+        </div>
+      ) : loading ? (
         <div style={{ display: "flex", flex: 1, justifyContent: "center", alignItems: "center" }}>Loading flow...</div>
       ) : (
         <div style={mainLayout}>

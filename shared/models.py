@@ -122,14 +122,22 @@ class Agent(SQLModel, table=True):
     # to phone_number (the Telnyx number). Stored for display only.
     legacy_number: Optional[str] = None
 
-    # ── Call Flow Builder Config ──────────────────────────────────────────────
-    # Visual pipeline config for inbound calls.
-    call_flow: dict = Field(default_factory=dict, sa_column=Column(JSON))
-
     # ── Integration Tools (per-agent JSON blob) ───────────────────────────────
     # Stores Shopify token, Google Sheet ID, and other per-agent tool configs.
     # Schema: {"shopify": {"store_url": ..., "access_token": ..., "scope": ...}}
     tools_config: dict = Field(default_factory=dict, sa_column=Column(JSON))
+
+    @property
+    def call_flow(self) -> dict:
+        return self.tools_config.get("call_flow", {}) if self.tools_config else {}
+
+    @call_flow.setter
+    def call_flow(self, value: dict):
+        if self.tools_config is None:
+            self.tools_config = {}
+        new_config = dict(self.tools_config)
+        new_config["call_flow"] = value
+        self.tools_config = new_config
 
     # ── Marketplace ──────────────────────────────────────────────────────────
     template_id: Optional[str] = None     # Template used to create agent (if any)

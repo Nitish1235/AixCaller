@@ -193,7 +193,7 @@ export default async function DashboardPage() {
                     <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--blue-light)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>🤖</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}</div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>{agent.phone_number || "No phone connected"}</div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>{agent.phone_number || agent.legacy_number || "No phone connected"}</div>
                     </div>
                     <span style={{ background: "var(--green-light)", color: "var(--green)", borderRadius: 999, padding: "2px 8px", fontSize: "0.65rem", fontWeight: 700 }}>● Active</span>
                   </div>
