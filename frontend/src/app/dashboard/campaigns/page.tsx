@@ -526,6 +526,17 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
               <div style={{ animation: "fadeSlideIn 0.25s ease", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: 0 }}>Integrations</h3>
                 <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>Connect calendar and CRM so your agent can book appointments and sync data.</p>
+                <div className="integration-guide" style={{ background: "#f8fafc", borderLeft: "4px solid #2563eb", padding: "1rem", borderRadius: "8px", marginTop: "0.75rem" }}>
+                  <h4 style={{ fontWeight: 700, fontSize: "0.9rem", color: "#0f172a", marginBottom: "0.5rem" }}>Integration Setup Guide</h4>
+                  <ul style={{ marginLeft: "1.2rem", color: "#64748b", fontSize: "0.78rem", lineHeight: 1.4 }}>
+                    <li><strong>Google Workspace</strong> – Calendar & Sheets access. OAuth scopes: <code>https://www.googleapis.com/auth/calendar</code> and <code>https://www.googleapis.com/auth/spreadsheets</code>.</li>
+                    <li><strong>HubSpot CRM</strong> – API key or Private App token. Required scopes: <code>contacts</code>, <code>crm.objects.contacts.read</code>.</li>
+                    <li><strong>Salesforce</strong> – Connected App client ID/secret. OAuth redirect URL: <code>{`${API_BASE_URL}/salesforce/callback`}</code>. Scopes: <code>api</code>, <code>refresh_token</code>.</li>
+                    <li><strong>Shopify</strong> – Store URL (e.g., <code>myshop.myshopify.com</code>) and Admin API access token.</li>
+                    <li><strong>Custom Webhook</strong> – Full HTTPS endpoint. Payload format: <code>{`{event, data}`}</code>.</li>
+                    <li><strong>Airtable</strong> – API key, Base ID, and Table name for call logs.</li>
+                  </ul>
+                </div>
 
                 {!integrationStatus ? (
                   <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "0.82rem" }}>Loading integrations…</div>

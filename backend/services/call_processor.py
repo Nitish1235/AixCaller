@@ -13,6 +13,9 @@ from backend.services.airtable import AirtableService
 from backend.services.hubspot import log_call_to_hubspot
 from backend.services.salesforce import log_call_to_salesforce
 import httpx
+from backend.services.knowledge_service import KnowledgeService
+from backend.services.calendar_service import CalendarService
+from backend.services.sheets_service import SheetsService
 
 analytics_service = AnalyticsService()
 
@@ -107,6 +110,21 @@ async def process_completed_call(
         new_call.sentiment = analysis.get("sentiment")
         action_items = analysis.get("action_items", [])
         new_call.action_items = json.dumps(action_items) if isinstance(action_items, list) else str(action_items)
+        
+        # --- Integration based on detected intent ---
+        intent = analysis.get("intent")
+        knowledge_result = None
+        calendar_info = None
+        sheet_result = None
+        if intent == "knowledge_lookup":
+            ks = KnowledgeService(tenant)
+            knowledge_result = await ks.lookup(analysis.get("query", ""))
+        elif intent == "schedule_booking":
+            cs = CalendarService(tenant)
+            calendar_info = cs.get_free_slots()
+        elif intent == "sheet_lookup":
+            ss = SheetsService(tenant)
+            sheet_result = await ss.search_table(analysis.get("sheet_id", ""), analysis.get("query", ""))
 
     db.add(new_call)
 
@@ -170,6 +188,9 @@ async def process_completed_call(
                     "agent_name":       agent_name,
                     "duration_seconds": duration_seconds,
                     "call_timestamp":   datetime.now(timezone.utc).strftime("%b %d, %Y · %I:%M %p UTC"),
+                    "knowledge_result": knowledge_result if 'knowledge_result' in locals() else None,
+                    "calendar_info":     calendar_info if 'calendar_info' in locals() else None,
+                    "sheet_result":      sheet_result if 'sheet_result' in locals() else None
                 }
             )
             logger.info(f"Successfully sent summary email to {tenant.contact_email}")

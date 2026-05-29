@@ -29,6 +29,7 @@ class CreateCampaignRequest(BaseModel):
     retry_cadence_hours: List[int] = [2, 24, 72]
     speed_to_lead_enabled: bool = False
     sms_enabled: bool = False
+    daily_call_limit: Optional[int] = None
 
 
 class UpdateCampaignRequest(BaseModel):
@@ -72,6 +73,10 @@ async def create_campaign(req: CreateCampaignRequest, db: Session = Depends(get_
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found for this tenant")
 
+    # Ensure the selected agent has an assigned phone number
+    if not agent.phone_number:
+        raise HTTPException(status_code=400, detail="Selected agent does not have a phone number assigned. Please assign a phone number before creating a campaign.")
+
     campaign = Campaign(
         tenant_id=tenant_uuid,
         agent_id=agent_uuid,
@@ -82,6 +87,7 @@ async def create_campaign(req: CreateCampaignRequest, db: Session = Depends(get_
         retry_cadence_hours=req.retry_cadence_hours,
         speed_to_lead_enabled=req.speed_to_lead_enabled,
         sms_enabled=req.sms_enabled,
+        daily_call_limit=req.daily_call_limit,
     )
     db.add(campaign)
     db.commit()

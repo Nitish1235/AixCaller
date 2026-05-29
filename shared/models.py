@@ -72,6 +72,10 @@ class Tenant(SQLModel, table=True):
     google_token_expires_at: Optional[int] = None  # unix-ts
     google_calendar_id: Optional[str] = Field(default="primary")
     google_connected: bool = Field(default=False)
+    # ── Knowledge Base Providers (JSON config per provider) ─────────────────────
+    kb_providers: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    # ── Allowed Phone Numbers (per-tenant whitelist) ──────────────────────────────
+    allowed_phone_numbers: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     # ── Airtable (Personal Access Token — auto-log calls) ────────────────
     airtable_pat: Optional[str] = None              # Personal Access Token
@@ -102,6 +106,7 @@ class Agent(SQLModel, table=True):
     # voice_id maps to a Telnyx Ultra voice via TELNYX_VOICE_MAP in telnyx_assistant.py
     voice_id: str = Field(default="Telnyx.Ultra.Grace")
     language: str = Field(default="en")
+    voice_preview_url: Optional[str] = None  # URL to short audio preview of the voice
 
     # ── Human Transfer (live-agent handoff) ──────────────────────────────────
     # forwarding_number: E.164 number to transfer to when human is needed.
@@ -253,6 +258,7 @@ class Campaign(SQLModel, table=True):
     name: str
     status: str = Field(default="inactive")  # active | inactive | completed
     max_concurrent_calls: int = Field(default=1)
+    daily_call_limit: Optional[int] = Field(default=None)
 
     # ── Timezone-Aware Calling Window ────────────────────────────────────────
     # HH:MM strings in the lead's local time. Default: 9am-8pm.
