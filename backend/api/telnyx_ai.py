@@ -10,6 +10,7 @@ from shared.database import get_db
 from shared.models import Tenant, Agent, CallRecord
 from shared.kb import search_knowledge_base
 from backend.services.call_processor import process_completed_call
+from backend.services.google_oauth import get_calendar_availability, create_calendar_event, append_lead_to_sheet
 
 router = APIRouter(prefix="/api/v1/telnyx-ai", tags=["telnyx-ai"])
 
@@ -163,3 +164,131 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
     except Exception as e:
         logger.error(f"Telnyx Call Ended Webhook failed: {e}")
         return {"status": "error", "message": str(e)}
+
+@router.post("/calendar-availability")
+async def telnyx_calendar_availability(request: Request, tenant_id: str, db: Session = Depends(get_db)):
+    try:
+        payload = await request.json()
+        date = payload.get("date")
+        if not date:
+            return {"status": "success", "result": "Please provide a valid date in YYYY-MM-DD format."}
+
+        tenant = db.get(Tenant, uuid.UUID(tenant_id))
+        if not tenant or not tenant.google_connected:
+            return {"status": "success", "result": "Calendar integration is not connected for this business."}
+            
+        busy_slots = await get_calendar_availability(tenant, date)
+        if not busy_slots:
+            return {"status": "success", "result": f"The calendar is completely free on {date}."}
+            
+        return {"status": "success", "result": f"The following times are busy on {date}: {', '.join(busy_slots)}."}
+    except Exception as e:
+        logger.error(f"Telnyx calendar availability failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+@router.post("/calendar-book")
+async def telnyx_calendar_book(request: Request, tenant_id: str, agent_id: str, db: Session = Depends(get_db)):
+    try:
+        payload = await request.json()
+        name = payload.get("name")
+        phone = payload.get("phone")
+        date = payload.get("date")
+        time = payload.get("time")
+        
+        if not all([name, phone, date, time]):
+            return {"status": "success", "result": "Missing required information to book the appointment."}
+
+        tenant = db.get(Tenant, uuid.UUID(tenant_id))
+        if not tenant or not tenant.google_connected:
+            return {"status": "success", "result": "Calendar integration is not connected."}
+            
+        title = f"Meeting: {name}"
+        desc = f"Phone: {phone}\nPurpose: {payload.get('purpose', 'General Inquiry')}"
+        
+        event = await create_calendar_event(tenant, title, date, time, 60, desc, payload.get("email"))
+        return {"status": "success", "result": f"Appointment successfully booked for {name} on {date} at {time}."}
+    except Exception as e:
+        logger.error(f"Telnyx calendar book failed: {e}")
+        return {"status": "success", "result": "Failed to book the appointment due to a calendar error."}
+
+@router.post("/record-lead")
+async def telnyx_record_lead(request: Request, tenant_id: str, agent_id: str, db: Session = Depends(get_db)):
+    try:
+        payload = await request.json()
+        tenant = db.get(Tenant, uuid.UUID(tenant_id))
+        if not tenant or not tenant.google_connected:
+            return {"status": "success", "result": "Lead capture is not configured."}
+            
+        lead_data = {
+            "name": payload.get("name", "Unknown"),
+            "phone": payload.get("phone", "Unknown"),
+            "email": payload.get("email", ""),
+            "intent": payload.get("intent", ""),
+            "notes": payload.get("notes", ""),
+            "status": "new",
+            "agent_name": "AI Assistant"
+        }
+        
+        # We need to map the agent's sheet config if it exists
+        agent = db.get(Agent, uuid.UUID(agent_id))
+        sheet_id = (agent.tools_config or {}).get("google_sheet", {}).get("sheet_id")
+        
+        if sheet_id:
+            # Overwrite tenant's default sheet ID for this tool call
+            tenant.google_sheet_id = sheet_id
+            
+        row = await append_lead_to_sheet(tenant, lead_data)
+        if row:
+            return {"status": "success", "result": "Lead information successfully recorded."}
+        return {"status": "success", "result": "Failed to record lead info."}
+    except Exception as e:
+        logger.error(f"Telnyx record lead failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+@router.post("/shopify-lookup")
+async def telnyx_shopify_lookup(request: Request, tenant_id: str, db: Session = Depends(get_db)):
+    try:
+        payload = await request.json()
+        query = payload.get("query")
+        if not query:
+            return {"status": "success", "result": "Please provide an order number or email."}
+            
+        tenant = db.get(Tenant, uuid.UUID(tenant_id))
+        if not tenant or not tenant.shopify_store_url or not tenant.shopify_access_token:
+            return {"status": "success", "result": "Shopify integration is not connected."}
+            
+        # Call Shopify GraphQL/REST Admin API
+        url = f"https://{tenant.shopify_store_url}/admin/api/2024-01/orders.json"
+        
+        # Determine if query is email or order number
+        params = {"status": "any"}
+        if "@" in query:
+            params["email"] = query
+        elif query.isdigit():
+            params["name"] = query
+        else:
+            params["query"] = query
+            
+        headers = {"X-Shopify-Access-Token": tenant.shopify_access_token}
+        
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers, params=params, timeout=10.0)
+            if resp.status_code == 200:
+                orders = resp.json().get("orders", [])
+                if not orders:
+                    return {"status": "success", "result": f"I couldn't find any orders matching {query}."}
+                
+                # Format first order
+                o = orders[0]
+                status = o.get("fulfillment_status") or "unfulfilled"
+                financial = o.get("financial_status") or "pending"
+                total = o.get("total_price")
+                
+                return {"status": "success", "result": f"Order {o.get('name')} was placed on {o.get('created_at')[:10]}. Total is ${total}. Financial status is {financial}. Fulfillment status is {status}."}
+            else:
+                return {"status": "success", "result": "I'm having trouble looking up the order right now."}
+                
+    except Exception as e:
+        logger.error(f"Telnyx shopify lookup failed: {e}")
+        return {"status": "error", "message": str(e)}
+

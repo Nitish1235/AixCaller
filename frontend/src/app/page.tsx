@@ -3,6 +3,7 @@ import Link from "next/link";
 import ClaimNumberSection from "@/components/ClaimNumberSection";
 import DemoCallSection from "@/components/DemoCallSection";
 import IntegrationsSection from "@/components/IntegrationsSection";
+import styles from "@/app/Landing.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -157,7 +158,7 @@ export default function Home() {
       </div>
 
       {/* ── HERO ── */}
-      <section style={{ padding: "10rem 5% 6rem", maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
+      <section className={styles.heroSection}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           {/* Glow Badge */}
           <div className="badge" style={{ marginBottom: "2rem", display: "inline-flex", gap: "10px" }}>
@@ -187,6 +188,7 @@ export default function Home() {
               & Sales Assistant
             </span>
           </h1>
+        <img src="/hero_landing.png" alt="AIxCaller hero" className={styles.heroImg} />
           
           <p style={{
             fontSize: "clamp(1.1rem, 2vw, 1.3rem)",

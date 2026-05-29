@@ -10,11 +10,7 @@ const INTEGRATIONS = [
     color: "#96BF48",
     textColor: "#1a2e00",
     icon: (
-      <svg viewBox="0 0 48 48" width={28} height={28} fill="none">
-        <path d="M34.5 13.5c-.1-.7-.7-1.1-1.2-1.2-.5-.1-5.4-.4-5.4-.4s-3.6-3.5-4-3.9c-.4-.4-1.2-.3-1.5-.2l-2.1.6c-.5-1.4-1.2-2.5-2.1-3.3C17 4 15.7 3.5 14.3 3.5c-.1 0-.2 0-.3.1-.4-.5-.9-.7-1.4-.7-3.5 0-5.2 4.4-5.7 6.6L4 10.7c-1 .3-1 .3-1.1 1.3L1 28.7l16.5 3.1L26 30l8.5-2.5c0 0 .1-13.3 0-14zm-12.3-4.8c-.9.3-1.9.6-3 .9 0-.5.1-1.4.4-2.4.6.1 1.8.6 2.6 1.5zm-3.7-2.6c.3 0 .5.1.7.2-1 .5-2.1 1.6-2.5 4.1l-3.3 1c.5-2.3 1.9-5.3 5.1-5.3zm.1 14.6c-.4 0-.7-.2-.8-.5-.1-.3.1-.6.5-.7.3-.1.6 0 .8.2l.1.1c.1.3 0 .6-.3.8l-.3.1zm5.2-11.2c-.7-.7-1.7-1.1-2.7-1.1-.1 0-.2 0-.3 0 .1-.4.2-.8.3-1.1.8.1 1.9.6 2.7 1.2z" fill="#fff" opacity=".8"/>
-        <rect x="6" y="10" width="36" height="28" rx="4" fill="#fff" opacity=".15"/>
-        <text x="24" y="29" textAnchor="middle" fontSize="16" fontWeight="900" fill="#fff" fontFamily="monospace">S</text>
-      </svg>
+      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/shopify.svg" alt="Shopify" width={28} height={28} style={{ filter: 'invert(1)' }} />
     ),
   },
   {
@@ -27,17 +23,7 @@ const INTEGRATIONS = [
     color: "#4285F4",
     textColor: "#fff",
     icon: (
-      <svg viewBox="0 0 48 48" width={28} height={28} fill="none">
-        <rect x="6" y="8" width="36" height="34" rx="4" fill="#fff" opacity=".2"/>
-        <rect x="6" y="8" width="36" height="10" rx="4" fill="#fff" opacity=".3"/>
-        <line x1="6" y1="22" x2="42" y2="22" stroke="#fff" strokeWidth="1.5" opacity=".4"/>
-        <rect x="14" y="26" width="6" height="6" rx="1" fill="#fff" opacity=".7"/>
-        <rect x="28" y="26" width="6" height="6" rx="1" fill="#fff" opacity=".4"/>
-        <rect x="14" y="35" width="6" height="5" rx="1" fill="#fff" opacity=".4"/>
-        <rect x="28" y="35" width="6" height="5" rx="1" fill="#fff" opacity=".4"/>
-        <line x1="16" y1="6" x2="16" y2="12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/>
-        <line x1="32" y1="6" x2="32" y2="12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/>
-      </svg>
+      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlecalendar.svg" alt="Google Calendar" width={28} height={28} style={{ filter: 'invert(1)' }} />
     ),
   },
   {
@@ -50,15 +36,7 @@ const INTEGRATIONS = [
     color: "#0F9D58",
     textColor: "#fff",
     icon: (
-      <svg viewBox="0 0 48 48" width={28} height={28} fill="none">
-        <rect x="8" y="6" width="32" height="36" rx="4" fill="#fff" opacity=".2"/>
-        <line x1="8" y1="18" x2="40" y2="18" stroke="#fff" strokeWidth="1.5" opacity=".5"/>
-        <line x1="8" y1="27" x2="40" y2="27" stroke="#fff" strokeWidth="1.5" opacity=".5"/>
-        <line x1="8" y1="36" x2="40" y2="36" stroke="#fff" strokeWidth="1.5" opacity=".5"/>
-        <line x1="22" y1="6" x2="22" y2="42" stroke="#fff" strokeWidth="1.5" opacity=".5"/>
-        <rect x="23" y="19" width="9" height="7" rx="1" fill="#fff" opacity=".6"/>
-        <rect x="9" y="28" width="12" height="7" rx="1" fill="#fff" opacity=".4"/>
-      </svg>
+      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlesheets.svg" alt="Google Sheets" width={28} height={28} style={{ filter: 'invert(1)' }} />
     ),
   },
   {
@@ -71,11 +49,7 @@ const INTEGRATIONS = [
     color: "#E42527",
     textColor: "#fff",
     icon: (
-      <svg viewBox="0 0 48 48" width={28} height={28} fill="none">
-        <rect x="6" y="6" width="36" height="36" rx="6" fill="#fff" opacity=".15"/>
-        <text x="24" y="31" textAnchor="middle" fontSize="20" fontWeight="900" fill="#fff" fontFamily="sans-serif">Z</text>
-        <circle cx="24" cy="24" r="16" stroke="#fff" strokeWidth="2" opacity=".2"/>
-      </svg>
+      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/zoho.svg" alt="Zoho CRM" width={28} height={28} style={{ filter: 'invert(1)' }} />
     ),
   },
   {
@@ -88,11 +62,7 @@ const INTEGRATIONS = [
     color: "#F59E0B",
     textColor: "#1a1a00",
     icon: (
-      <svg viewBox="0 0 48 48" width={28} height={28} fill="none">
-        <rect x="6" y="12" width="36" height="26" rx="4" fill="#fff" opacity=".2"/>
-        <rect x="6" y="12" width="36" height="26" rx="4" stroke="#fff" strokeWidth="2" opacity=".5"/>
-        <path d="M6 16l18 12 18-12" stroke="#fff" strokeWidth="2" opacity=".7" strokeLinecap="round"/>
-      </svg>
+      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/email.svg" alt="Email Summaries" width={28} height={28} style={{ filter: 'invert(1)' }} />
     ),
   },
   {
@@ -105,13 +75,7 @@ const INTEGRATIONS = [
     color: "#7C3AED",
     textColor: "#fff",
     icon: (
-      <svg viewBox="0 0 48 48" width={28} height={28} fill="none">
-        <rect x="6" y="10" width="36" height="28" rx="4" fill="#fff" opacity=".15"/>
-        <text x="24" y="29" textAnchor="middle" fontSize="14" fontWeight="900" fill="#fff" fontFamily="monospace">{`{}`}</text>
-        <circle cx="12" cy="14" r="2" fill="#fff" opacity=".6"/>
-        <circle cx="18" cy="14" r="2" fill="#fff" opacity=".4"/>
-        <circle cx="24" cy="14" r="2" fill="#fff" opacity=".3"/>
-      </svg>
+      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/api.svg" alt="Custom API" width={28} height={28} style={{ filter: 'invert(1)' }} />
     ),
   },
 ];

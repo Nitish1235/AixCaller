@@ -2,7 +2,7 @@ import os
 import httpx
 from loguru import logger
 from sqlmodel import Session
-from shared.models import Agent
+from shared.models import Agent, Tenant
 
 # Default voice fallback if agent.voice_id is not set
 DEFAULT_VOICE = "Telnyx.Ultra.Grace"
@@ -34,6 +34,8 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
     tools = [
         {"type": "hangup", "hangup": {}}
     ]
+    
+    tenant = db.get(Tenant, agent.tenant_id)
 
     flow = agent.call_flow or {}
     during = flow.get("during_call", {})
@@ -76,6 +78,103 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
             }
         })
 
+    # 3. Google Calendar Tools
+    if tenant and tenant.google_connected and tool_config.get("google_calendar", {}).get("enabled", True):
+        base_url = f"https://{server_host}" if not server_host.startswith("http") else server_host
+        
+        tools.append({
+            "type": "webhook",
+            "webhook": {
+                "name": "check_calendar_availability",
+                "url": f"{base_url}/api/v1/telnyx-ai/calendar-availability?tenant_id={agent.tenant_id}",
+                "method": "POST",
+                "async": False,
+                "description": "Checks the business calendar to see what time slots are busy on a specific date.",
+                "body_parameters": {
+                    "type": "object",
+                    "properties": {
+                        "date": {
+                            "type": "string",
+                            "description": "The date to check in YYYY-MM-DD format."
+                        }
+                    },
+                    "required": ["date"]
+                }
+            }
+        })
+        
+        tools.append({
+            "type": "webhook",
+            "webhook": {
+                "name": "book_appointment",
+                "url": f"{base_url}/api/v1/telnyx-ai/calendar-book?tenant_id={agent.tenant_id}&agent_id={agent.id}",
+                "method": "POST",
+                "async": False,
+                "description": "Books an appointment on the business calendar.",
+                "body_parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "The customer's full name."},
+                        "phone": {"type": "string", "description": "The customer's phone number."},
+                        "email": {"type": "string", "description": "The customer's email address (optional)."},
+                        "date": {"type": "string", "description": "The date for the appointment in YYYY-MM-DD format."},
+                        "time": {"type": "string", "description": "The time for the appointment in HH:MM format (24-hour clock)."},
+                        "purpose": {"type": "string", "description": "The reason or purpose of the appointment."}
+                    },
+                    "required": ["name", "phone", "date", "time"]
+                }
+            }
+        })
+        
+    # 4. Google Sheets Lead Record Tool
+    if tenant and tenant.google_connected and (agent.tools_config or {}).get("google_sheet", {}).get("sheet_id"):
+        base_url = f"https://{server_host}" if not server_host.startswith("http") else server_host
+        tools.append({
+            "type": "webhook",
+            "webhook": {
+                "name": "record_lead",
+                "url": f"{base_url}/api/v1/telnyx-ai/record-lead?tenant_id={agent.tenant_id}&agent_id={agent.id}",
+                "method": "POST",
+                "async": False,
+                "description": "Records customer information, contact details, and intent into a Google Sheet.",
+                "body_parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "The customer's full name."},
+                        "phone": {"type": "string", "description": "The customer's phone number."},
+                        "email": {"type": "string", "description": "The customer's email address (optional)."},
+                        "intent": {"type": "string", "description": "The intent or interest of the lead."},
+                        "notes": {"type": "string", "description": "Any additional notes from the conversation."}
+                    },
+                    "required": ["name", "phone"]
+                }
+            }
+        })
+        
+    # 5. Shopify Lookup Tool
+    if tenant and tenant.shopify_store_url and tenant.shopify_access_token and tool_config.get("shopify", {}).get("enabled", True):
+        base_url = f"https://{server_host}" if not server_host.startswith("http") else server_host
+        tools.append({
+            "type": "webhook",
+            "webhook": {
+                "name": "check_order_status",
+                "url": f"{base_url}/api/v1/telnyx-ai/shopify-lookup?tenant_id={agent.tenant_id}",
+                "method": "POST",
+                "async": False,
+                "description": "Checks the status of an order on Shopify using an order number or customer email.",
+                "body_parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The order number (e.g. 1001) or customer email address to lookup."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        })
+
     # Build natural introduction greeting
     if agent.business_name:
         greeting_text = f"Hi, thanks for calling {agent.business_name}. This is {agent.name} — how can I help you today?"
@@ -113,6 +212,13 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
         final_instructions += "\n\nCRITICAL INSTRUCTION: You have access to a 'transfer' tool. ONLY use this tool to transfer the call if the user explicitly asks to speak to a human/representative, or if the user is highly upset. Otherwise, you MUST attempt to answer the question yourself using your knowledge base."
     else:
         final_instructions += "\n\nCRITICAL INSTRUCTION: You DO NOT have the ability to transfer calls to a human or live representative. Do NOT offer to transfer the call under any circumstances. If you cannot help the user, apologize and suggest they email support or check the website."
+
+    # Tell AI about its extra tools
+    if tenant and tenant.google_connected and tool_config.get("google_calendar", {}).get("enabled", True):
+        final_instructions += "\n\nCALENDAR INSTRUCTIONS: You have access to the 'check_calendar_availability' and 'book_appointment' tools. To book an appointment, ALWAYS ask the user for their preferred date first, check availability, offer them available times, and then ask for their name and phone to book it."
+        
+    if tenant and tenant.shopify_store_url and tool_config.get("shopify", {}).get("enabled", True):
+        final_instructions += "\n\nSHOPIFY INSTRUCTIONS: You have access to the 'check_order_status' tool. If the user asks about an order, ask for their order number or email, and use the tool to fetch their status."
 
     # Define full request payload
     payload = {

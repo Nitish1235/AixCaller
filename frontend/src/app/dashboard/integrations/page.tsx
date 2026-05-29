@@ -281,7 +281,7 @@ const Icons = {
   shopify: <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 7h-3V5c0-2.8-2.2-5-5-5S7 2.2 7 5v2H4c-.6 0-1 .4-1 1v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-.6-.4-1-1-1zM9 5c0-1.7 1.3-3 3-3s3 1.3 3 3v2H9V5zm9 15H6V9h12v11z"/></svg>,
   airtable: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2l10 5.6-10 5.6L2 7.6 12 2zm0 13.2L3.2 9.6v4.8L12 20l8.8-5.6V9.6L12 15.2z"/></svg>,
   webhook: <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4"/><path d="M10 22v-4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M10 14h4"/></svg>,
-  telegram: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.35-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.04.01.24 0 .38z"/></svg>,
+  // telegram integration removed
   email: <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"/><path d="M3 7l9 6 9-6"/></svg>
 };
 
@@ -1040,41 +1040,7 @@ export default function IntegrationsPage() {
             </IntegrationCard>
           </div>
 
-          {/* ── Telegram Alerts ── */}
-          <div className="int-card">
-            <IntegrationCard
-              icon={Icons.telegram} title="Telegram Alerts" description="Real-time call notifications"
-              connected={!!cfg.telegram_chat_id} accentColor="#0ea5e9"
-            >
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-                Get instant Telegram notifications when your AI agent handles a call — with caller info, duration, and summary.
-              </div>
-              <div style={{
-                background: "#f0f9ff", border: "1px solid rgba(14,165,233,0.15)",
-                borderRadius: 10, padding: "12px 14px", fontSize: "0.78rem", color: "#0369a1", lineHeight: 1.5,
-              }}>
-                <strong>How to connect:</strong><br />
-                1. Click the button below to open the bot<br />
-                2. Press <strong>Start</strong> in Telegram<br />
-                3. Your account will be linked automatically
-              </div>
-              <a
-                href={telegramDeepLink} target="_blank" rel="noopener noreferrer"
-                style={{ textDecoration: "none" }}
-              >
-                <button
-                  className="int-btn"
-                  style={{
-                    width: "100%", background: "#0ea5e9", color: "#fff", border: "none", borderRadius: 10,
-                    padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                    boxShadow: "0 4px 14px rgba(14,165,233,0.2)",
-                  }}
-                >
-                  💬 Open @{TELEGRAM_BOT_USERNAME}
-                </button>
-              </a>
-            </IntegrationCard>
-          </div>
+
 
           {/* ── Email Summaries ── */}
           <div className="int-card">
@@ -1162,8 +1128,8 @@ export default function IntegrationsPage() {
             <FlowStep icon="📊" label="Airtable log" active={!!cfg.airtable_connected} color="#18bfff" />
             <FlowArrow active={!!(settings.emailEnabled && settings.contactEmail)} color="#db2777" />
             <FlowStep icon="📧" label="Email summary" active={!!(settings.emailEnabled && settings.contactEmail)} color="#db2777" />
-            <FlowArrow active={!!cfg.telegram_chat_id} color="#0ea5e9" />
-            <FlowStep icon="✈️" label="Telegram alert" active={!!cfg.telegram_chat_id} color="#0ea5e9" />
+            // <FlowArrow active={!!cfg.telegram_chat_id} color="#0ea5e9" />
+            // <FlowStep icon="✈️" label="Telegram alert" active={!!cfg.telegram_chat_id} color="#0ea5e9" />
           </div>
 
           {/* Legend */}

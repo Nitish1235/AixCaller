@@ -1,0 +1,47 @@
+.gradient-bg {
+  background: linear-gradient(135deg, hsl(210, 80%, 60%), hsl(260, 80%, 55%));
+  color: #fff;
+}
+
+.hero-section {
+  position: relative;
+  padding: 10rem 5% 6rem;
+  text-align: center;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.hero-img {
+  max-width: 100%;
+  height: auto;
+  margin-top: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+}
+
+.glass-card {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 8px rgba(29,78,216,0.4); }
+  50% { box-shadow: 0 0 16px rgba(29,78,216,0.8); }
+  100% { box-shadow: 0 0 8px rgba(29,78,216,0.4); }
+}
+
+.btn-brutal {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.btn-brutal:hover {
+  transform: translateY(-2px);
+}
