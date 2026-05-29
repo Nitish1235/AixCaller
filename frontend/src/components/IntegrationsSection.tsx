@@ -39,19 +39,32 @@ const INTEGRATIONS = [
       <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlesheets.svg" alt="Google Sheets" width={28} height={28} style={{ filter: 'invert(1)' }} />
     ),
   },
-  {
-    name: "Zoho CRM",
-    category: "CRM",
-    tagline: "Calls become CRM entries automatically",
-    description:
-      "Post-call, AIxCaller creates or updates contacts and leads in Zoho with full transcript, sentiment, and action items — your pipeline always up to date.",
-    capabilities: ["Auto-create leads", "Contact sync", "Call notes attached", "OAuth 2.0 secure"],
-    color: "#E42527",
-    textColor: "#fff",
-    icon: (
-      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/zoho.svg" alt="Zoho CRM" width={28} height={28} style={{ filter: 'invert(1)' }} />
-    ),
-  },
+    {
+      name: "HubSpot",
+      category: "CRM",
+      tagline: "CRM sync with AI calls",
+      description:
+        "AIxCaller automatically creates/updates contacts, deals and logs call outcomes in HubSpot, keeping your pipeline fresh.",
+      capabilities: ["Auto-create contacts", "Deal updates", "Call notes attached", "OAuth 2.0 secure"],
+      color: "#FF7A59",
+      textColor: "#fff",
+      icon: (
+        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/hubspot.svg" alt="HubSpot" width={28} height={28} style={{ filter: 'invert(1)' }} />
+      ),
+    },
+    {
+      name: "Salesforce",
+      category: "CRM",
+      tagline: "Enterprise CRM integration",
+      description:
+        "Seamlessly push call summaries, leads and activity logs into Salesforce objects during live calls.",
+      capabilities: ["Lead creation", "Opportunity updates", "Call notes attached", "OAuth 2.0 secure"],
+      color: "#00A1E0",
+      textColor: "#fff",
+      icon: (
+        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/salesforce.svg" alt="Salesforce" width={28} height={28} style={{ filter: 'invert(1)' }} />
+      ),
+    },
   {
     name: "Email Summaries",
     category: "Reporting",
@@ -81,19 +94,20 @@ const INTEGRATIONS = [
 ];
 
 const MARQUEE_ITEMS = [
-  "Shopify", "Google Calendar", "Google Sheets", "Zoho CRM",
+  "Shopify", "Google Calendar", "Google Sheets", "HubSpot", "Salesforce",
   "Email Reports", "Custom API",
-  "Shopify", "Google Calendar", "Google Sheets", "Zoho CRM",
+  "Shopify", "Google Calendar", "Google Sheets", "HubSpot", "Salesforce",
   "Email Reports", "Custom API",
-  "Shopify", "Google Calendar", "Google Sheets", "Zoho CRM",
+  "Shopify", "Google Calendar", "Google Sheets", "HubSpot", "Salesforce",
   "Email Reports", "Custom API",
 ];
 
 const INTEGRATION_RGB: Record<string, string> = {
-  "Shopify": "16, 185, 129", // Keep clean emerald tint
+  "Shopify": "16, 185, 129",
   "Google Calendar": "59, 130, 246",
   "Google Sheets": "16, 185, 129",
-  "Zoho CRM": "239, 68, 68",
+  "HubSpot": "255, 122, 89",
+  "Salesforce": "0, 161, 224",
   "Email Summaries": "245, 158, 11",
   "Custom API": "99, 102, 241"
 };

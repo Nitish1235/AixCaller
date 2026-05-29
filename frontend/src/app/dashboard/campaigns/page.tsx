@@ -6,6 +6,7 @@ import {
   searchNumbers, purchaseNumber, createCampaignAPI, updateCampaign,
   uploadCampaignLeads, fetchCampaignStats, fetchIntegrations,
   deleteCampaign, API_BASE_URL,
+  fetchVoices,
 } from "@/lib/api";
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -433,7 +434,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                           <div style={{ width: 30, height: 30, borderRadius: 8, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", flexShrink: 0 }}>🤖</div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>{agent.name}</div>
-                            <div style={{ fontSize: "0.68rem", color: "#64748b" }}>{agent.phone_number || "No phone"} · {agent.voice_id}</div>
+                            <div style={{ fontSize: "0.68rem", color: "#64748b" }}>{agent.phone_number || "No phone"} · {(voiceList.find(v=>v.voice_id===agent.voice_id)?.name || agent.voice_id)}</div>
                           </div>
                           {agent.telnyx_assistant_id && <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "#059669", background: "#ecfdf5", padding: "2px 6px", borderRadius: 4 }}>✓ Live</span>}
                         </div>
@@ -768,8 +769,10 @@ export default function CampaignsPage() {
       fetchCampaigns(tid),
       fetchAgents(tid),
     ]);
-    setCampaigns(campaignData);
-    setAgents(agentData);
+    const list = await fetchAgents(tid);
+    const voices = await fetchVoices();
+    setAgents(list);
+    setVoiceList(voices);
     setLoading(false);
   }, []);
 

@@ -14,12 +14,12 @@ export default async function AgentsPage() {
   // Aggressive lookup: check multiple cookie names and headers
   const cookieHeader = h.get("cookie") || "";
   const match = cookieHeader.match(/(?:^|; )tenant_id=([^;]*)/);
-  const tenantId = match 
-    ? decodeURIComponent(match[1]) 
+  const tenantId = match
+    ? decodeURIComponent(match[1])
     : (h.get("x-user-tenant-id") || "00000000-0000-0000-0000-000000000000");
-  
+
   console.log(`[Dashboard] Listing agents for tenant: ${tenantId}`);
-  
+
   const agents = await fetchAgents(tenantId);
 
   return (
@@ -42,8 +42,8 @@ export default async function AgentsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "1rem" }}>
         {[
           { label: "Total Agents", value: agents.length, icon: "🤖" },
-          { label: "Active Now",   value: agents.filter((a: any) => a.status !== "inactive").length, icon: "🟢" },
-          { label: "Calls Today",  value: 0, icon: "📞" },
+          { label: "Active Now", value: agents.filter((a: any) => a.status !== "inactive").length, icon: "🟢" },
+          { label: "Calls Today", value: 0, icon: "📞" },
         ].map(s => (
           <div key={s.label} style={card({ padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: 14 })}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--blue-light)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>{s.icon}</div>
@@ -91,8 +91,8 @@ export default async function AgentsPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.5rem" }}>
                 {[
                   ["📞 Phone", agent.phone_number || "Not connected"],
-                  ["🎙️ Voice",  agent.voice_id || "Telnyx.Ultra.Grace"],
-                  ["🔧 Tools",  `${agent.tools_config ? Object.keys(agent.tools_config).length : 0} configured`],
+                  ["🎙️ Voice", agent.voice_id || "Telnyx.Ultra.Grace"],
+                  ["🔧 Tools", `${agent.tools_config ? Object.keys(agent.tools_config).length : 0} configured`],
                 ].map(([label, val]) => (
                   <div key={label as string} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
                     <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>{label}</span>

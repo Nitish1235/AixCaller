@@ -188,7 +188,6 @@ export default function Home() {
               & Sales Assistant
             </span>
           </h1>
-        <img src="/hero_landing.png" alt="AIxCaller hero" className={styles.heroImg} />
           
           <p style={{
             fontSize: "clamp(1.1rem, 2vw, 1.3rem)",
