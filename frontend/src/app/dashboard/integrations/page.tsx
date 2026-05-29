@@ -66,12 +66,13 @@ function ComingSoonBadge() {
 
 /* ─── INTEGRATION CARD WRAPPER ─────────────────────────────────── */
 function IntegrationCard({ icon, title, description, connected, accentColor, comingSoon, onGuideClick, children }: {
-  icon: string; title: string; description: string; connected: boolean; accentColor: string;
+  icon: React.ReactNode; title: string; description: string; connected: boolean; accentColor: string;
   comingSoon?: boolean; onGuideClick?: () => void; children: React.ReactNode;
 }) {
   return (
     <div style={{
       ...cardBase,
+      display: "flex", flexDirection: "column", height: "100%",
       borderColor: connected ? `${accentColor}40` : comingSoon ? "rgba(217,119,6,0.15)" : "var(--border)",
       boxShadow: connected ? `0 4px 20px ${accentColor}08` : "0 2px 8px rgba(0,0,0,0.02)",
       opacity: comingSoon ? 0.92 : 1,
@@ -84,7 +85,7 @@ function IntegrationCard({ icon, title, description, connected, accentColor, com
       }} />
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", gap: "0.5rem" }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12,
@@ -97,11 +98,10 @@ function IntegrationCard({ icon, title, description, connected, accentColor, com
             {icon}
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", lineHeight: 1.2 }}>{title}</div>
-            <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 2 }}>{description}</div>
+            <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>{title}</div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
           {onGuideClick && (
             <button onClick={onGuideClick} style={{
               background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 99,
@@ -115,8 +115,12 @@ function IntegrationCard({ icon, title, description, connected, accentColor, com
         </div>
       </div>
 
+      <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem", lineHeight: 1.4 }}>
+        {description}
+      </div>
+
       {/* Body */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", flex: 1 }}>
         {children}
       </div>
     </div>
@@ -268,6 +272,17 @@ const GUIDES: Record<string, { title: string, steps: { title: string; desc: Reac
       { title: "Select Calendar", desc: "Once connected, you can specify the exact Calendar ID if you don't want to use your primary calendar." },
     ]
   }
+};
+
+const Icons = {
+  google: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12.005 11.196v2.54h4.636c-.204 1.256-1.468 3.684-4.636 3.684-2.793 0-5.076-2.327-5.076-5.187 0-2.86 2.283-5.187 5.076-5.187 1.577 0 2.628.673 3.23 1.246l2.008-1.938C15.897 4.966 14.12 4.195 12.005 4.195c-4.42 0-8.005 3.584-8.005 8.038s3.585 8.038 8.005 8.038c4.617 0 7.68-3.245 7.68-7.817 0-.525-.057-.925-.125-1.258H12.005z"/></svg>,
+  hubspot: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M21 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM7.33 13.91l6.76-3.83A3 3 0 0 0 18 9.5a3.5 3.5 0 0 0-.5-1.8L10.3 12.1a4 4 0 0 0-4.3 6.4 4 4 0 1 0 1.33-4.59ZM3 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM7.92 8.78A3.01 3.01 0 0 1 6 9a3.02 3.02 0 0 1-1.68-.5L8.5 4.54A3.01 3.01 0 0 1 9 6a3 3 0 0 1-1.08 2.78Z"/></svg>,
+  salesforce: <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17.5 10c-.3 0-.6.1-.8.2C16.2 8.3 14.2 7 12 7c-2.8 0-5.1 2-5.8 4.7-.3-.1-.7-.2-1-.2-2.2 0-4 1.8-4 4s1.8 4 4 4h12.5c2.5 0 4.5-2 4.5-4.5S20 10 17.5 10z"/></svg>,
+  shopify: <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 7h-3V5c0-2.8-2.2-5-5-5S7 2.2 7 5v2H4c-.6 0-1 .4-1 1v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-.6-.4-1-1-1zM9 5c0-1.7 1.3-3 3-3s3 1.3 3 3v2H9V5zm9 15H6V9h12v11z"/></svg>,
+  airtable: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2l10 5.6-10 5.6L2 7.6 12 2zm0 13.2L3.2 9.6v4.8L12 20l8.8-5.6V9.6L12 15.2z"/></svg>,
+  webhook: <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4"/><path d="M10 22v-4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M10 14h4"/></svg>,
+  telegram: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.35-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.04.01.24 0 .38z"/></svg>,
+  email: <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"/><path d="M3 7l9 6 9-6"/></svg>
 };
 
 /* ─── MAIN PAGE ────────────────────────────────────────────────── */
@@ -545,7 +560,7 @@ export default function IntegrationsPage() {
           {/* ── Google Workspace ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="🗓️" title="Google Workspace" description="Calendar booking & availability"
+              icon={Icons.google} title="Google Workspace" description="Calendar booking & availability"
               connected={!!cfg.google_connected} accentColor="#2563eb"
               onGuideClick={() => setGuideOpen("google")}
             >
@@ -571,7 +586,7 @@ export default function IntegrationsPage() {
                       Use &quot;primary&quot; for your main calendar, or paste a specific Google Calendar ID.
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
                     <button
                       className="int-btn" onClick={saveGoogleSettings} disabled={saving === "google"}
                       style={{
@@ -603,7 +618,7 @@ export default function IntegrationsPage() {
                     style={{
                       width: "100%", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(37,99,235,0.2)",
+                      boxShadow: "0 4px 14px rgba(37,99,235,0.2)", marginTop: "auto",
                     }}
                   >
                     🔗 Connect Google Workspace
@@ -616,7 +631,7 @@ export default function IntegrationsPage() {
           {/* ── HubSpot CRM ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="🟠" title="HubSpot CRM" description="Automatic lead & deal sync"
+              icon={Icons.hubspot} title="HubSpot CRM" description="Automatic lead & deal sync"
               connected={!!cfg.hubspot_connected} accentColor="#ff7a59"
               onGuideClick={() => setGuideOpen("hubspot")}
             >
@@ -634,7 +649,7 @@ export default function IntegrationsPage() {
                     style={{
                       width: "100%", background: "none", border: "1.5px solid #fecaca", color: "#ef4444",
                       borderRadius: 10, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
-                      marginTop: 10,
+                      marginTop: "auto",
                     }}
                   >
                     Disconnect
@@ -650,7 +665,7 @@ export default function IntegrationsPage() {
                     style={{
                       width: "100%", background: "#ff7a59", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(255,122,89,0.2)",
+                      boxShadow: "0 4px 14px rgba(255,122,89,0.2)", marginTop: "auto",
                     }}
                   >
                     🔗 Connect HubSpot
@@ -663,7 +678,7 @@ export default function IntegrationsPage() {
           {/* ── Salesforce ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="☁️" title="Salesforce" description="Enterprise CRM sync"
+              icon={Icons.salesforce} title="Salesforce" description="Enterprise CRM sync"
               connected={!!cfg.salesforce_connected} accentColor="#00a1e0"
               onGuideClick={() => setGuideOpen("salesforce")}
             >
@@ -697,7 +712,7 @@ export default function IntegrationsPage() {
                     style={{
                       width: "100%", background: "#00a1e0", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(0,161,224,0.2)",
+                      boxShadow: "0 4px 14px rgba(0,161,224,0.2)", marginTop: "auto",
                     }}
                   >
                     🔗 Connect Salesforce
@@ -710,7 +725,7 @@ export default function IntegrationsPage() {
           {/* ── Shopify ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="🛍️" title="Shopify" description="Real-time order & inventory checks"
+              icon={Icons.shopify} title="Shopify" description="Real-time order & inventory checks"
               connected={!!cfg.shopify_store_url} accentColor="#10b981"
               onGuideClick={() => setGuideOpen("shopify")}
             >
@@ -733,7 +748,7 @@ export default function IntegrationsPage() {
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
                     <button
                       className="int-btn" onClick={saveShopifySettings} disabled={saving === "shopify" || !settings.shopifyApiKey}
                       style={{
@@ -788,6 +803,7 @@ export default function IntegrationsPage() {
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
                       boxShadow: "0 4px 14px rgba(16,185,129,0.2)",
                       opacity: (!settings.shopifyStoreUrl || !settings.shopifyApiKey || saving === "shopify") ? 0.5 : 1,
+                      marginTop: "auto",
                     }}
                   >
                     {saving === "shopify" ? "Saving…" : "💾 Save & Connect"}
@@ -800,7 +816,7 @@ export default function IntegrationsPage() {
           {/* ── Custom Webhook ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="🔗" title="Custom Webhook" description="Send data to Zapier/Make"
+              icon={Icons.webhook} title="Custom Webhook" description="Send data to Zapier/Make"
               connected={!!cfg.webhook_url} accentColor="#8b5cf6"
               onGuideClick={() => setGuideOpen("webhook")}
             >
@@ -823,7 +839,7 @@ export default function IntegrationsPage() {
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
                     <button
                       className="int-btn" onClick={saveWebhookSettings} disabled={saving === "webhook"}
                       style={{
@@ -868,6 +884,7 @@ export default function IntegrationsPage() {
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
                       boxShadow: "0 4px 14px rgba(139,92,246,0.2)",
                       opacity: (!settings.webhookUrl || saving === "webhook") ? 0.5 : 1,
+                      marginTop: "auto",
                     }}
                   >
                     {saving === "webhook" ? "Saving…" : "🔗 Connect Webhook"}
@@ -880,7 +897,7 @@ export default function IntegrationsPage() {
           {/* ── Airtable ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="📊" title="Airtable" description="Auto-log calls to your base"
+              icon={Icons.airtable} title="Airtable" description="Auto-log calls to your base"
               connected={!!cfg.airtable_base_id} accentColor="#18bfff"
               onGuideClick={() => setGuideOpen("airtable")}
             >
@@ -923,7 +940,7 @@ export default function IntegrationsPage() {
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
                     <button
                       className="int-btn" onClick={saveAirtableSettings} disabled={saving === "airtable"}
                       style={{
@@ -960,16 +977,6 @@ export default function IntegrationsPage() {
                   <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
                     Auto-log every call to your Airtable base. Phone, summary, sentiment, duration, and action items — all captured as a row.
                   </div>
-                  <div style={{
-                    background: "#ecfeff", border: "1px solid rgba(24,191,255,0.15)",
-                    borderRadius: 10, padding: "10px 14px", fontSize: "0.78rem", color: "#155e75", lineHeight: 1.5,
-                  }}>
-                    <strong>How to connect:</strong><br />
-                    1. Go to <a href="https://airtable.com/create/tokens" target="_blank" rel="noopener noreferrer" style={{ color: "#0891b2", fontWeight: 700 }}>airtable.com/create/tokens</a><br />
-                    2. Create a token with scopes: <strong>data.records:write</strong>, <strong>data.records:read</strong><br />
-                    3. Grant access to the base you want to log calls to<br />
-                    4. Create a table named &quot;Call Log&quot; with columns: Phone, Summary, Sentiment, Duration (s), Action Items, Agent, Call ID, Timestamp
-                  </div>
                   <div>
                     <label style={lbl}>Personal Access Token</label>
                     <input
@@ -1003,7 +1010,7 @@ export default function IntegrationsPage() {
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
                     <button
                       className="int-btn" onClick={saveAirtableSettings}
                       disabled={!settings.airtablePat || !settings.airtableBaseId || saving === "airtable"}
@@ -1036,7 +1043,7 @@ export default function IntegrationsPage() {
           {/* ── Telegram Alerts ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="✈️" title="Telegram Alerts" description="Real-time call notifications"
+              icon={Icons.telegram} title="Telegram Alerts" description="Real-time call notifications"
               connected={!!cfg.telegram_chat_id} accentColor="#0ea5e9"
             >
               <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
@@ -1072,7 +1079,7 @@ export default function IntegrationsPage() {
           {/* ── Email Summaries ── */}
           <div className="int-card">
             <IntegrationCard
-              icon="📧" title="Email Summaries" description="Post-call reports to your inbox"
+              icon={Icons.email} title="Email Summaries" description="Post-call reports to your inbox"
               connected={!!(settings.emailEnabled && settings.contactEmail)} accentColor="#db2777"
             >
               <div style={{

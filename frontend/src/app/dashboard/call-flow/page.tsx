@@ -29,6 +29,7 @@ export default function CallFlowPage() {
   const searchParams = useSearchParams();
   
   const [agents, setAgents] = useState<any[]>([]);
+  const [agentsLoaded, setAgentsLoaded] = useState(false);
   const [agentId, setAgentId] = useState<string>(searchParams.get("agent") || "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,12 +49,20 @@ export default function CallFlowPage() {
     const loadAgents = async () => {
       const tid = getTenantId();
       if (tid) {
-        const list = await fetchAgents(tid);
-        setAgents(list);
-        // Auto-select first agent only if none is pre-selected from URL
-        if (!searchParams.get("agent") && list.length > 0 && !agentId) {
-          setAgentId(list[0].id);
+        try {
+          const list = await fetchAgents(tid);
+          setAgents(list);
+          // Auto-select first agent only if none is pre-selected from URL
+          if (!searchParams.get("agent") && list.length > 0 && !agentId) {
+            setAgentId(list[0].id);
+          }
+        } catch (e) {
+          console.error("Failed to fetch agents", e);
+        } finally {
+          setAgentsLoaded(true);
         }
+      } else {
+        setAgentsLoaded(true);
       }
     };
     loadAgents();
@@ -462,12 +471,17 @@ export default function CallFlowPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
           <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 900, color: "var(--text)" }}>Call Flow Builder</h1>
           <select
-            style={{ ...inp, width: 280, padding: "8px 14px", fontWeight: 600 }}
+            style={{ ...inp, width: 280, padding: "8px 14px", fontWeight: 600, cursor: agents.length === 0 ? "not-allowed" : "pointer" }}
             value={agentId}
-            onChange={e => setAgentId(e.target.value)}
+            onChange={e => {
+              setAgentId(e.target.value);
+              router.replace(`/dashboard/call-flow?agent=${e.target.value}`);
+            }}
+            disabled={agents.length === 0}
           >
-            {agents.length === 0 && <option value="">Loading agents...</option>}
-            {agents.length > 0 && !agentId && <option value="">— Select an Agent —</option>}
+            {!agentsLoaded && <option value="">Loading agents...</option>}
+            {agentsLoaded && agents.length === 0 && <option value="">— No agents found —</option>}
+            {agentsLoaded && agents.length > 0 && !agentId && <option value="">— Select an Agent —</option>}
             {agents.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           {selectedAgent && (

@@ -43,7 +43,7 @@ export default async function DashboardPage() {
 
   // Checklist completion
   const hasAgent = agents.length > 0;
-  const hasPhone = agents.some((a: any) => a.phone_number);
+  const hasPhone = agents.some((a: any) => a.phone_number || a.legacy_number);
   const hasCalls = totalCalls > 0;
   const showChecklist = !hasAgent || !hasPhone || !hasCalls;
 
