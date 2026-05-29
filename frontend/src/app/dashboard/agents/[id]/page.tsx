@@ -515,6 +515,9 @@ export default function AgentDetailsPage() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {saved && <span style={{ fontSize: "0.82rem", color: "var(--blue)", fontWeight: 700 }}>✓ Saved!</span>}
+          <button onClick={() => router.push(`/dashboard/call-flow?agent=${agent.id}`)} style={btn("var(--blue-light)", { color: "var(--blue)", border: "1.5px solid var(--border)" })}>
+            Configure Call Flow →
+          </button>
           <button onClick={save} disabled={saving} style={btn("var(--blue)", { opacity: saving ? 0.7 : 1 })}>
             {saving ? "Saving..." : "Save Changes"}
           </button>

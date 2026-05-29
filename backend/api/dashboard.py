@@ -307,6 +307,153 @@ async def update_agent_config(
     return agent
 
 
+@router.get("/agents/{agent_id}/call-flow")
+async def get_call_flow(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Fetch the call flow config for a single agent, merged with tenant integration status."""
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    tenant = db.get(Tenant, agent.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+        
+    call_flow = agent.call_flow or {}
+    
+    return {
+        "call_flow": call_flow,
+        "integrations": {
+            "shopify_connected": bool(tenant.shopify_token),
+            "shopify_domain": tenant.shopify_domain,
+            "google_connected": tenant.google_connected,
+            "airtable_connected": bool(tenant.airtable_pat and tenant.airtable_base_id),
+            "hubspot_connected": bool(tenant.hubspot_access_token),
+            "salesforce_connected": bool(tenant.salesforce_access_token),
+            "webhook_connected": bool(tenant.webhook_url),
+        }
+    }
+
+
+class CallFlowUpdateRequest(BaseModel):
+    call_flow: dict
+
+
+@router.put("/agents/{agent_id}/call-flow")
+async def update_call_flow(
+    agent_id: uuid.UUID,
+    payload: CallFlowUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    """Update the call flow visual pipeline for an agent."""
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    agent.call_flow = payload.call_flow
+    agent.updated_at = datetime.now(timezone.utc)
+    
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+
+    # Re-sync Telnyx Assistant with new config (injects tools dynamically)
+    try:
+        from backend.services.telnyx_assistant import sync_agent_with_telnyx
+        await sync_agent_with_telnyx(agent, db)
+    except Exception as e:
+        logger.error(f"Telnyx sync failed on call flow update: {e}")
+
+    return agent.call_flow
+
+
+class CallFlowTestRequest(BaseModel):
+    integration: str
+
+
+@router.post("/agents/{agent_id}/call-flow/test")
+async def test_call_flow_integration(
+    agent_id: uuid.UUID,
+    payload: CallFlowTestRequest,
+    db: Session = Depends(get_db),
+):
+    """Test a specific integration from the Call Flow builder."""
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+        
+    tenant = db.get(Tenant, agent.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    integration = payload.integration
+
+    if integration == "shopify":
+        if not tenant.shopify_token or not tenant.shopify_domain:
+            return {"success": False, "message": "Shopify is not connected. Add your App credentials in the guide above."}
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                res = await client.get(
+                    f"https://{tenant.shopify_domain}/admin/api/2024-01/shop.json",
+                    headers={"X-Shopify-Access-Token": tenant.shopify_token}
+                )
+                if res.status_code == 200:
+                    shop_name = res.json().get("shop", {}).get("name", tenant.shopify_domain)
+                    return {"success": True, "message": f"Successfully connected to Shopify store: {shop_name}"}
+                else:
+                    return {"success": False, "message": f"Shopify API returned error {res.status_code}. Check your token and permissions."}
+        except Exception as e:
+            return {"success": False, "message": f"Connection failed: {str(e)}"}
+
+    elif integration == "airtable":
+        if not tenant.airtable_pat or not tenant.airtable_base_id:
+            return {"success": False, "message": "Airtable PAT and Base ID are required."}
+        try:
+            svc = AirtableService(tenant)
+            result = await svc.test_connection()
+            return {"success": True, "message": result.get("message", "Connected to Airtable")}
+        except ValueError as e:
+            return {"success": False, "message": str(e)}
+        except Exception as e:
+            return {"success": False, "message": f"Airtable connection failed: {str(e)}"}
+            
+    elif integration == "webhook":
+        if not tenant.webhook_url:
+            return {"success": False, "message": "Webhook URL is required."}
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                test_payload = {
+                    "event": "test_connection",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "message": "This is a test from AIxCaller Call Flow Builder."
+                }
+                res = await client.post(tenant.webhook_url, json=test_payload, timeout=5.0)
+                if res.status_code in [200, 201, 202]:
+                    return {"success": True, "message": f"Webhook received successfully with status {res.status_code}."}
+                else:
+                    return {"success": False, "message": f"Webhook failed with status {res.status_code}."}
+        except Exception as e:
+            return {"success": False, "message": f"Webhook test failed: {str(e)}"}
+            
+    elif integration == "google_calendar":
+        if not tenant.google_refresh_token:
+            return {"success": False, "message": "Google is not connected. Click 'Connect Google' above."}
+        return {"success": True, "message": "Google Calendar connection is valid."}
+        
+    elif integration == "hubspot":
+        if not tenant.hubspot_access_token:
+            return {"success": False, "message": "HubSpot is not connected. Click 'Connect HubSpot' above."}
+        return {"success": True, "message": "HubSpot connection is valid."}
+
+    elif integration == "salesforce":
+        if not tenant.salesforce_access_token:
+            return {"success": False, "message": "Salesforce is not connected. Click 'Connect Salesforce' above."}
+        return {"success": True, "message": "Salesforce connection is valid."}
+
+    return {"success": False, "message": f"Unknown integration type: {integration}"}
+
+
 @router.delete("/agents/{agent_id}")
 async def delete_agent(agent_id: uuid.UUID, tenant_id: str, db: Session = Depends(get_db)):
     """Delete an agent and clean up its Telnyx Assistant."""

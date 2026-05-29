@@ -34,31 +34,36 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
     tools = [
         {"type": "hangup", "hangup": {}}
     ]
+
+    flow = agent.call_flow or {}
+    during = flow.get("during_call", {})
+    tool_config = during.get("tools", {})
     
     # 1. Knowledge Base synchronous Webhook Tool
-    tools.append({
-        "type": "webhook",
-        "webhook": {
-            "name": "search_knowledge_base",
-            "url": kb_webhook_url,
-            "method": "POST",
-            "async": False,
-            "description": "Searches the business knowledge base to answer questions about the business, services, products, pricing, or details.",
-            "body_parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query or keyword phrase to find relevant information in the knowledge base."
-                    }
-                },
-                "required": ["query"]
+    if tool_config.get("knowledge_base", {}).get("enabled", True):
+        tools.append({
+            "type": "webhook",
+            "webhook": {
+                "name": "search_knowledge_base",
+                "url": kb_webhook_url,
+                "method": "POST",
+                "async": False,
+                "description": "Searches the business knowledge base to answer questions about the business, services, products, pricing, or details.",
+                "body_parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query or keyword phrase to find relevant information in the knowledge base."
+                        }
+                    },
+                    "required": ["query"]
+                }
             }
-        }
-    })
+        })
 
     # 2. Transfer tool if enabled and forwarding number set
-    if agent.human_transfer_enabled and agent.forwarding_number:
+    if agent.human_transfer_enabled and agent.forwarding_number and tool_config.get("human_transfer", {}).get("enabled", True):
         tools.append({
             "type": "transfer",
             "transfer": {

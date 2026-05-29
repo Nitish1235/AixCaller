@@ -96,6 +96,17 @@ export async function apiPatch(path: string, body: any) {
   return await res.json();
 }
 
+export async function apiPut(path: string, body: any) {
+  const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API PUT failed: ${res.status}`);
+  return await res.json();
+}
+
 export async function apiDelete(path: string) {
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
   const res = await fetch(url, { method: "DELETE" });

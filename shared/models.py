@@ -122,6 +122,10 @@ class Agent(SQLModel, table=True):
     # to phone_number (the Telnyx number). Stored for display only.
     legacy_number: Optional[str] = None
 
+    # ── Call Flow Builder Config ──────────────────────────────────────────────
+    # Visual pipeline config for inbound calls.
+    call_flow: dict = Field(default_factory=dict, sa_column=Column(JSON))
+
     # ── Integration Tools (per-agent JSON blob) ───────────────────────────────
     # Stores Shopify token, Google Sheet ID, and other per-agent tool configs.
     # Schema: {"shopify": {"store_url": ..., "access_token": ..., "scope": ...}}

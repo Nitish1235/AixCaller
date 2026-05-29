@@ -15,6 +15,7 @@ interface User {
 const navItems = [
   { href: "/dashboard",              icon: "📊", label: "Overview" },
   { href: "/dashboard/agents",       icon: "🤖", label: "Agents" },
+  { href: "/dashboard/call-flow",    icon: "🔀", label: "Call Flow" },
   { href: "/dashboard/calls",        icon: "📞", label: "Calls" },
   { href: "/dashboard/campaigns",    icon: "📣", label: "Campaigns" },
   { href: "/dashboard/leads",        icon: "📋", label: "Leads" },
@@ -27,6 +28,7 @@ const navItems = [
 const navItemsFull = [
   { href: "/dashboard",              icon: "📊", label: "Overview" },
   { href: "/dashboard/agents",       icon: "🤖", label: "Agents" },
+  { href: "/dashboard/call-flow",    icon: "🔀", label: "Call Flow Builder" },
   { href: "/dashboard/calls",        icon: "📞", label: "Call History" },
   { href: "/dashboard/campaigns",    icon: "📣", label: "Outbound Campaigns" },
   { href: "/dashboard/leads",        icon: "📋", label: "Leads" },

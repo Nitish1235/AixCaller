@@ -83,6 +83,7 @@ async def process_completed_call(
     # 2. Fetch Agent Context for Analytics Hints
     agent_context = None
     agent_name = "AI Voice Agent"
+    post_call_config = {}
     try:
         agent_obj = db.get(Agent, agent_id)
         if agent_obj:
@@ -92,6 +93,7 @@ async def process_completed_call(
                 "tools_config": agent_obj.tools_config or {},
                 "forwarding_number": getattr(agent_obj, "forwarding_number", None),
             }
+            post_call_config = (agent_obj.call_flow or {}).get("post_call", {})
     except Exception as e:
         logger.warning(f"Could not fetch agent context for analytics: {e}")
 
@@ -133,7 +135,7 @@ async def process_completed_call(
         return {"status": "success", "call_record_id": str(new_call.id)}
 
     # 5. Airtable Call Log
-    if tenant.airtable_pat and tenant.airtable_base_id:
+    if tenant.airtable_pat and tenant.airtable_base_id and post_call_config.get("airtable_log", {}).get("enabled", False):
         try:
             airtable = AirtableService(tenant)
             await airtable.log_call(
@@ -150,7 +152,7 @@ async def process_completed_call(
             logger.warning(f"Airtable sync failed (non-blocking): {e}")
 
     # 6. HTML Summary Email via Resend
-    if tenant.email_summary_enabled and tenant.contact_email:
+    if tenant.email_summary_enabled and tenant.contact_email and post_call_config.get("email_summary", {}).get("enabled", True):
         try:
             await send_call_summary_email(
                 to_email=tenant.contact_email,
@@ -175,7 +177,7 @@ async def process_completed_call(
             logger.error(f"Resend email error: {e}")
 
     # 7. Custom Webhook
-    if tenant.webhook_url:
+    if tenant.webhook_url and post_call_config.get("webhook_post", {}).get("enabled", True):
         try:
             async with httpx.AsyncClient() as client:
                 webhook_payload = {
@@ -196,7 +198,7 @@ async def process_completed_call(
             logger.error(f"Webhook dispatch failed: {e}")
 
     # 8. HubSpot Sync (if connected)
-    if tenant.hubspot_access_token:
+    if tenant.hubspot_access_token and post_call_config.get("hubspot_sync", {}).get("enabled", True):
         try:
             # Prepare payload for HubSpot sync
             hubspot_data = {
@@ -210,7 +212,7 @@ async def process_completed_call(
             logger.error(f"HubSpot sync error: {e}")
 
     # 9. Salesforce Sync (if connected)
-    if tenant.salesforce_access_token:
+    if tenant.salesforce_access_token and post_call_config.get("salesforce_sync", {}).get("enabled", True):
         try:
             salesforce_data = {
                 "call_id": str(new_call.id),
