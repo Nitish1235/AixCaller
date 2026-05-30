@@ -398,10 +398,20 @@ async def create_booking(request: Request, tenant_id: str, lead_id: str, backgro
 @router.post("/conversation-ended")
 async def handle_conversation_ended(request: Request, lead_id: str, db: Session = Depends(get_db)):
     """
-    Telnyx fires this webhook when a call.conversation.ended event occurs.
-    Captures transcript, summary, sentiment, and call duration for analytics.
-    Also detects opt-out language and fires no-answer SMS if lead didn't book.
-    (Upgrade 5 — Analytics)
+    Telnyx fires this webhook when a call.conversation.ended event occurs
+    for an outbound campaign call.
+
+    Full pipeline:
+      1. Fetch full conversation transcript from Telnyx /v2/ai/conversations API
+      2. Save transcript + analytics to CampaignLead (opt-out detection)
+      3. Route through shared call_processor.py:
+           - OpenAI analytics (summary, sentiment, action items)
+           - Atomic minute billing on Tenant
+           - Airtable call log
+           - HTML email summary via Resend
+           - Custom webhook POST
+           - HubSpot sync
+           - Salesforce sync
     """
     try:
         lead_uuid = uuid.UUID(lead_id)
@@ -409,35 +419,111 @@ async def handle_conversation_ended(request: Request, lead_id: str, db: Session 
         return {"status": "error", "message": "Invalid lead_id"}
 
     payload = await request.json()
-    data = payload.get("data", {}).get("payload", payload)
+    logger.info(f"Outbound conversation-ended webhook received for lead {lead_id}: {payload}")
 
-    transcript    = data.get("transcript", "")
-    summary       = data.get("summary", "")
-    sentiment     = data.get("sentiment", "neutral")
-    duration_secs = int(data.get("duration_seconds", 0))
+    # ── 1. Extract event metadata ──────────────────────────────────────────────
+    data_block = payload.get("data", {})
+    event_payload = data_block.get("payload", {}) if isinstance(data_block, dict) else payload.get("payload", {})
+    if not event_payload:
+        event_payload = payload
 
+    conversation_id  = event_payload.get("conversation_id")
+    call_control_id  = event_payload.get("call_control_id", "unknown")
+    duration_secs    = int(event_payload.get("duration_sec", event_payload.get("duration_seconds", 0)))
+    from_number      = event_payload.get("from") or event_payload.get("from_number", "unknown")
+    to_number        = event_payload.get("to")   or event_payload.get("to_number",   "unknown")
+
+    # ── 2. Fetch lead + campaign + agent ──────────────────────────────────────
     lead = db.get(CampaignLead, lead_uuid)
     if not lead:
+        logger.warning(f"CampaignLead {lead_id} not found.")
         return {"status": "not_found"}
 
-    # Store analytics fields
-    lead.call_transcript = transcript
-    lead.call_summary = summary
-    lead.call_sentiment = sentiment
+    campaign = db.get(Campaign, lead.campaign_id)
+    if not campaign:
+        logger.error(f"Campaign {lead.campaign_id} not found for lead {lead_id}.")
+        return {"status": "error", "message": "Campaign not found"}
+
+    agent = db.get(Agent, campaign.agent_id)
+
+    # Use agent phone as from_number if payload is missing it
+    if (not from_number or from_number == "unknown") and agent and agent.phone_number:
+        from_number = agent.phone_number
+
+    # ── 3. Fetch full transcript from Telnyx Conversations API ────────────────
+    api_key = os.environ.get("TELNYX_API_KEY")
+    transcript_messages = []
+
+    if conversation_id and api_key:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            try:
+                resp = await client.get(
+                    f"https://api.telnyx.com/v2/ai/conversations/{conversation_id}/messages",
+                    headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+                )
+                if resp.status_code == 200:
+                    for msg in resp.json().get("data", []):
+                        role    = msg.get("role", "")
+                        content = msg.get("content", "")
+                        if role and content:
+                            transcript_messages.append({"role": role, "content": content})
+                    logger.info(f"Fetched {len(transcript_messages)} transcript messages for outbound lead {lead_id}")
+                else:
+                    logger.error(f"Telnyx transcript fetch failed ({resp.status_code}): {resp.text}")
+            except Exception as ex:
+                logger.error(f"Exception fetching transcript for lead {lead_id}: {ex}")
+    else:
+        if not conversation_id:
+            logger.warning(f"No conversation_id in outbound webhook for lead {lead_id} — transcript will be empty.")
+        if not api_key:
+            logger.error("TELNYX_API_KEY not set — cannot fetch transcript.")
+
+    # ── 4. Persist raw transcript + basic fields to CampaignLead ─────────────
+    import json as _json
+    transcript_str = _json.dumps(transcript_messages) if transcript_messages else ""
+    lead.call_transcript = transcript_str
     lead.call_duration_seconds = duration_secs
     lead.updated_at = datetime.utcnow()
 
-    # Detect opt-out language in transcript
-    OPT_OUT_PHRASES = ["don't call", "do not call", "remove me", "stop calling",
-                       "not interested", "take me off", "unsubscribe"]
-    if transcript and any(phrase in transcript.lower() for phrase in OPT_OUT_PHRASES):
+    # Opt-out detection
+    OPT_OUT_PHRASES = [
+        "don't call", "do not call", "remove me", "stop calling",
+        "not interested", "take me off", "unsubscribe"
+    ]
+    flat_text = " ".join(m.get("content", "") for m in transcript_messages).lower()
+    if flat_text and any(phrase in flat_text for phrase in OPT_OUT_PHRASES):
         lead.opted_out = True
         lead.status = "opted_out"
-        logger.info(f"Opt-out detected in transcript for lead {lead.name} — marked opted_out.")
+        logger.info(f"Opt-out detected in transcript for outbound lead {lead.name} — marked opted_out.")
+    elif lead.status not in ("voicemail", "opted_out", "booked"):
+        lead.status = "completed"
 
     db.add(lead)
     db.commit()
 
-    logger.info(f"Conversation-ended analytics saved for lead {lead.name} "
-                f"(duration={duration_secs}s, sentiment={sentiment}).")
-    return {"status": "ok"}
+    # ── 5. Route through shared call_processor pipeline ───────────────────────
+    # Imports here to avoid circular import at module load time
+    from shared.database import engine as shared_engine
+    from backend.services.call_processor import process_completed_call
+    from sqlmodel import Session as SharedSession
+
+    try:
+        # call_processor needs its own session that it controls commit/rollback on
+        with SharedSession(shared_engine) as proc_db:
+            result = await process_completed_call(
+                tenant_id=campaign.tenant_id,
+                agent_id=campaign.agent_id,
+                from_number=lead.phone,          # caller = the lead for outbound
+                to_number=from_number,            # agent's number
+                call_id=call_control_id,
+                transcript=transcript_messages,
+                duration_seconds=duration_secs,
+                db=proc_db,
+            )
+        logger.info(f"Outbound call_processor pipeline complete for lead {lead_id}: {result}")
+    except Exception as proc_ex:
+        logger.error(f"call_processor pipeline failed for outbound lead {lead_id}: {proc_ex}")
+
+    return {"status": "ok", "lead_id": lead_id}
+
+

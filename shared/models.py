@@ -194,9 +194,10 @@ class CallRecord(SQLModel, table=True):
     action_items: Optional[str] = None     # JSON-encoded list of follow-up tasks
     call_type: Optional[str] = None        # lead_gen | booking | support | ecommerce | general
 
-    # ── Callback tracking ────────────────────────────────────────────────────
+    # ── Callback tracking & SMS ──────────────────────────────────────────────
     requires_callback: bool = Field(default=False)
     parent_call_id: Optional[uuid.UUID] = Field(default=None, foreign_key="callrecord.id")
+    sms_sent: bool = Field(default=False)      # True if an intelligent post-call SMS was sent
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

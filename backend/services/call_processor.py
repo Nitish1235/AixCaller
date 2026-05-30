@@ -16,6 +16,7 @@ import httpx
 from backend.services.knowledge_service import KnowledgeService
 from backend.services.calendar_service import CalendarService
 from backend.services.sheets_service import SheetsService
+from outbound.services.sms_drip import send_sms
 
 analytics_service = AnalyticsService()
 
@@ -244,5 +245,19 @@ async def process_completed_call(
             await log_call_to_salesforce(tenant, salesforce_data)
         except Exception as e:
             logger.error(f"Salesforce sync error: {e}")
+
+    # 10. Intelligent SMS Follow-up
+    sms_followup = analysis.get("sms_followup", {}) if analysis else {}
+    if sms_followup.get("needed") and sms_followup.get("suggested_message"):
+        logger.info(f"Intelligent SMS needed for call {new_call.id}. Reason: {sms_followup.get('reason')}")
+        try:
+            sms_sent = await send_sms(to_number, from_number, sms_followup.get("suggested_message"))
+            if sms_sent:
+                new_call.sms_sent = True
+                db.add(new_call)
+                db.commit()
+                logger.info(f"Successfully dispatched intelligent SMS for call {new_call.id}")
+        except Exception as e:
+            logger.error(f"Failed to send intelligent SMS: {e}")
 
     return {"status": "success", "call_record_id": str(new_call.id)}

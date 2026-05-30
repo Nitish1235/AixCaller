@@ -106,6 +106,11 @@ Return ONLY a valid JSON object with these exact keys:
     "issue": one-line description of the problem/question
     "resolved": true if resolved on the call, false if escalation or follow-up needed
   otherwise null
+
+- "sms_followup": an object determining if we should send an intelligent SMS to the caller after this call.
+    "needed": true ONLY IF the caller successfully booked an appointment, explicitly requested information via text (like a link, address, or details), or requires a specific action follow-up via text. MUST be false for general inquiries, voicemails, or simple "thank you" closures. Do NOT spam the caller.
+    "reason": 2-5 word reason why the SMS is needed.
+    "suggested_message": the exact, conversational, and polite text message to send (e.g., "Hi, here is the booking link we discussed: https://..."). Leave empty if needed is false.
 """
         try:
             response = await self._client.chat.completions.create(
@@ -125,6 +130,7 @@ Return ONLY a valid JSON object with these exact keys:
             result.setdefault("lead_info", None)
             result.setdefault("booking_info", None)
             result.setdefault("issue_info", None)
+            result.setdefault("sms_followup", {"needed": False, "reason": "", "suggested_message": ""})
             return result
 
         except Exception as e:
@@ -137,4 +143,5 @@ Return ONLY a valid JSON object with these exact keys:
                 "lead_info": None,
                 "booking_info": None,
                 "issue_info": None,
+                "sms_followup": {"needed": False, "reason": "", "suggested_message": ""}
             }
