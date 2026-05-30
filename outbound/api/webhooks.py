@@ -513,8 +513,8 @@ async def handle_conversation_ended(request: Request, lead_id: str, db: Session 
             result = await process_completed_call(
                 tenant_id=campaign.tenant_id,
                 agent_id=campaign.agent_id,
-                from_number=lead.phone,          # caller = the lead for outbound
-                to_number=from_number,            # agent's number
+                customer_phone=lead.phone,        # caller = the lead for outbound
+                agent_phone=from_number,          # agent's number
                 call_id=call_control_id,
                 transcript=transcript_messages,
                 duration_seconds=duration_secs,

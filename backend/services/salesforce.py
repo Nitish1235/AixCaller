@@ -80,10 +80,16 @@ async def log_call_to_salesforce(tenant: Tenant, data: dict):
 
     async with httpx.AsyncClient() as client:
         # 2. Search for Contact/Lead by phone
+        # Sanitize phone to prevent SOQL injection — keep only digits and leading +
+        import re
+        import urllib.parse
+        safe_phone = re.sub(r"[^\d+]", "", phone) if phone else ""
+        if not safe_phone:
+            logger.warning("Salesforce sync skipped — invalid phone number")
+            return
+
         try:
-            # We use urllib.parse.quote for the SOQL query
-            import urllib.parse
-            query = f"SELECT Id FROM Contact WHERE Phone = '{phone}' OR MobilePhone = '{phone}' LIMIT 1"
+            query = f"SELECT Id FROM Contact WHERE Phone = '{safe_phone}' OR MobilePhone = '{safe_phone}' LIMIT 1"
             resp = await client.get(
                 f"{base_url}/services/data/{api_version}/query?q={urllib.parse.quote(query)}",
                 headers=headers,
@@ -96,7 +102,7 @@ async def log_call_to_salesforce(tenant: Tenant, data: dict):
             
             # If no contact, try Lead
             if not who_id:
-                query = f"SELECT Id FROM Lead WHERE Phone = '{phone}' OR MobilePhone = '{phone}' LIMIT 1"
+                query = f"SELECT Id FROM Lead WHERE Phone = '{safe_phone}' OR MobilePhone = '{safe_phone}' LIMIT 1"
                 resp = await client.get(
                     f"{base_url}/services/data/{api_version}/query?q={urllib.parse.quote(query)}",
                     headers=headers,

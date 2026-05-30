@@ -51,6 +51,7 @@ class AnalyticsService:
                 "lead_info": None,
                 "booking_info": None,
                 "issue_info": None,
+                "sms_followup": {"needed": False, "reason": "", "suggested_message": ""},
             }
 
         # ── Build agent context hint ──────────────────────────────────────────

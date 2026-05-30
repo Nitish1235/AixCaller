@@ -151,8 +151,8 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
         res = await process_completed_call(
             tenant_id=t_uuid,
             agent_id=a_uuid,
-            from_number=from_number,
-            to_number=to_number,
+            customer_phone=from_number,
+            agent_phone=to_number,
             call_id=call_control_id,
             transcript=transcript_messages,
             duration_seconds=duration_sec,

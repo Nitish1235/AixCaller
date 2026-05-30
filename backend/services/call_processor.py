@@ -14,8 +14,7 @@ from backend.services.hubspot import log_call_to_hubspot
 from backend.services.salesforce import log_call_to_salesforce
 import httpx
 from backend.services.knowledge_service import KnowledgeService
-from backend.services.calendar_service import CalendarService
-from backend.services.sheets_service import SheetsService
+from backend.services.google_oauth import get_calendar_availability, create_calendar_event
 from outbound.services.sms_drip import send_sms
 
 analytics_service = AnalyticsService()
@@ -23,8 +22,8 @@ analytics_service = AnalyticsService()
 async def process_completed_call(
     tenant_id: uuid.UUID,
     agent_id: uuid.UUID,
-    from_number: str,
-    to_number: str,
+    customer_phone: str,
+    agent_phone: str,
     call_id: str,
     transcript: list | str,
     duration_seconds: int,
@@ -67,8 +66,8 @@ async def process_completed_call(
         existing_call.duration_seconds = duration_seconds
         existing_call.status = "completed"
         # Only overwrite from_number if it was previously unknown, so we preserve the original
-        if existing_call.from_number == "unknown" and from_number != "unknown" and from_number != "Customer":
-            existing_call.from_number = from_number
+        if existing_call.from_number == "unknown" and customer_phone != "unknown" and customer_phone != "Customer":
+            existing_call.from_number = customer_phone
         new_call = existing_call
     else:
         logger.info(f"No existing CallRecord found for {call_id}, creating a new one")
@@ -76,8 +75,8 @@ async def process_completed_call(
             id=uuid.uuid4(),
             tenant_id=tenant_id,
             agent_id=agent_id,
-            from_number=from_number or "unknown",
-            to_number=to_number or "unknown",
+            from_number=customer_phone or "unknown",
+            to_number=agent_phone or "unknown",
             transcript=transcript_str,
             duration_seconds=duration_seconds,
             status="completed",
@@ -112,20 +111,7 @@ async def process_completed_call(
         action_items = analysis.get("action_items", [])
         new_call.action_items = json.dumps(action_items) if isinstance(action_items, list) else str(action_items)
         
-        # --- Integration based on detected intent ---
-        intent = analysis.get("intent")
-        knowledge_result = None
-        calendar_info = None
-        sheet_result = None
-        if intent == "knowledge_lookup":
-            ks = KnowledgeService(tenant)
-            knowledge_result = await ks.lookup(analysis.get("query", ""))
-        elif intent == "schedule_booking":
-            cs = CalendarService(tenant)
-            calendar_info = cs.get_free_slots()
-        elif intent == "sheet_lookup":
-            ss = SheetsService(tenant)
-            sheet_result = await ss.search_table(analysis.get("sheet_id", ""), analysis.get("query", ""))
+        # --- Post-call intent detection — processed after tenant is loaded below ---
 
     db.add(new_call)
 
@@ -153,8 +139,20 @@ async def process_completed_call(
         logger.error(f"Tenant {tenant_id} not found downstream in call processor")
         return {"status": "success", "call_record_id": str(new_call.id)}
 
+    # 3b. Post-call KB enrichment (uses tenant, so must run after tenant is loaded)
+    kb_result = None
+    if analysis:
+        intent = analysis.get("intent")
+        if intent == "knowledge_lookup":
+            try:
+                ks = KnowledgeService(tenant)
+                kb_result = await ks.lookup(analysis.get("query", ""))
+                logger.info(f"Post-call KB lookup result: {kb_result}")
+            except Exception as e:
+                logger.error(f"Post-call KB lookup failed: {e}")
+
     # 5. Airtable Call Log
-    if tenant.airtable_pat and tenant.airtable_base_id and post_call_config.get("airtable_log", {}).get("enabled", False):
+    if tenant.airtable_pat and tenant.airtable_base_id and post_call_config.get("airtable_log", {}).get("enabled", True):
         try:
             airtable = AirtableService(tenant)
             await airtable.log_call(
@@ -189,9 +187,9 @@ async def process_completed_call(
                     "agent_name":       agent_name,
                     "duration_seconds": duration_seconds,
                     "call_timestamp":   datetime.now(timezone.utc).strftime("%b %d, %Y · %I:%M %p UTC"),
-                    "knowledge_result": knowledge_result if 'knowledge_result' in locals() else None,
-                    "calendar_info":     calendar_info if 'calendar_info' in locals() else None,
-                    "sheet_result":      sheet_result if 'sheet_result' in locals() else None
+                    "knowledge_result": kb_result,
+                    "calendar_info":     None,
+                    "sheet_result":      None
                 }
             )
             logger.info(f"Successfully sent summary email to {tenant.contact_email}")
@@ -251,7 +249,8 @@ async def process_completed_call(
     if sms_followup.get("needed") and sms_followup.get("suggested_message"):
         logger.info(f"Intelligent SMS needed for call {new_call.id}. Reason: {sms_followup.get('reason')}")
         try:
-            sms_sent = await send_sms(to_number, from_number, sms_followup.get("suggested_message"))
+            # send_sms(from_number, to_number, message)
+            sms_sent = await send_sms(agent_phone, customer_phone, sms_followup.get("suggested_message"))
             if sms_sent:
                 new_call.sms_sent = True
                 db.add(new_call)

@@ -29,7 +29,11 @@ async def refresh_hubspot_token(tenant: Tenant) -> bool:
             if resp.status_code == 200:
                 data = resp.json()
                 tenant.hubspot_access_token = data.get("access_token")
-                tenant.hubspot_refresh_token = data.get("refresh_token")
+                # HubSpot only re-issues refresh tokens on first auth.
+                # NEVER overwrite the existing refresh_token with None.
+                new_refresh = data.get("refresh_token")
+                if new_refresh:
+                    tenant.hubspot_refresh_token = new_refresh
                 expires_in = data.get("expires_in", 1800)
                 tenant.hubspot_token_expires_at = int(datetime.now(timezone.utc).timestamp()) + expires_in
                 
