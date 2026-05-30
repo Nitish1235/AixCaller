@@ -230,7 +230,18 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
             "expressive_mode": True
         },
         "telephony_settings": {
-            "noise_suppression": "krisp"
+            "noise_suppression": "krisp",
+            "recording_settings": {
+                "enabled": False,
+                "channels": "dual",
+                "format": "mp3"
+            }
+        },
+        "transcription": {
+            "language": "en"
+        },
+        "post_conversation_settings": {
+            "enabled": True
         },
         "tools": tools
     }

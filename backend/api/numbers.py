@@ -95,8 +95,12 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
     Purchases a Telnyx number and assigns it to the specified agent.
     Enforces the per-plan agent limit at assignment time (agents only "count"
     once they have a phone number).
+    After purchase, automatically links the number to the AIxCaller SMS
+    messaging profile (TELNYX_MESSAGING_PROFILE_ID).
     """
     import uuid
+    from urllib.parse import quote
+
     api_key = os.environ.get("TELNYX_API_KEY")
     connection_id = os.environ.get("TELNYX_CONNECTION_ID")
 
@@ -143,7 +147,7 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
             )
         )
 
-    # ── Purchase via Telnyx Number Orders API ───────────────────────────────
+    # ── Step 1: Purchase via Telnyx Number Orders API ───────────────────────
     async with httpx.AsyncClient() as client:
         order_payload = {
             "phone_numbers": [{"phone_number": req.phone_number}],
@@ -158,7 +162,30 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
             logger.error(f"Telnyx purchase failed: {response.text}")
             raise HTTPException(status_code=500, detail="Failed to purchase number")
 
-    # ── Assign to agent ────────────────────────────────────────────────────
+    logger.info(f"Successfully purchased {req.phone_number}.")
+
+    # ── Step 2: Link to AIxCaller SMS Messaging Profile ─────────────────────
+    messaging_profile_id = os.environ.get("TELNYX_MESSAGING_PROFILE_ID")
+    if messaging_profile_id:
+        async with httpx.AsyncClient() as client:
+            encoded_number = quote(req.phone_number, safe="")
+            patch_resp = await client.patch(
+                f"https://api.telnyx.com/v2/phone_numbers/{encoded_number}",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"messaging_profile_id": messaging_profile_id},
+                timeout=10.0
+            )
+            if patch_resp.status_code not in (200, 201):
+                logger.warning(
+                    f"Number purchased but failed to link to messaging profile "
+                    f"{messaging_profile_id}: {patch_resp.text}"
+                )
+            else:
+                logger.info(f"Linked {req.phone_number} to AIxCaller SMS messaging profile.")
+    else:
+        logger.warning("TELNYX_MESSAGING_PROFILE_ID not set — number not linked to a messaging profile.")
+
+    # ── Step 3: Assign to agent in DB ──────────────────────────────────────
     agent.phone_number = req.phone_number
     db.add(agent)
     db.commit()

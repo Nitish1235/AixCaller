@@ -275,11 +275,11 @@ class Campaign(SQLModel, table=True):
 
     # ── Post-Call SMS Drip ───────────────────────────────────────────────────
     sms_enabled: bool = Field(default=False)
-    # Template variables: {name}, {agent_name}, {booking_link}, {appointment_date}, {appointment_time}
-    sms_voicemail_template: Optional[str] = Field(default="Hi {name}! I just tried calling you. Want to find a time to connect? {booking_link}")
-    sms_no_answer_template: Optional[str] = Field(default="Hi {name}! I missed you earlier. Let's connect: {booking_link}")
-    sms_booked_template: Optional[str] = Field(default="Confirmed, {name}! Your appointment is on {appointment_date} at {appointment_time}. See you then! 🗓")
-    sms_reminder_template: Optional[str] = Field(default="Hi {name}! Reminder: your call is tomorrow at {appointment_time}. Reply YES to confirm or NO to reschedule.")
+    # Template variables: {name}, {agent_name}, {business_name}, {booking_link}, {appointment_date}, {appointment_time}
+    sms_no_answer_template: Optional[str] = Field(default="Hi {name}! I tried calling from {business_name} but couldn’t reach you. Please schedule a time that works for you: {booking_link}")
+    sms_voicemail_template: Optional[str] = Field(default="Hi {name}! I left a voicemail from {business_name} earlier. Let’s find a convenient slot: {booking_link}")
+    sms_booked_template: Optional[str] = Field(default="Hi {name}! Your appointment with {business_name} is confirmed for {appointment_date} at {appointment_time}. See you then! — {agent_name}")
+    sms_reminder_template: Optional[str] = Field(default="Hi {name}! Reminder from {business_name}: your call is tomorrow at {appointment_time}. Reply YES to confirm or NO to reschedule. — {agent_name}")
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

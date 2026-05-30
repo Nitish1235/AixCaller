@@ -14,7 +14,7 @@ Outcomes handled:
 import os
 import httpx
 from loguru import logger
-from shared.models import Campaign, CampaignLead
+from shared.models import Campaign, CampaignLead, Agent
 
 TELNYX_MESSAGES_URL = "https://api.telnyx.com/v2/messages"
 
@@ -29,7 +29,8 @@ def _render_template(template: str, lead: CampaignLead, campaign: Campaign,
     return (
         template
         .replace("{name}", lead.name or "there")
-        .replace("{agent_name}", "")         # filled at call site from agent obj
+        .replace("{agent_name}", getattr(campaign, "agent", None).name if getattr(campaign, "agent", None) else "")
+        .replace("{business_name}", getattr(campaign, "agent", None).business_name if getattr(campaign, "agent", None) else "")
         .replace("{booking_link}", booking_link)
         .replace("{appointment_date}", appointment_date)
         .replace("{appointment_time}", appointment_time)
@@ -141,3 +142,7 @@ async def send_reminder_sms(
 def is_opt_out_reply(text: str) -> bool:
     """Checks if an inbound SMS reply is an opt-out request."""
     return text.strip().lower() in OPT_OUT_KEYWORDS
+
+
+
+
