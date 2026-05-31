@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y \
 # Copy shared models
 COPY shared /app/shared
 
+# Copy outbound code
+COPY outbound /app/outbound
+
 # Copy backend code
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
