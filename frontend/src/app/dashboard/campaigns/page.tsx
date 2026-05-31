@@ -2,11 +2,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
-  getTenantId, fetchAgents, fetchCampaigns, createAgent,
-  searchNumbers, purchaseNumber, createCampaignAPI, updateCampaign,
-  uploadCampaignLeads, fetchCampaignStats, fetchIntegrations,
+  getTenantId, fetchAgents, fetchCampaigns,
+  createCampaignAPI, updateCampaign,
+  uploadCampaignLeads, fetchCampaignStats,
   deleteCampaign, API_BASE_URL,
-  fetchVoices,
 } from "@/lib/api";
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -41,13 +40,6 @@ interface CampaignStats {
   by_status: Record<string, number>;
 }
 
-interface TelnyxNumber {
-  phone_number: string;
-  monthly_cost: number;
-  upfront_cost: number;
-  total_initial: number;
-}
-
 interface ParsedLead {
   name: string;
   phone: string;
@@ -58,14 +50,11 @@ interface ParsedLead {
    WIZARD STEP DEFINITIONS
 ═══════════════════════════════════════════════════════════════════ */
 const WIZARD_STEPS = [
-  { id: "setup",         label: "Setup",         icon: "⚙️" },
-  { id: "agent",         label: "Agent",          icon: "🤖" },
-  { id: "agent_setup",   label: "Agent Setup",    icon: "✨" },
-  { id: "channels",      label: "Phone Number",   icon: "📞" },
-  { id: "apps",          label: "Integrations",   icon: "🔌" },
-  { id: "list",          label: "Lead List",      icon: "📋" },
-  { id: "strategy",      label: "Strategy",       icon: "🎯" },
-  { id: "review",        label: "Review & Launch", icon: "🚀" },
+  { id: "name",     label: "Campaign Name",   icon: "📌" },
+  { id: "agent",    label: "Choose Agent",    icon: "🤖" },
+  { id: "leads",    label: "Lead List",       icon: "📋" },
+  { id: "schedule", label: "Call Schedule",   icon: "🕐" },
+  { id: "launch",   label: "Review & Launch", icon: "🚀" },
 ];
 
 const STRATEGIES = [
@@ -157,18 +146,11 @@ function PipeNode({ icon, title, sub, color, bgColor, selected, onClick, actionL
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   BUILDER WIZARD MODAL (FULLY WIRED TO REAL APIs)
+   BUILDER WIZARD MODAL
 ═══════════════════════════════════════════════════════════════════ */
 interface BuilderState {
   name: string;
-  useExistingAgent: boolean;
-  existingAgentId: string;
-  agentName: string;
-  businessName: string;
-  businessContext: string;
-  voiceId: string;
-  phoneOption: "existing" | "search" | "skip";
-  selectedPhone: string;
+  agentId: string;
   parsedLeads: ParsedLead[];
   leadsFileName: string;
   strategy: string;
@@ -179,6 +161,17 @@ interface BuilderState {
   smsEnabled: boolean;
 }
 
+/* Avatar initial badge for an agent */
+function AgentAvatar({ name, size = 40 }: { name: string; size?: number }) {
+  const colors = ["#2563eb","#059669","#7c3aed","#dc2626","#d97706","#0891b2"];
+  const color = colors[(name.charCodeAt(0) || 0) % colors.length];
+  return (
+    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size * 0.4, flexShrink: 0, letterSpacing: -0.5 }}>
+      {(name || "?").slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
+
 function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
   onClose: () => void;
   onComplete: () => void;
@@ -187,112 +180,48 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
 }) {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<BuilderState>({
-    name: "", useExistingAgent: false, existingAgentId: "",
-    agentName: "", businessName: "", businessContext: "", voiceId: "Telnyx.Ultra.Grace",
-    phoneOption: "existing", selectedPhone: "",
-    parsedLeads: [], leadsFileName: "", strategy: "immediate",
-    callingWindowTimezone: "lead_local", callingWindowStart: "09:00", callingWindowEnd: "20:00",
+    name: "", agentId: "",
+    parsedLeads: [], leadsFileName: "",
+    strategy: "immediate",
+    callingWindowTimezone: "lead_local",
+    callingWindowStart: "09:00", callingWindowEnd: "20:00",
     speedToLead: false, smsEnabled: false,
   });
 
-  // Real API states
-  const [searchedNumbers, setSearchedNumbers] = useState<TelnyxNumber[]>([]);
-  const [numberSearching, setNumberSearching] = useState(false);
-  const [numberSearchError, setNumberSearchError] = useState("");
-  const [areaCode, setAreaCode] = useState("");
-  const [integrationStatus, setIntegrationStatus] = useState<any>(null);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState("");
   const [launchProgress, setLaunchProgress] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const stepId = WIZARD_STEPS[step].id;
-  const progress = Math.round((step / WIZARD_STEPS.length) * 100);
-
-  // Load integrations when reaching the apps step
-  useEffect(() => {
-    if (stepId === "apps" && !integrationStatus) {
-      fetchIntegrations(tenantId).then(setIntegrationStatus).catch(() => {});
-    }
-  }, [stepId, tenantId, integrationStatus]);
-
   const upd = (patch: Partial<BuilderState>) => setData(d => ({ ...d, ...patch }));
 
+  const selectedAgent = existingAgents.find(a => a.id === data.agentId);
+
   const canContinue = () => {
-    if (stepId === "setup")       return data.name.trim().length > 0;
-    if (stepId === "agent")       return data.useExistingAgent ? data.existingAgentId.length > 0 : data.agentName.trim().length > 0;
-    if (stepId === "strategy")    return data.strategy.length > 0;
+    if (stepId === "name")  return data.name.trim().length > 0;
+    if (stepId === "agent") return data.agentId.length > 0;
     return true;
   };
 
-  // Search Telnyx for phone numbers
-  const handleSearchNumbers = async () => {
-    setNumberSearching(true);
-    setNumberSearchError("");
-    try {
-      const result = await searchNumbers(tenantId, "US", areaCode);
-      setSearchedNumbers(result.numbers || []);
-      if ((result.numbers || []).length === 0) {
-        setNumberSearchError("No numbers found. Try a different area code.");
-      }
-    } catch (err: any) {
-      setNumberSearchError(err.message?.includes("402") ? "Phone provisioning requires a paid plan. Upgrade first." : "Failed to search numbers.");
-    }
-    setNumberSearching(false);
-  };
-
-  // Handle CSV file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const leads = parseCSV(text);
+    reader.onload = ev => {
+      const leads = parseCSV(ev.target?.result as string);
       upd({ parsedLeads: leads, leadsFileName: file.name });
     };
     reader.readAsText(file);
   };
 
-  // LAUNCH — the real deal: create agent → purchase number → create campaign → upload leads
   const handleLaunch = async () => {
-    setLaunching(true);
-    setLaunchError("");
+    setLaunching(true); setLaunchError("");
     try {
-      let agentId: string;
-
-      // Step 1: Create or reuse agent
-      if (data.useExistingAgent) {
-        agentId = data.existingAgentId;
-        setLaunchProgress("Using existing agent…");
-      } else {
-        setLaunchProgress("Creating AI agent on Telnyx…");
-        const systemPrompt = `You are ${data.agentName}, an AI calling agent for ${data.businessName || "the business"}. ${data.businessContext || "Help callers with their questions and book appointments."} Be professional, warm, and helpful. Always introduce yourself by name.`;
-        const agentResult = await createAgent({
-          tenant_id: tenantId,
-          name: data.agentName,
-          business_name: data.businessName || undefined,
-          system_prompt: systemPrompt,
-          voice_id: data.voiceId,
-        });
-        agentId = agentResult.id;
-      }
-
-      // Step 2: Purchase phone number (if selected from search)
-      if (data.selectedPhone && data.phoneOption === "search") {
-        setLaunchProgress("Purchasing phone number from Telnyx…");
-        try {
-          await purchaseNumber(data.selectedPhone, tenantId, agentId);
-        } catch (err: any) {
-          console.warn("Phone purchase failed (may already be assigned):", err.message);
-        }
-      }
-
-      // Step 3: Create campaign
       setLaunchProgress("Creating campaign…");
       const campaign = await createCampaignAPI({
         tenant_id: tenantId,
-        agent_id: agentId,
+        agent_id: data.agentId,
         name: data.name,
         calling_window_timezone: data.callingWindowTimezone,
         calling_window_start: data.callingWindowStart,
@@ -300,19 +229,14 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
         speed_to_lead_enabled: data.speedToLead,
         sms_enabled: data.smsEnabled,
       });
-
-      // Step 4: Upload leads (if any)
       if (data.parsedLeads.length > 0) {
         setLaunchProgress(`Uploading ${data.parsedLeads.length} leads…`);
         await uploadCampaignLeads(campaign.id, tenantId, data.parsedLeads);
       }
-
-      setLaunchProgress("✅ Campaign created successfully!");
-      setTimeout(() => {
-        onComplete();
-      }, 1200);
+      setLaunchProgress("✅ Campaign created!");
+      setTimeout(() => onComplete(), 1000);
     } catch (err: any) {
-      setLaunchError(err.message || "Something went wrong. Check your connection and try again.");
+      setLaunchError(err.message || "Something went wrong.");
       setLaunching(false);
     }
   };
@@ -322,454 +246,394 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
     else handleLaunch();
   };
 
-  // Agents that already have phone numbers
-  const agentsWithPhone = existingAgents.filter(a => a.phone_number);
-
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 1000,
-      background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)",
+      background: "rgba(15,23,42,0.65)", backdropFilter: "blur(6px)",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: "1rem", animation: "fadeIn 0.2s ease",
     }}>
       <div style={{
         background: "#fff", borderRadius: 20,
-        width: "100%", maxWidth: 960, height: "min(700px, 90vh)",
-        display: "grid", gridTemplateColumns: "200px 1fr 360px",
-        gridTemplateRows: "1fr auto",
-        overflow: "hidden",
-        boxShadow: "0 25px 80px rgba(0,0,0,0.25)",
+        width: "100%", maxWidth: 780,
+        display: "flex", flexDirection: "column",
+        maxHeight: "90vh", overflow: "hidden",
+        boxShadow: "0 32px 100px rgba(0,0,0,0.28)",
       }}>
 
-        {/* ── LEFT: Progress sidebar ── */}
-        <div style={{ background: "#f8fafc", borderRight: "1.5px solid #e2e8f0", padding: "1.5rem 1rem", display: "flex", flexDirection: "column", gridRow: "1 / 3" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8" }}>Progress</span>
-            <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#2563eb" }}>{progress}%</span>
-          </div>
-          <div style={{ height: 4, background: "#e2e8f0", borderRadius: 99, overflow: "hidden", marginBottom: "1.25rem" }}>
-            <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(to right, #2563eb, #3b82f6)", borderRadius: 99, transition: "width 0.4s ease" }} />
-          </div>
-          {WIZARD_STEPS.map((s, i) => {
-            const done = i < step;
-            const active = i === step;
-            return (
-              <div key={s.id} onClick={() => i <= step && setStep(i)} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, cursor: i <= step ? "pointer" : "default", background: active ? "#fff" : "transparent", border: active ? "1px solid #e2e8f0" : "1px solid transparent", marginBottom: 2, boxShadow: active ? "0 1px 4px rgba(0,0,0,0.05)" : "none" }}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: done ? "#059669" : active ? "#2563eb" : "#e2e8f0", fontSize: "0.6rem", fontWeight: 800, color: done || active ? "#fff" : "#94a3b8" }}>{done ? "✓" : i + 1}</div>
-                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: active ? "#2563eb" : done ? "#059669" : "#94a3b8" }}>{s.label}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ── CENTER: Chat transcript ── */}
-        <div style={{ background: "#f8fafc", padding: "1.75rem 1.5rem 1rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Step {step + 1} of {WIZARD_STEPS.length}</div>
-          {[
-            { show: true, label: "System", text: "Let's set up your outbound campaign system. Start with a name." },
-            { show: data.name.length > 0, label: "You", text: `System name: "${data.name}"`, bubble: true },
-            { show: step >= 1, label: "System", text: data.useExistingAgent ? "Select an existing AI agent for this campaign." : "Name your AI agent — this is who makes the calls." },
-            { show: data.useExistingAgent && data.existingAgentId, label: "You", text: `Using agent: "${existingAgents.find(a => a.id === data.existingAgentId)?.name || "—"}"`, bubble: true },
-            { show: !data.useExistingAgent && data.agentName.length > 0, label: "You", text: `New agent: "${data.agentName}"`, bubble: true },
-            { show: step >= 2, label: "System", text: "Provide business context. We'll auto-generate the agent's call script." },
-            { show: step >= 3, label: "System", text: "Assign a phone number — your agent dials from this number." },
-            { show: !!data.selectedPhone, label: "You", text: `Phone: ${data.selectedPhone}`, bubble: true },
-            { show: step >= 4, label: "System", text: "Connect integrations for calendar booking and CRM sync." },
-            { show: step >= 5, label: "System", text: "Upload your lead list. Your agent will dial through these contacts." },
-            { show: data.parsedLeads.length > 0, label: "You", text: `Uploaded: ${data.parsedLeads.length} leads from "${data.leadsFileName}"`, bubble: true },
-            { show: step >= 6, label: "System", text: "Choose a calling strategy — how and when your agent dials." },
-            { show: data.strategy.length > 0 && step >= 6, label: "You", text: `Strategy: ${STRATEGIES.find(s => s.id === data.strategy)?.label || data.strategy}`, bubble: true },
-            { show: step >= 7, label: "System", text: "Review your setup and launch when ready! 🚀" },
-          ].filter(m => m.show).map((m, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: (m as any).bubble ? "flex-end" : "flex-start", animation: "fadeSlideIn 0.25s ease" }}>
-              {(m as any).bubble ? (
-                <div style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff", borderRadius: "12px 12px 4px 12px", padding: "8px 14px", fontSize: "0.8rem", fontWeight: 600, maxWidth: "80%" }}>{m.text}</div>
-              ) : (
-                <div style={{ display: "flex", gap: 8, maxWidth: "90%", alignItems: "flex-start" }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", flexShrink: 0, marginTop: 1 }}>✦</div>
-                  <div>
-                    <div style={{ fontSize: "0.6rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>{m.label}</div>
-                    <div style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: "0 12px 12px 12px", padding: "9px 13px", fontSize: "0.8rem", color: "#334155", lineHeight: 1.5, fontWeight: 600 }}>{m.text}</div>
+        {/* ── HEADER ── */}
+        <div style={{ padding: "1.4rem 1.75rem 1rem", borderBottom: "1.5px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: "1.15rem", color: "#0f172a", letterSpacing: -0.5 }}>New Outbound Campaign</div>
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              {WIZARD_STEPS.map((s, i) => {
+                const done = i < step; const active = i === step;
+                return (
+                  <div key={s.id} onClick={() => i <= step && setStep(i)} style={{ display: "flex", alignItems: "center", gap: 5, cursor: i <= step ? "pointer" : "default", opacity: i > step ? 0.38 : 1 }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.6rem", fontWeight: 800,
+                      background: done ? "#059669" : active ? "#2563eb" : "#e2e8f0",
+                      color: done || active ? "#fff" : "#94a3b8",
+                      transition: "all 0.2s",
+                    }}>{done ? "✓" : i + 1}</div>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 700, color: active ? "#2563eb" : done ? "#059669" : "#94a3b8", whiteSpace: "nowrap" }}>{s.label}</span>
+                    {i < WIZARD_STEPS.length - 1 && <div style={{ width: 20, height: 2, background: done ? "#059669" : "#e2e8f0", borderRadius: 99, marginLeft: 2 }} />}
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
-          ))}
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1.4rem", lineHeight: 1, padding: "4px 6px", borderRadius: 6, marginTop: -4 }}>×</button>
         </div>
 
-        {/* ── RIGHT: Active form ── */}
-        <div style={{ borderLeft: "1.5px solid #e2e8f0", background: "#fff", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem", borderBottom: "1.5px solid #f1f5f9" }}>
-            <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 0.5 }}>{WIZARD_STEPS[step].label}</span>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1.3rem", lineHeight: 1, padding: 0 }}>×</button>
-          </div>
-          <div style={{ padding: "1.25rem", flex: 1 }}>
+        {/* ── BODY ── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "1.75rem" }}>
 
-            {/* Step 0: Campaign Name */}
-            {stepId === "setup" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: "0 0 0.3rem" }}>Name your campaign</h3>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0 0 1rem", lineHeight: 1.5 }}>A descriptive name to identify this outbound campaign.</p>
-                <input autoFocus type="text" style={inp} value={data.name} onChange={e => upd({ name: e.target.value })} placeholder="e.g. Black Friday Outreach" onFocus={e => e.target.style.borderColor = "#2563eb"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} onKeyDown={e => e.key === "Enter" && canContinue() && next()} />
+          {/* ── STEP 1: Campaign Name ── */}
+          {stepId === "name" && (
+            <div style={{ animation: "fadeSlideIn 0.25s ease", maxWidth: 500 }}>
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", marginBottom: 4 }}>Name your campaign</div>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.6 }}>Give this outbound campaign a clear, descriptive name so you can identify it later.</div>
               </div>
-            )}
+              <input
+                autoFocus type="text" style={{ ...inp, fontSize: "1rem", padding: "12px 16px", borderRadius: 10 }}
+                value={data.name} placeholder="e.g. Q3 Re-engagement, Black Friday Outreach…"
+                onChange={e => upd({ name: e.target.value })}
+                onKeyDown={e => e.key === "Enter" && canContinue() && next()}
+                onFocus={e => e.target.style.borderColor = "#2563eb"}
+                onBlur={e => e.target.style.borderColor = "#e2e8f0"}
+              />
+              <div style={{ marginTop: "1.5rem", background: "#f8fafc", borderRadius: 12, padding: "1rem 1.25rem", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.7 }}>
+                <strong style={{ color: "#0f172a" }}>Tips for good campaign names:</strong>
+                <ul style={{ margin: "6px 0 0 1rem", padding: 0 }}>
+                  <li>Include the audience — <em>"Lapsed Customers Jun 2025"</em></li>
+                  <li>Include the goal — <em>"Book Demo Outreach"</em></li>
+                  <li>Include the date or version — <em>"Q3 Follow-up v2"</em></li>
+                </ul>
+              </div>
+            </div>
+          )}
 
-            {/* Step 1: Agent Selection */}
-            {stepId === "agent" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: 0 }}>Choose your AI agent</h3>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>Use an existing agent or create a new one.</p>
-
-                {/* Toggle */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", border: "1.5px solid #e2e8f0", borderRadius: 9, overflow: "hidden" }}>
-                  <button onClick={() => upd({ useExistingAgent: false })} style={{ padding: "9px", fontSize: "0.78rem", fontWeight: 700, background: !data.useExistingAgent ? "#eff6ff" : "#fff", color: !data.useExistingAgent ? "#2563eb" : "#64748b", border: "none", cursor: "pointer" }}>Create New</button>
-                  <button onClick={() => upd({ useExistingAgent: true })} style={{ padding: "9px", fontSize: "0.78rem", fontWeight: 700, background: data.useExistingAgent ? "#eff6ff" : "#fff", color: data.useExistingAgent ? "#2563eb" : "#64748b", border: "none", borderLeft: "1.5px solid #e2e8f0", cursor: "pointer" }}>Use Existing ({existingAgents.length})</button>
+          {/* ── STEP 2: Agent Picker ── */}
+          {stepId === "agent" && (
+            <div style={{ animation: "fadeSlideIn 0.25s ease" }}>
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", marginBottom: 4 }}>Choose your AI caller</div>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.6 }}>
+                  Select the agent that will make calls for this campaign. Its voice, prompt, and phone number are already configured.
                 </div>
-
-                {data.useExistingAgent ? (
-                  existingAgents.length === 0 ? (
-                    <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "0.82rem" }}>No agents found. Create a new one instead.</div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: 300, overflowY: "auto" }}>
-                      {existingAgents.map(agent => (
-                        <div key={agent.id} onClick={() => upd({ existingAgentId: agent.id, selectedPhone: agent.phone_number || "" })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, cursor: "pointer", border: data.existingAgentId === agent.id ? "2px solid #2563eb" : "1.5px solid #e2e8f0", background: data.existingAgentId === agent.id ? "#eff6ff" : "#fff", transition: "all 0.15s" }}>
-                          <div style={{ width: 30, height: 30, borderRadius: 8, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", flexShrink: 0 }}>🤖</div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>{agent.name}</div>
-                            <div style={{ fontSize: "0.68rem", color: "#64748b" }}>{agent.phone_number || "No phone"} · {agent.voice_id || "Default Voice"}</div>
-                          </div>
-                          {agent.telnyx_assistant_id && <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "#059669", background: "#ecfdf5", padding: "2px 6px", borderRadius: 4 }}>✓ Live</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                ) : (
-                  <div>
-                    <label style={lbl}>Agent Name</label>
-                    <input autoFocus type="text" style={inp} value={data.agentName} onChange={e => upd({ agentName: e.target.value })} placeholder="e.g. Sam, Alex, Jordan" onFocus={e => e.target.style.borderColor = "#2563eb"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
-                    <div style={{ marginTop: "0.75rem", background: "#eff6ff", borderRadius: 9, padding: "10px 13px", fontSize: "0.75rem", color: "#2563eb", lineHeight: 1.5, fontWeight: 500 }}>
-                      💡 First names work best — they sound more natural on calls.
-                    </div>
-                  </div>
-                )}
               </div>
-            )}
 
-            {/* Step 2: Agent Setup */}
-            {stepId === "agent_setup" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: 0 }}>Configure {data.useExistingAgent ? "campaign context" : (data.agentName || "your agent")}</h3>
-                {data.useExistingAgent ? (
-                  <div style={{ background: "#ecfdf5", borderRadius: 8, padding: "10px 13px", fontSize: "0.78rem", color: "#059669", fontWeight: 600 }}>✓ Using existing agent. You can skip this step or add extra campaign context below.</div>
-                ) : null}
-                <div><label style={lbl}>Business Name</label><input type="text" style={inp} value={data.businessName} onChange={e => upd({ businessName: e.target.value })} placeholder="Your Company LLC" onFocus={e => e.target.style.borderColor = "#2563eb"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} /></div>
-                <div><label style={lbl}>Campaign Context</label><textarea rows={3} style={{ ...inp, resize: "vertical", lineHeight: 1.5 }} value={data.businessContext} onChange={e => upd({ businessContext: e.target.value })} placeholder="Who are you calling? What's the goal of this campaign?" onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = "#2563eb"} onBlur={e => (e.target as HTMLTextAreaElement).style.borderColor = "#e2e8f0"} /></div>
-                {!data.useExistingAgent && (
-                  <div><label style={lbl}>Voice</label>
-                    <select style={inp} value={data.voiceId} onChange={e => upd({ voiceId: e.target.value })}>
-                      <option value="Telnyx.Ultra.Grace">Grace (Female)</option>
-                      <option value="Telnyx.Ultra.George">George (Male)</option>
-                      <option value="Telnyx.Ultra.Ava">Ava (Female)</option>
-                      <option value="Telnyx.Ultra.Marcus">Marcus (Male)</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 3: Phone Number (REAL API) */}
-            {stepId === "channels" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: 0 }}>Assign phone number</h3>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>Your agent dials from this number. Use an existing one or get a new Telnyx number.</p>
-
-                {/* Existing agent phone numbers */}
-                {agentsWithPhone.length > 0 && (
-                  <>
-                    <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>Existing Numbers</div>
-                    <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
-                      {agentsWithPhone.map(a => (
-                        <div key={a.id} onClick={() => upd({ selectedPhone: a.phone_number!, phoneOption: "existing" })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderBottom: "1px solid #f1f5f9", cursor: "pointer", background: data.selectedPhone === a.phone_number ? "#eff6ff" : "#fff", transition: "background 0.15s" }}>
-                          <span style={{ fontSize: "0.75rem" }}>📞</span>
-                          <span style={{ fontFamily: "monospace", fontSize: "0.82rem", color: "#0f172a", fontWeight: 600, flex: 1 }}>{a.phone_number}</span>
-                          <span style={{ fontSize: "0.65rem", color: "#94a3b8" }}>{a.name}</span>
-                          {data.selectedPhone === a.phone_number && <span style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: 800 }}>✓</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                {/* Search new numbers */}
-                <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 6 }}>Search New Numbers (Telnyx)</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input type="text" style={{ ...inp, flex: 1 }} value={areaCode} onChange={e => setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="Area code (e.g. 212)" onFocus={e => e.target.style.borderColor = "#2563eb"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
-                  <button onClick={handleSearchNumbers} disabled={numberSearching} style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", opacity: numberSearching ? 0.7 : 1 }}>
-                    {numberSearching ? "Searching…" : "🔍 Search"}
-                  </button>
+              {existingAgents.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "3rem 2rem", border: "2px dashed #e2e8f0", borderRadius: 16, color: "#64748b" }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>🤖</div>
+                  <div style={{ fontWeight: 700, fontSize: "1rem", color: "#0f172a", marginBottom: 8 }}>No agents yet</div>
+                  <div style={{ fontSize: "0.85rem", lineHeight: 1.6, marginBottom: 20 }}>Create an agent first — then come back to set up your campaign.</div>
+                  <a href="/dashboard/agents/create" style={{ display: "inline-block", padding: "10px 22px", background: "#2563eb", color: "#fff", borderRadius: 9, fontWeight: 700, fontSize: "0.88rem", textDecoration: "none" }}>
+                    Create an Agent →
+                  </a>
                 </div>
-                {numberSearchError && <div style={{ fontSize: "0.75rem", color: numberSearchError.includes("402") ? "#f59e0b" : "#ef4444", fontWeight: 600 }}>{numberSearchError}</div>}
-                {searchedNumbers.length > 0 && (
-                  <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, maxHeight: 180, overflowY: "auto" }}>
-                    {searchedNumbers.map(num => (
-                      <div key={num.phone_number} onClick={() => upd({ selectedPhone: num.phone_number, phoneOption: "search" })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 13px", borderBottom: "1px solid #f1f5f9", cursor: "pointer", background: data.selectedPhone === num.phone_number ? "#eff6ff" : "#fff" }}>
-                        <span style={{ fontFamily: "monospace", fontSize: "0.82rem", color: "#0f172a", fontWeight: 600, flex: 1 }}>{num.phone_number}</span>
-                        {data.selectedPhone === num.phone_number && <span style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: 800 }}>✓</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <button onClick={() => { upd({ selectedPhone: "", phoneOption: "skip" }); next(); }} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "0.75rem", cursor: "pointer", textDecoration: "underline", textAlign: "left", padding: 0 }}>Skip — assign a number later →</button>
-              </div>
-            )}
-
-            {/* Step 4: Integrations (REAL API) */}
-            {stepId === "apps" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: 0 }}>Integrations</h3>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>Connect calendar and CRM so your agent can book appointments and sync data.</p>
-                <div className="integration-guide" style={{ background: "#f8fafc", borderLeft: "4px solid #2563eb", padding: "1rem", borderRadius: "8px", marginTop: "0.75rem" }}>
-                  <h4 style={{ fontWeight: 700, fontSize: "0.9rem", color: "#0f172a", marginBottom: "0.5rem" }}>Integration Setup Guide</h4>
-                  <ul style={{ marginLeft: "1.2rem", color: "#64748b", fontSize: "0.78rem", lineHeight: 1.4 }}>
-                    <li><strong>Google Workspace</strong> – Calendar & Sheets access. OAuth scopes: <code>https://www.googleapis.com/auth/calendar</code> and <code>https://www.googleapis.com/auth/spreadsheets</code>.</li>
-                    <li><strong>HubSpot CRM</strong> – API key or Private App token. Required scopes: <code>contacts</code>, <code>crm.objects.contacts.read</code>.</li>
-                    <li><strong>Salesforce</strong> – Connected App client ID/secret. OAuth redirect URL: <code>{`${API_BASE_URL}/salesforce/callback`}</code>. Scopes: <code>api</code>, <code>refresh_token</code>.</li>
-                    <li><strong>Shopify</strong> – Store URL (e.g., <code>myshop.myshopify.com</code>) and Admin API access token.</li>
-                    <li><strong>Custom Webhook</strong> – Full HTTPS endpoint. Payload format: <code>{`{event, data}`}</code>.</li>
-                    <li><strong>Airtable</strong> – API key, Base ID, and Table name for call logs.</li>
-                  </ul>
-                </div>
-
-                {!integrationStatus ? (
-                  <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "0.82rem" }}>Loading integrations…</div>
-                ) : (
-                  <>
-                    {/* Google */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.google_connected ? "#059669" : "#e2e8f0"}`, background: integrationStatus.google_connected ? "#f0fdf4" : "#fff" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#4285F4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlecalendar.svg" alt="Google" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Google Workspace</div>
-                        <div style={{ fontSize: "0.68rem", color: integrationStatus.google_connected ? "#059669" : "#94a3b8" }}>{integrationStatus.google_connected ? "✓ Connected — Calendar & Sheets" : "Not connected"}</div>
-                      </div>
-                      {integrationStatus.google_connected ? (
-                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#059669", background: "#ecfdf5", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
-                      ) : (
-                        <a href={`${API_BASE_URL}/google/install?tenant_id=${tenantId}`} style={{ textDecoration: "none" }}><button style={{ padding: "5px 12px", borderRadius: 7, fontSize: "0.72rem", fontWeight: 700, border: "1.5px solid #2563eb", background: "#fff", color: "#2563eb", cursor: "pointer" }}>Connect →</button></a>
-                      )}
-                    </div>
-
-                    {/* HubSpot CRM */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.hubspot_connected ? "#ff7a59" : "#e2e8f0"}`, background: integrationStatus.hubspot_connected ? "#fff7ed" : "#fff" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#FF7A59", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/hubspot.svg" alt="HubSpot" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>HubSpot CRM</div>
-                        <div style={{ fontSize: "0.68rem", color: integrationStatus.hubspot_connected ? "#d97706" : "#94a3b8" }}>{integrationStatus.hubspot_connected ? "✓ Connected — Syncing leads" : "Not connected"}</div>
-                      </div>
-                      {integrationStatus.hubspot_connected ? (
-                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#d97706", background: "#fef3c7", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
-                      ) : (
-                        <a href={`${API_BASE_URL}/hubspot/install?tenant_id=${tenantId}`} style={{ textDecoration: "none" }}><button style={{ padding: "5px 12px", borderRadius: 7, fontSize: "0.72rem", fontWeight: 700, border: "1.5px solid #ff7a59", background: "#fff", color: "#ff7a59", cursor: "pointer" }}>Connect →</button></a>
-                      )}
-                    </div>
-
-                    {/* Salesforce */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.salesforce_connected ? "#00a1e0" : "#e2e8f0"}`, background: integrationStatus.salesforce_connected ? "#f0f9ff" : "#fff" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#00A1E0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/salesforce.svg" alt="Salesforce" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Salesforce</div>
-                        <div style={{ fontSize: "0.68rem", color: integrationStatus.salesforce_connected ? "#0c4a6e" : "#94a3b8" }}>{integrationStatus.salesforce_connected ? "✓ Connected — Enterprise sync" : "Not connected"}</div>
-                      </div>
-                      {integrationStatus.salesforce_connected ? (
-                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#00a1e0", background: "#e0f2fe", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
-                      ) : (
-                        <a href={`${API_BASE_URL}/salesforce/install?tenant_id=${tenantId}`} style={{ textDecoration: "none" }}><button style={{ padding: "5px 12px", borderRadius: 7, fontSize: "0.72rem", fontWeight: 700, border: "1.5px solid #00a1e0", background: "#fff", color: "#00a1e0", cursor: "pointer" }}>Connect →</button></a>
-                      )}
-                    </div>
-
-                    {/* Shopify */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.shopify_store_url ? "#10b981" : "#e2e8f0"}`, background: integrationStatus.shopify_store_url ? "#ecfdf5" : "#fff" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#96BF48", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/shopify.svg" alt="Shopify" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Shopify</div>
-                        <div style={{ fontSize: "0.68rem", color: integrationStatus.shopify_store_url ? "#047857" : "#94a3b8" }}>{integrationStatus.shopify_store_url ? `✓ Connected to ${integrationStatus.shopify_store_url}` : "Not connected"}</div>
-                      </div>
-                      {integrationStatus.shopify_store_url ? (
-                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#059669", background: "#d1fae5", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
-                      ) : (
-                        <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "#94a3b8" }}>Set up in Integrations</span>
-                      )}
-                    </div>
-
-                    {/* Webhook */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.webhook_url ? "#8b5cf6" : "#e2e8f0"}`, background: integrationStatus.webhook_url ? "#f5f3ff" : "#fff" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#7C3AED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Custom Webhook</div>
-                        <div style={{ fontSize: "0.68rem", color: integrationStatus.webhook_url ? "#5b21b6" : "#94a3b8" }}>{integrationStatus.webhook_url ? "✓ Active — Data forwarding" : "Not connected"}</div>
-                      </div>
-                      {integrationStatus.webhook_url ? (
-                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#7c3aed", background: "#ede9fe", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
-                      ) : (
-                        <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "#94a3b8" }}>Set up in Integrations</span>
-                      )}
-                    </div>
-
-                    {/* Airtable */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.airtable_connected ? "#18bfff" : "#e2e8f0"}`, background: integrationStatus.airtable_connected ? "#ecfeff" : "#fff" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#18BFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/airtable.svg" alt="Airtable" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Airtable</div>
-                        <div style={{ fontSize: "0.68rem", color: integrationStatus.airtable_connected ? "#0891b2" : "#94a3b8" }}>{integrationStatus.airtable_connected ? "✓ Connected — Call logging active" : "Not connected"}</div>
-                      </div>
-                      {integrationStatus.airtable_connected ? (
-                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#0891b2", background: "#ecfeff", padding: "3px 8px", borderRadius: 5 }}>✓ ON</span>
-                      ) : (
-                        <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "#94a3b8" }}>Set up in Integrations</span>
-                      )}
-                    </div>
-
-                    <div style={{ fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.5, marginTop: 4 }}>
-                      You can also configure integrations later from the Integrations page.
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Step 5: Lead List (CSV upload) */}
-            {stepId === "list" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: 0 }}>Import lead list</h3>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>Upload a CSV file with your leads. Required column: <strong>phone</strong>. Optional: name, email.</p>
-                <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={handleFileUpload} style={{ display: "none" }} />
-                <div onClick={() => fileInputRef.current?.click()} style={{ border: `2px dashed ${data.parsedLeads.length > 0 ? "#059669" : "#cbd5e1"}`, borderRadius: 10, padding: "1.5rem", textAlign: "center", cursor: "pointer", background: data.parsedLeads.length > 0 ? "#f0fdf4" : "#fafafa", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: "1.8rem", marginBottom: 6 }}>{data.parsedLeads.length > 0 ? "✅" : "⬆️"}</div>
-                  <div style={{ fontWeight: 700, fontSize: "0.82rem", color: data.parsedLeads.length > 0 ? "#059669" : "#334155" }}>
-                    {data.parsedLeads.length > 0 ? `${data.parsedLeads.length} leads from "${data.leadsFileName}"` : "Click to upload CSV"}
-                  </div>
-                  <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: 3 }}>name, phone, email columns</div>
-                </div>
-                {data.parsedLeads.length > 0 && (
-                  <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, maxHeight: 160, overflowY: "auto" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", padding: "6px 10px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "0.62rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase" }}>
-                      <span>Name</span><span>Phone</span><span>Email</span>
-                    </div>
-                    {data.parsedLeads.slice(0, 10).map((lead, i) => (
-                      <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", padding: "5px 10px", borderBottom: "1px solid #f1f5f9", fontSize: "0.72rem", color: "#334155" }}>
-                        <span>{lead.name}</span><span style={{ fontFamily: "monospace" }}>{lead.phone}</span><span>{lead.email || "—"}</span>
-                      </div>
-                    ))}
-                    {data.parsedLeads.length > 10 && (
-                      <div style={{ padding: "6px 10px", fontSize: "0.68rem", color: "#94a3b8", textAlign: "center" }}>… and {data.parsedLeads.length - 10} more</div>
-                    )}
-                  </div>
-                )}
-                <button onClick={() => next()} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "0.75rem", cursor: "pointer", textDecoration: "underline", textAlign: "left", padding: 0 }}>Skip — add leads later →</button>
-              </div>
-            )}
-
-            {/* Step 6: Strategy */}
-            {stepId === "strategy" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: "0 0 0.3rem" }}>Calling strategy</h3>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0 0 1rem" }}>How should your agent dial and follow up?</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-                  {STRATEGIES.map(s => {
-                    const sel = data.strategy === s.id;
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {existingAgents.map(agent => {
+                    const sel = data.agentId === agent.id;
+                    const hasPhone = !!agent.phone_number;
                     return (
-                      <div key={s.id} onClick={() => upd({ strategy: s.id })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 10, cursor: "pointer", border: sel ? "2px solid #2563eb" : "1.5px solid #e2e8f0", background: sel ? "#eff6ff" : "#fff", transition: "all 0.18s" }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: sel ? "#dbeafe" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>{s.icon}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.85rem", color: sel ? "#2563eb" : "#0f172a" }}>{s.label}</div>
-                          <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{s.desc}</div>
+                      <div
+                        key={agent.id}
+                        onClick={() => upd({ agentId: agent.id })}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 16,
+                          padding: "16px 18px", borderRadius: 14, cursor: "pointer",
+                          border: sel ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
+                          background: sel ? "#eff6ff" : "#fff",
+                          boxShadow: sel ? "0 0 0 4px rgba(37,99,235,0.08)" : "none",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <AgentAvatar name={agent.name} size={46} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontWeight: 800, fontSize: "0.95rem", color: sel ? "#2563eb" : "#0f172a" }}>{agent.name}</span>
+                            {agent.telnyx_assistant_id && (
+                              <span style={{ fontSize: "0.62rem", fontWeight: 800, color: "#059669", background: "#ecfdf5", border: "1px solid #bbf7d0", padding: "2px 7px", borderRadius: 99, letterSpacing: 0.3 }}>● LIVE</span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", gap: 12, fontSize: "0.75rem", color: "#64748b", flexWrap: "wrap" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: "50%", background: hasPhone ? "#059669" : "#e2e8f0", display: "inline-block" }} />
+                              {hasPhone ? <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#0f172a" }}>{agent.phone_number}</span> : <span style={{ color: "#f59e0b" }}>No phone assigned</span>}
+                            </span>
+                            {agent.voice_id && <span>🎙 {agent.voice_id.split(".").pop()}</span>}
+                            {agent.business_name && <span>🏢 {agent.business_name}</span>}
+                          </div>
                         </div>
-                        {sel && <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.55rem", color: "#fff", fontWeight: 800 }}>✓</div>}
+                        <div style={{
+                          width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                          background: sel ? "#2563eb" : "#f1f5f9",
+                          border: sel ? "none" : "2px solid #e2e8f0",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          {sel && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
+                        </div>
                       </div>
                     );
                   })}
+                  <a href="/dashboard/agents/create" style={{ textAlign: "center", padding: "12px", border: "1.5px dashed #cbd5e1", borderRadius: 12, color: "#64748b", fontSize: "0.82rem", fontWeight: 600, textDecoration: "none", display: "block" }}>
+                    + Create a new agent
+                  </a>
                 </div>
+              )}
+            </div>
+          )}
 
-                <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                    <div>
-                      <label style={lbl}>Campaign Timezone</label>
-                      <select style={{ ...inp, cursor: "pointer" }} value={data.callingWindowTimezone} onChange={e => upd({ callingWindowTimezone: e.target.value })}>
-                        <option value="lead_local">Use Lead's Local Time (Detected via Area Code)</option>
-                        <option value="UTC">UTC (Coordinated Universal Time)</option>
-                        <option value="America/New_York">Eastern Time (US & Canada)</option>
-                        <option value="America/Chicago">Central Time (US & Canada)</option>
-                        <option value="America/Denver">Mountain Time (US & Canada)</option>
-                        <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
-                        <option value="Europe/London">UK Time (London)</option>
-                        <option value="Europe/Paris">Central Europe (Paris/Berlin)</option>
-                        <option value="Asia/Kolkata">India Standard Time (IST)</option>
-                        <option value="Asia/Tokyo">Japan Standard Time (JST)</option>
-                        <option value="Australia/Sydney">Australian Eastern (AEST)</option>
-                      </select>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      <div><label style={lbl}>Start Time</label><input type="time" style={inp} value={data.callingWindowStart} onChange={e => upd({ callingWindowStart: e.target.value })} /></div>
-                      <div><label style={lbl}>End Time</label><input type="time" style={inp} value={data.callingWindowEnd} onChange={e => upd({ callingWindowEnd: e.target.value })} /></div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
-                    <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#0f172a" }}>⚡ Speed-to-Lead</span>
-                    <input type="checkbox" checked={data.speedToLead} onChange={e => upd({ speedToLead: e.target.checked })} style={{ width: 18, height: 18, accentColor: "#2563eb" }} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
-                    <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#0f172a" }}>💬 SMS Follow-ups</span>
-                    <input type="checkbox" checked={data.smsEnabled} onChange={e => upd({ smsEnabled: e.target.checked })} style={{ width: 18, height: 18, accentColor: "#2563eb" }} />
-                  </div>
+          {/* ── STEP 3: Leads ── */}
+          {stepId === "leads" && (
+            <div style={{ animation: "fadeSlideIn 0.25s ease" }}>
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", marginBottom: 4 }}>Upload your lead list</div>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.6 }}>
+                  Upload a CSV file. Required column: <strong>phone</strong>. Optional: <strong>name</strong>, <strong>email</strong>.
                 </div>
               </div>
-            )}
 
-            {/* Step 7: Review & Launch */}
-            {stepId === "review" && (
-              <div style={{ animation: "fadeSlideIn 0.25s ease", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#0f172a", margin: 0 }}>Review & Launch</h3>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>Everything looks good? Hit Launch to create your campaign.</p>
+              <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={handleFileUpload} style={{ display: "none" }} />
 
-                <div style={{ background: "#f8fafc", borderRadius: 10, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              {data.parsedLeads.length === 0 ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ border: "2px dashed #cbd5e1", borderRadius: 16, padding: "3rem 2rem", textAlign: "center", cursor: "pointer", background: "#fafafa", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#2563eb"; e.currentTarget.style.background = "#eff6ff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#cbd5e1"; e.currentTarget.style.background = "#fafafa"; }}
+                >
+                  <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📂</div>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#334155", marginBottom: 6 }}>Click to upload CSV file</div>
+                  <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Supported: .csv, .txt · Columns: name, phone, email</div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "#ecfdf5", border: "1.5px solid #bbf7d0", borderRadius: 12, marginBottom: 14 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 9, background: "#059669", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.1rem", flexShrink: 0 }}>✓</div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "#065f46" }}>{data.parsedLeads.length} leads imported</div>
+                      <div style={{ fontSize: "0.75rem", color: "#059669", marginTop: 2 }}>from "{data.leadsFileName}"</div>
+                    </div>
+                    <button onClick={() => fileInputRef.current?.click()} style={{ marginLeft: "auto", background: "#fff", border: "1.5px solid #bbf7d0", borderRadius: 8, padding: "6px 12px", fontSize: "0.75rem", fontWeight: 700, color: "#059669", cursor: "pointer" }}>Replace</button>
+                  </div>
+                  <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", padding: "8px 14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "0.65rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      <span>Name</span><span>Phone</span><span>Email</span>
+                    </div>
+                    {data.parsedLeads.slice(0, 8).map((lead, i) => (
+                      <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", padding: "8px 14px", borderBottom: "1px solid #f1f5f9", fontSize: "0.78rem", color: "#334155" }}>
+                        <span style={{ fontWeight: 600 }}>{lead.name}</span>
+                        <span style={{ fontFamily: "monospace", fontSize: "0.72rem" }}>{lead.phone}</span>
+                        <span style={{ color: "#94a3b8" }}>{lead.email || "—"}</span>
+                      </div>
+                    ))}
+                    {data.parsedLeads.length > 8 && (
+                      <div style={{ padding: "8px 14px", fontSize: "0.72rem", color: "#94a3b8", textAlign: "center", background: "#f8fafc" }}>
+                        + {data.parsedLeads.length - 8} more contacts
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => next()}
+                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "0.78rem", cursor: "pointer", textDecoration: "underline", marginTop: 16, padding: 0, display: "block" }}
+              >
+                Skip — upload leads after launch →
+              </button>
+            </div>
+          )}
+
+          {/* ── STEP 4: Schedule ── */}
+          {stepId === "schedule" && (
+            <div style={{ animation: "fadeSlideIn 0.25s ease" }}>
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", marginBottom: 4 }}>Calling schedule & strategy</div>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.6 }}>Choose how and when your agent places calls.</div>
+              </div>
+
+              {/* Strategy cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1.5rem" }}>
+                {STRATEGIES.map(s => {
+                  const sel = data.strategy === s.id;
+                  return (
+                    <div key={s.id} onClick={() => upd({ strategy: s.id })} style={{
+                      padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                      border: sel ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
+                      background: sel ? "#eff6ff" : "#fff",
+                      transition: "all 0.15s", position: "relative",
+                    }}>
+                      <div style={{ fontSize: "1.25rem", marginBottom: 6 }}>{s.icon}</div>
+                      <div style={{ fontWeight: 800, fontSize: "0.84rem", color: sel ? "#2563eb" : "#0f172a", marginBottom: 2 }}>{s.label}</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.4 }}>{s.desc}</div>
+                      {sel && <div style={{ position: "absolute", top: 10, right: 10, width: 18, height: 18, borderRadius: "50%", background: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.55rem", fontWeight: 800 }}>✓</div>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Timezone + window */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "1.25rem", background: "#f8fafc", borderRadius: 12, border: "1.5px solid #e2e8f0" }}>
+                <div>
+                  <label style={lbl}>Calling Timezone</label>
+                  <select style={{ ...inp, cursor: "pointer" }} value={data.callingWindowTimezone} onChange={e => upd({ callingWindowTimezone: e.target.value })}>
+                    <option value="lead_local">Lead's Local Time (auto-detected via area code)</option>
+                    <option value="UTC">UTC</option>
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="America/Chicago">Central Time (CT)</option>
+                    <option value="America/Denver">Mountain Time (MT)</option>
+                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    <option value="Europe/London">London (GMT/BST)</option>
+                    <option value="Europe/Paris">Central Europe (CET)</option>
+                    <option value="Asia/Kolkata">India (IST)</option>
+                    <option value="Asia/Tokyo">Japan (JST)</option>
+                    <option value="Australia/Sydney">Sydney (AEST)</option>
+                  </select>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div><label style={lbl}>Start Time</label><input type="time" style={inp} value={data.callingWindowStart} onChange={e => upd({ callingWindowStart: e.target.value })} /></div>
+                  <div><label style={lbl}>End Time</label><input type="time" style={inp} value={data.callingWindowEnd} onChange={e => upd({ callingWindowEnd: e.target.value })} /></div>
+                </div>
+
+                {/* Toggles */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 0, borderTop: "1px solid #e2e8f0", paddingTop: 14 }}>
                   {[
-                    { label: "Campaign", value: data.name, ok: true },
-                    { label: "Agent", value: data.useExistingAgent ? (existingAgents.find(a => a.id === data.existingAgentId)?.name || "—") : data.agentName, ok: (data.useExistingAgent ? !!data.existingAgentId : data.agentName.length > 0) },
-                    { label: "Phone", value: data.selectedPhone || "Skip (assign later)", ok: true },
-                    { label: "Leads", value: data.parsedLeads.length > 0 ? `${data.parsedLeads.length} contacts` : "None yet", ok: true },
-                    { label: "Strategy", value: STRATEGIES.find(s => s.id === data.strategy)?.label || "—", ok: true },
-                    { label: "Calling Window", value: `${data.callingWindowStart} – ${data.callingWindowEnd} (${data.callingWindowTimezone === "lead_local" ? "Lead's Local Time" : data.callingWindowTimezone})`, ok: true },
-                  ].map(row => (
-                    <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>{row.label}</span>
-                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: row.ok ? "#0f172a" : "#ef4444" }}>{row.value}</span>
+                    { key: "speedToLead", val: data.speedToLead, label: "Speed-to-Lead", desc: "Call new leads the moment they're added", icon: "⚡" },
+                    { key: "smsEnabled",  val: data.smsEnabled,  label: "SMS Follow-ups", desc: "Send text follow-up after unanswered calls",  icon: "💬" },
+                  ].map(t => (
+                    <div key={t.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <div style={{ fontSize: "1.1rem" }}>{t.icon}</div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: "0.84rem", color: "#0f172a" }}>{t.label}</div>
+                          <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{t.desc}</div>
+                        </div>
+                      </div>
+                      <div
+                        onClick={() => upd({ [t.key]: !t.val } as any)}
+                        style={{ width: 44, height: 24, borderRadius: 12, background: t.val ? "#2563eb" : "#e2e8f0", cursor: "pointer", position: "relative", transition: "0.2s", flexShrink: 0 }}
+                      >
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: t.val ? 22 : 2, transition: "0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }} />
+                      </div>
                     </div>
                   ))}
                 </div>
-
-                {launchProgress && (
-                  <div style={{ background: launchProgress.includes("✅") ? "#ecfdf5" : "#eff6ff", border: `1px solid ${launchProgress.includes("✅") ? "#bbf7d0" : "#bfdbfe"}`, borderRadius: 8, padding: "10px 12px", fontSize: "0.78rem", color: launchProgress.includes("✅") ? "#059669" : "#2563eb", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-                    {!launchProgress.includes("✅") && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(37,99,235,0.3)", borderTopColor: "#2563eb", animation: "spin 0.7s linear infinite" }} />}
-                    {launchProgress}
-                  </div>
-                )}
-
-                {launchError && (
-                  <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 12px", fontSize: "0.78rem", color: "#ef4444", fontWeight: 600 }}>
-                    ⚠️ {launchError}
-                  </div>
-                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* ── STEP 5: Review & Launch ── */}
+          {stepId === "launch" && (
+            <div style={{ animation: "fadeSlideIn 0.25s ease" }}>
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", marginBottom: 4 }}>Review & Launch</div>
+                <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Everything looks good? Hit Launch to create your campaign.</div>
+              </div>
+
+              {/* Summary card */}
+              <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 16, overflow: "hidden", marginBottom: 20 }}>
+                {/* Campaign row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>📣</div>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Campaign</div>
+                    <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#0f172a" }}>{data.name}</div>
+                  </div>
+                </div>
+
+                {/* Agent row */}
+                {selectedAgent && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
+                    <AgentAvatar name={selectedAgent.name} size={40} />
+                    <div>
+                      <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>AI Agent</div>
+                      <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#0f172a" }}>{selectedAgent.name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 2 }}>
+                        {selectedAgent.phone_number ? <span style={{ fontFamily: "monospace" }}>{selectedAgent.phone_number}</span> : <span style={{ color: "#f59e0b" }}>⚠ No phone assigned</span>}
+                        {selectedAgent.voice_id && <span> · 🎙 {selectedAgent.voice_id.split(".").pop()}</span>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Leads row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: data.parsedLeads.length > 0 ? "#ecfdf5" : "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>
+                    {data.parsedLeads.length > 0 ? "✅" : "📋"}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Leads</div>
+                    <div style={{ fontWeight: 700, fontSize: "0.88rem", color: data.parsedLeads.length > 0 ? "#059669" : "#64748b" }}>
+                      {data.parsedLeads.length > 0 ? `${data.parsedLeads.length} contacts ready` : "None uploaded yet — add after launch"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Schedule row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>🕐</div>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Schedule</div>
+                    <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#0f172a" }}>
+                      {STRATEGIES.find(s => s.id === data.strategy)?.label} · {data.callingWindowStart}–{data.callingWindowEnd}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: 2 }}>
+                      {data.callingWindowTimezone === "lead_local" ? "Lead's local time" : data.callingWindowTimezone}
+                      {data.speedToLead && " · ⚡ Speed-to-Lead ON"}
+                      {data.smsEnabled && " · 💬 SMS ON"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress / Error */}
+              {launchProgress && (
+                <div style={{ background: launchProgress.includes("✅") ? "#ecfdf5" : "#eff6ff", border: `1.5px solid ${launchProgress.includes("✅") ? "#bbf7d0" : "#bfdbfe"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.85rem", color: launchProgress.includes("✅") ? "#059669" : "#2563eb", fontWeight: 600, display: "flex", alignItems: "center", gap: 10 }}>
+                  {!launchProgress.includes("✅") && <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2.5px solid rgba(37,99,235,0.25)", borderTopColor: "#2563eb", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />}
+                  {launchProgress}
+                </div>
+              )}
+              {launchError && (
+                <div style={{ background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 10, padding: "12px 16px", fontSize: "0.85rem", color: "#ef4444", fontWeight: 600 }}>
+                  ⚠ {launchError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ── BOTTOM navigation ── */}
-        <div style={{ gridColumn: "2 / 4", borderTop: "1.5px solid #e2e8f0", padding: "0.85rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff" }}>
-          <button onClick={() => step > 0 ? setStep(s => s - 1) : onClose()} disabled={launching} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 18px", fontSize: "0.82rem", fontWeight: 700, color: "#64748b", cursor: "pointer", opacity: launching ? 0.5 : 1 }}>
-            ← {step === 0 ? "Cancel" : "Back"}
+        {/* ── FOOTER ── */}
+        <div style={{ padding: "1rem 1.75rem", borderTop: "1.5px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff" }}>
+          <button
+            onClick={() => step > 0 ? setStep(s => s - 1) : onClose()}
+            disabled={launching}
+            style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "9px 20px", fontSize: "0.85rem", fontWeight: 700, color: "#64748b", cursor: "pointer", opacity: launching ? 0.5 : 1 }}
+          >
+            {step === 0 ? "Cancel" : "← Back"}
           </button>
-          <div style={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}>{step + 1} / {WIZARD_STEPS.length}</div>
-          <button onClick={next} disabled={!canContinue() || launching} style={{ background: canContinue() && !launching ? "linear-gradient(135deg, #2563eb, #1d4ed8)" : "#e2e8f0", color: canContinue() && !launching ? "#fff" : "#94a3b8", border: "none", borderRadius: 9, padding: "9px 22px", fontSize: "0.85rem", fontWeight: 800, cursor: canContinue() && !launching ? "pointer" : "not-allowed", boxShadow: canContinue() && !launching ? "0 4px 12px rgba(37,99,235,0.3)" : "none", transition: "all 0.2s" }}>
+          <div style={{ fontSize: "0.72rem", color: "#94a3b8", fontWeight: 600 }}>
+            Step {step + 1} of {WIZARD_STEPS.length}
+          </div>
+          <button
+            onClick={next}
+            disabled={!canContinue() || launching}
+            style={{
+              background: canContinue() && !launching ? "linear-gradient(135deg, #2563eb, #1d4ed8)" : "#e2e8f0",
+              color: canContinue() && !launching ? "#fff" : "#94a3b8",
+              border: "none", borderRadius: 10, padding: "10px 28px",
+              fontSize: "0.88rem", fontWeight: 800,
+              cursor: canContinue() && !launching ? "pointer" : "not-allowed",
+              boxShadow: canContinue() && !launching ? "0 4px 14px rgba(37,99,235,0.3)" : "none",
+              transition: "all 0.2s",
+            }}
+          >
             {launching ? "Launching…" : step === WIZARD_STEPS.length - 1 ? "🚀 Launch Campaign" : "Continue →"}
           </button>
         </div>
