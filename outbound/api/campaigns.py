@@ -66,7 +66,23 @@ async def update_campaign(campaign_id: str, name: Optional[str] = None, status: 
     if status is not None:
         if status not in ("active", "inactive", "completed"):
             raise HTTPException(status_code=400, detail="Invalid status. Must be active, inactive, or completed")
+        
+        was_inactive = campaign.status != "active"
         campaign.status = status
+        
+        if status == "active" and was_inactive:
+            try:
+                import os
+                from loguru import logger
+                from arq import create_pool
+                from arq.connections import RedisSettings
+                redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+                redis = await create_pool(RedisSettings.from_dsn(redis_url))
+                await redis.enqueue_job("start_campaign", campaign.id)
+                logger.info(f"Triggered start_campaign ARQ job for campaign {campaign.id}")
+            except Exception as e:
+                logger.error(f"Failed to trigger ARQ start_campaign for campaign {campaign.id}: {e}")
+
     if max_concurrent is not None:
         campaign.max_concurrent_calls = max_concurrent
         

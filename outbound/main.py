@@ -13,18 +13,7 @@ app = FastAPI(title="AIxCaller Outbound Microservice")
 app.include_router(webhooks_router)
 app.include_router(campaigns_router)
 
-dialer_engine = OutboundDialerEngine()
-
-@app.post("/api/v1/outbound/cron")
-async def trigger_cron_dialer(background_tasks: BackgroundTasks):
-    """
-    Main dialing cron — triggered every minute by Cloud Scheduler.
-    Runs sheet sync, AI lead scoring, timezone window checks, smart retry cadence,
-    and places outbound TeXML calls for all active campaigns.
-    """
-    logger.info("Outbound dialer cron trigger received.")
-    background_tasks.add_task(dialer_engine.execute_dialing_campaigns)
-    return {"status": "triggered", "message": "Campaign dialing dispatch initiated in background."}
+# Cron endpoint removed in favor of ARQ dialer
 
 
 @app.post("/api/v1/outbound/cron-reminders")

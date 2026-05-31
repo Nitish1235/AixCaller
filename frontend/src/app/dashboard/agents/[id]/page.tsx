@@ -677,14 +677,19 @@ export default function AgentDetailsPage() {
                     {/* Timezone */}
                     <div style={{ marginTop: 16 }}>
                       <label style={lbl}>Timezone</label>
-                      <select value={transferTz} onChange={e => setTransferTz(e.target.value)} style={inp}>
-                        {[
-                          "UTC",
-                          "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
-                          "Europe/London", "Europe/Berlin", "Europe/Paris",
-                          "Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Asia/Tokyo",
-                          "Australia/Sydney",
-                        ].map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                      <select style={{ ...inp, cursor: "pointer" }} value={transferTz} onChange={e => setTransferTz(e.target.value)}>
+                        <option value="UTC">UTC (Coordinated Universal Time)</option>
+                        <option value="America/New_York">Eastern Time (US & Canada)</option>
+                        <option value="America/Chicago">Central Time (US & Canada)</option>
+                        <option value="America/Denver">Mountain Time (US & Canada)</option>
+                        <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
+                        <option value="Europe/London">UK Time (London)</option>
+                        <option value="Europe/Paris">Central Europe (Paris/Berlin)</option>
+                        <option value="Asia/Dubai">Gulf Standard Time (Dubai)</option>
+                        <option value="Asia/Kolkata">India Standard Time (IST)</option>
+                        <option value="Asia/Singapore">Singapore Time (SGT)</option>
+                        <option value="Asia/Tokyo">Japan Standard Time (JST)</option>
+                        <option value="Australia/Sydney">Australian Eastern (AEST)</option>
                       </select>
                       <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 5, marginBottom: 0 }}>
                         All hour windows below are interpreted in this timezone.

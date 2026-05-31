@@ -160,6 +160,7 @@ export async function createCampaignAPI(data: {
   agent_id: string;
   name: string;
   max_concurrent_calls?: number;
+  calling_window_timezone?: string;
   calling_window_start?: string;
   calling_window_end?: string;
   speed_to_lead_enabled?: boolean;

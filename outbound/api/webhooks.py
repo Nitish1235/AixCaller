@@ -521,6 +521,14 @@ async def handle_conversation_ended(request: Request, lead_id: str, db: Session 
                 db=proc_db,
             )
         logger.info(f"Outbound call_processor pipeline complete for lead {lead_id}: {result}")
+        
+        # Enqueue the next lead to maintain concurrency
+        from arq import create_pool
+        from arq.connections import RedisSettings
+        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        redis = await create_pool(RedisSettings.from_dsn(redis_url))
+        await redis.enqueue_job("dial_next_lead", campaign.id)
+        logger.info(f"Enqueued dial_next_lead for campaign {campaign.id}")
     except Exception as proc_ex:
         logger.error(f"call_processor pipeline failed for outbound lead {lead_id}: {proc_ex}")
 

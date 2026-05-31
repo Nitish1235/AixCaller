@@ -262,7 +262,8 @@ class Campaign(SQLModel, table=True):
     daily_call_limit: Optional[int] = Field(default=None)
 
     # ── Timezone-Aware Calling Window ────────────────────────────────────────
-    # HH:MM strings in the lead's local time. Default: 9am-8pm.
+    # HH:MM strings. Defaults to 'lead_local' to use the area-code detected timezone.
+    calling_window_timezone: str = Field(default="lead_local")
     calling_window_start: str = Field(default="09:00")
     calling_window_end: str = Field(default="20:00")
 

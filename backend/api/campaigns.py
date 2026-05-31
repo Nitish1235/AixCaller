@@ -24,6 +24,7 @@ class CreateCampaignRequest(BaseModel):
     agent_id: str
     name: str
     max_concurrent_calls: int = 1
+    calling_window_timezone: str = "lead_local"
     calling_window_start: str = "09:00"
     calling_window_end: str = "20:00"
     retry_cadence_hours: List[int] = [2, 24, 72]
@@ -36,6 +37,7 @@ class UpdateCampaignRequest(BaseModel):
     name: Optional[str] = None
     status: Optional[str] = None
     max_concurrent_calls: Optional[int] = None
+    calling_window_timezone: Optional[str] = None
     calling_window_start: Optional[str] = None
     calling_window_end: Optional[str] = None
     retry_cadence_hours: Optional[List[int]] = None
@@ -82,6 +84,7 @@ async def create_campaign(req: CreateCampaignRequest, db: Session = Depends(get_
         agent_id=agent_uuid,
         name=req.name,
         max_concurrent_calls=req.max_concurrent_calls,
+        calling_window_timezone=req.calling_window_timezone,
         calling_window_start=req.calling_window_start,
         calling_window_end=req.calling_window_end,
         retry_cadence_hours=req.retry_cadence_hours,
@@ -125,6 +128,7 @@ async def list_campaigns(tenant_id: str, db: Session = Depends(get_db)):
             "agent_name": agent.name if agent else "Unknown",
             "agent_phone": agent.phone_number if agent else None,
             "max_concurrent_calls": c.max_concurrent_calls,
+            "calling_window_timezone": c.calling_window_timezone,
             "calling_window_start": c.calling_window_start,
             "calling_window_end": c.calling_window_end,
             "speed_to_lead_enabled": c.speed_to_lead_enabled,
@@ -162,6 +166,7 @@ async def get_campaign(campaign_id: uuid.UUID, tenant_id: str, db: Session = Dep
         "agent_name": agent.name if agent else "Unknown",
         "agent_phone": agent.phone_number if agent else None,
         "max_concurrent_calls": campaign.max_concurrent_calls,
+        "calling_window_timezone": campaign.calling_window_timezone,
         "calling_window_start": campaign.calling_window_start,
         "calling_window_end": campaign.calling_window_end,
         "retry_cadence_hours": campaign.retry_cadence_hours,

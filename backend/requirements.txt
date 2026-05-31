@@ -16,3 +16,5 @@ bcrypt
 boto3
 google-cloud-storage
 websockets
+arq
+redis

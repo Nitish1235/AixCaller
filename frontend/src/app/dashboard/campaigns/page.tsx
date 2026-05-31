@@ -172,6 +172,7 @@ interface BuilderState {
   parsedLeads: ParsedLead[];
   leadsFileName: string;
   strategy: string;
+  callingWindowTimezone: string;
   callingWindowStart: string;
   callingWindowEnd: string;
   speedToLead: boolean;
@@ -190,7 +191,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
     agentName: "", businessName: "", businessContext: "", voiceId: "Telnyx.Ultra.Grace",
     phoneOption: "existing", selectedPhone: "",
     parsedLeads: [], leadsFileName: "", strategy: "immediate",
-    callingWindowStart: "09:00", callingWindowEnd: "20:00",
+    callingWindowTimezone: "lead_local", callingWindowStart: "09:00", callingWindowEnd: "20:00",
     speedToLead: false, smsEnabled: false,
   });
 
@@ -293,6 +294,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
         tenant_id: tenantId,
         agent_id: agentId,
         name: data.name,
+        calling_window_timezone: data.callingWindowTimezone,
         calling_window_start: data.callingWindowStart,
         calling_window_end: data.callingWindowEnd,
         speed_to_lead_enabled: data.speedToLead,
@@ -688,9 +690,27 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                 </div>
 
                 <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <div><label style={lbl}>Start Time</label><input type="time" style={inp} value={data.callingWindowStart} onChange={e => upd({ callingWindowStart: e.target.value })} /></div>
-                    <div><label style={lbl}>End Time</label><input type="time" style={inp} value={data.callingWindowEnd} onChange={e => upd({ callingWindowEnd: e.target.value })} /></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                    <div>
+                      <label style={lbl}>Campaign Timezone</label>
+                      <select style={{ ...inp, cursor: "pointer" }} value={data.callingWindowTimezone} onChange={e => upd({ callingWindowTimezone: e.target.value })}>
+                        <option value="lead_local">Use Lead's Local Time (Detected via Area Code)</option>
+                        <option value="UTC">UTC (Coordinated Universal Time)</option>
+                        <option value="America/New_York">Eastern Time (US & Canada)</option>
+                        <option value="America/Chicago">Central Time (US & Canada)</option>
+                        <option value="America/Denver">Mountain Time (US & Canada)</option>
+                        <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
+                        <option value="Europe/London">UK Time (London)</option>
+                        <option value="Europe/Paris">Central Europe (Paris/Berlin)</option>
+                        <option value="Asia/Kolkata">India Standard Time (IST)</option>
+                        <option value="Asia/Tokyo">Japan Standard Time (JST)</option>
+                        <option value="Australia/Sydney">Australian Eastern (AEST)</option>
+                      </select>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div><label style={lbl}>Start Time</label><input type="time" style={inp} value={data.callingWindowStart} onChange={e => upd({ callingWindowStart: e.target.value })} /></div>
+                      <div><label style={lbl}>End Time</label><input type="time" style={inp} value={data.callingWindowEnd} onChange={e => upd({ callingWindowEnd: e.target.value })} /></div>
+                    </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
                     <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#0f172a" }}>⚡ Speed-to-Lead</span>
@@ -717,7 +737,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                     { label: "Phone", value: data.selectedPhone || "Skip (assign later)", ok: true },
                     { label: "Leads", value: data.parsedLeads.length > 0 ? `${data.parsedLeads.length} contacts` : "None yet", ok: true },
                     { label: "Strategy", value: STRATEGIES.find(s => s.id === data.strategy)?.label || "—", ok: true },
-                    { label: "Calling Window", value: `${data.callingWindowStart} – ${data.callingWindowEnd}`, ok: true },
+                    { label: "Calling Window", value: `${data.callingWindowStart} – ${data.callingWindowEnd} (${data.callingWindowTimezone === "lead_local" ? "Lead's Local Time" : data.callingWindowTimezone})`, ok: true },
                   ].map(row => (
                     <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>{row.label}</span>
