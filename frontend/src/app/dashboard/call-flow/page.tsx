@@ -211,6 +211,19 @@ export default function CallFlowPage() {
     }
   };
 
+  // Returns true when the integration is ready to be enabled
+  const isIntegrationReady = (id: string): boolean => {
+    switch (id) {
+      case "shopify":         return !!(integrations.shopify_connected || integrations.shopify_store_url);
+      case "hubspot_sync":    return !!integrations.hubspot_connected;
+      case "salesforce_sync": return !!integrations.salesforce_connected;
+      case "airtable_log":    return !!integrations.airtable_connected;
+      case "webhook_post":    return !!integrations.webhook_url;
+      // built-ins — no external account needed
+      default:                return true;
+    }
+  };
+
   const saveIntegration = async (fields: any) => {
     setSavingInt(true);
     try {
@@ -234,6 +247,7 @@ export default function CallFlowPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {items.map(item => {
           const enabled = isToolEnabled(item.id, item.phase);
+          const ready = isIntegrationReady(item.id);
           const selected = selectedItem === item.id;
           return (
             <div
@@ -241,27 +255,56 @@ export default function CallFlowPage() {
               onClick={() => setSelectedItem(item.id)}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: 16, border: selected ? "2px solid var(--blue)" : "1.5px solid var(--border)", borderRadius: 12,
-                cursor: "pointer", background: selected ? "rgba(29, 78, 216, 0.04)" : "#fff",
+                padding: 16,
+                border: selected ? "2px solid var(--blue)" : !ready ? "1.5px dashed #f59e0b" : "1.5px solid var(--border)",
+                borderRadius: 12, cursor: "pointer",
+                background: selected ? "rgba(29, 78, 216, 0.04)" : !ready ? "#fffbeb" : "#fff",
                 transition: "all 0.2s"
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ filter: enabled ? "none" : "grayscale(100%) opacity(45%)", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <div style={{ filter: (enabled && ready) ? "none" : "grayscale(100%) opacity(45%)", flexShrink: 0 }}>
                   {PLATFORM_ICONS[item.id]}
                 </div>
-                <span style={{ fontWeight: 600, fontSize: "0.88rem", color: enabled ? "var(--text)" : "var(--text-muted)", lineHeight: 1.2 }}>{item.label}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.88rem", color: (enabled && ready) ? "var(--text)" : "var(--text-muted)", lineHeight: 1.2 }}>{item.label}</div>
+                  {!ready && (
+                    <div style={{ fontSize: "0.68rem", color: "#d97706", fontWeight: 700, marginTop: 2 }}>
+                      ⚙ Connect first →
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div onClick={(e) => { e.stopPropagation(); toggleTool(item.id, item.phase); }} style={{
-                width: 40, height: 22, borderRadius: 11, background: enabled ? "var(--blue)" : "#e2e8f0",
-                position: "relative", cursor: "pointer", transition: "0.2s", flexShrink: 0
-              }}>
-                <div style={{
-                  width: 18, height: 18, borderRadius: "50%", background: "#fff",
-                  position: "absolute", top: 2, left: enabled ? 20 : 2, transition: "0.2s",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
-                }} />
+              {/* Toggle — locked when not integrated */}
+              <div
+                title={!ready ? "Connect this integration first" : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!ready) {
+                    // Open config panel so user can set it up
+                    setSelectedItem(item.id);
+                    return;
+                  }
+                  toggleTool(item.id, item.phase);
+                }}
+                style={{
+                  width: 40, height: 22, borderRadius: 11, flexShrink: 0,
+                  background: (enabled && ready) ? "var(--blue)" : !ready ? "#fde68a" : "#e2e8f0",
+                  position: "relative", cursor: !ready ? "not-allowed" : "pointer", transition: "0.2s",
+                  border: !ready ? "1.5px solid #f59e0b" : "none",
+                  display: "flex", alignItems: "center", justifyContent: ready ? "flex-start" : "center",
+                }}
+              >
+                {!ready ? (
+                  <span style={{ fontSize: "11px", lineHeight: 1 }}>🔒</span>
+                ) : (
+                  <div style={{
+                    width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                    position: "absolute", top: 2, left: enabled ? 20 : 2, transition: "0.2s",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+                  }} />
+                )}
               </div>
             </div>
           );
@@ -480,11 +523,15 @@ export default function CallFlowPage() {
             </p>
             {integrations.hubspot_connected ? (
               <div style={{ padding: 15, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.9rem", marginBottom: 20 }}>
-                ✓ HubSpot Connected
+                ✓ HubSpot Connected — toggle it on in the card to activate
               </div>
             ) : (
               <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20 }}>
-                Not connected. Link HubSpot in the Integrations page.
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>⚠ Not connected</div>
+                <div style={{ fontSize: "0.85rem", lineHeight: 1.5 }}>Connect HubSpot first to enable this step.</div>
+                <a href="/dashboard/integrations" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#FF7A59", color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: "0.82rem", textDecoration: "none" }}>
+                  → Go to Integrations
+                </a>
               </div>
             )}
           </div>
@@ -506,11 +553,15 @@ export default function CallFlowPage() {
             </p>
             {integrations.salesforce_connected ? (
               <div style={{ padding: 15, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.9rem", marginBottom: 20 }}>
-                ✓ Salesforce Connected
+                ✓ Salesforce Connected — toggle it on in the card to activate
               </div>
             ) : (
               <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20 }}>
-                Not connected. Link Salesforce in the Integrations page.
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>⚠ Not connected</div>
+                <div style={{ fontSize: "0.85rem", lineHeight: 1.5 }}>Connect Salesforce first to enable this step.</div>
+                <a href="/dashboard/integrations" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#00A1E0", color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: "0.82rem", textDecoration: "none" }}>
+                  → Go to Integrations
+                </a>
               </div>
             )}
           </div>
@@ -550,10 +601,13 @@ export default function CallFlowPage() {
         );
       default:
         return (
-          <div style={{ textAlign: "center", color: "var(--text-muted)", marginTop: 40 }}>
-            <span style={{ fontSize: "3rem", display: "block", marginBottom: 15 }}>🔀</span>
-            <h3>Select a tool</h3>
-            <p style={{ fontSize: "0.9rem" }}>Click any tool in the timeline to configure it.</p>
+          <div style={{ textAlign: "center", color: "var(--text-muted)", marginTop: 40, padding: "0 16px" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>👈</div>
+            <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", marginBottom: 8 }}>Click any tool to configure</div>
+            <p style={{ fontSize: "0.85rem", lineHeight: 1.6 }}>
+              Select a tool from the left to see its setup guide and configuration options here.
+              Tools with a <span style={{ color: "#d97706", fontWeight: 700 }}>🔒 lock</span> need to be connected in Integrations first.
+            </p>
           </div>
         );
     }
@@ -565,7 +619,7 @@ export default function CallFlowPage() {
     <div style={containerStyle}>
       <div style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
-          <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 900, color: "var(--text)" }}>Call Flow Builder</h1>
+          <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 900, color: "var(--text)" }}>Inbound Call Setup</h1>
           <select
             style={{ ...inp, width: 280, padding: "8px 14px", fontWeight: 600, cursor: agents.length === 0 ? "not-allowed" : "pointer" }}
             value={agentId}
