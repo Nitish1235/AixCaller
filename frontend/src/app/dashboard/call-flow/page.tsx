@@ -3,6 +3,60 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchAgents, apiGet, apiPut, apiPost, apiPatch, getTenantId } from "@/lib/api";
 
+/* ── Platform logo helper ──────────────────────────────────────── */
+const CDN = "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons";
+function PlatformLogo({ slug, alt, bg, size = 30 }: { slug?: string; alt: string; bg: string; size?: number; icon?: React.ReactNode }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: 8, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      {slug
+        ? <img src={`${CDN}/${slug}.svg`} alt={alt} width={size * 0.58} height={size * 0.58} style={{ filter: "invert(1)" }} />
+        : null}
+    </div>
+  );
+}
+function CustomLogo({ bg, size = 30, children }: { bg: string; size?: number; children: React.ReactNode }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: 8, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff" }}>
+      {children}
+    </div>
+  );
+}
+
+const PLATFORM_ICONS: Record<string, React.ReactNode> = {
+  shopify:        <PlatformLogo slug="shopify"    alt="Shopify"    bg="#96BF48" />,
+  hubspot_sync:   <PlatformLogo slug="hubspot"    alt="HubSpot"    bg="#FF7A59" />,
+  salesforce_sync:<PlatformLogo slug="salesforce" alt="Salesforce" bg="#00A1E0" />,
+  airtable_log:   <PlatformLogo slug="airtable"   alt="Airtable"   bg="#18BFFF" />,
+  email_summary: (
+    <CustomLogo bg="#F59E0B">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>
+      </svg>
+    </CustomLogo>
+  ),
+  webhook_post: (
+    <CustomLogo bg="#7C3AED">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      </svg>
+    </CustomLogo>
+  ),
+  knowledge_base: (
+    <CustomLogo bg="#2563EB">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+    </CustomLogo>
+  ),
+  human_transfer: (
+    <CustomLogo bg="#64748B">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l1.06-1.06a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+      </svg>
+    </CustomLogo>
+  ),
+};
+
 const containerStyle: React.CSSProperties = { display: "flex", flexDirection: "column", height: "calc(100vh - 80px)", overflow: "hidden" };
 const headerStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 30px", borderBottom: "1px solid var(--border)", background: "#fff" };
 const mainLayout: React.CSSProperties = { display: "flex", flex: 1, overflow: "hidden", background: "#f9fafb" };
@@ -172,18 +226,18 @@ export default function CallFlowPage() {
     setSavingInt(false);
   };
 
-  const renderTimelineCard = (title: string, subtitle: string, items: {id: string, label: string, icon: string, phase: string}[]) => (
+  const renderTimelineCard = (title: string, subtitle: string, items: {id: string, label: string, phase: string}[]) => (
     <div style={{ width: 600, background: "#fff", border: "1.5px solid var(--border)", borderRadius: 16, padding: 24, boxShadow: "0 4px 15px rgba(0,0,0,0.02)" }}>
       <h2 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 4px", color: "var(--text)" }}>{title}</h2>
       <p style={{ color: "var(--text-muted)", margin: "0 0 20px", fontSize: "0.9rem" }}>{subtitle}</p>
-      
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {items.map(item => {
           const enabled = isToolEnabled(item.id, item.phase);
           const selected = selectedItem === item.id;
           return (
-            <div 
-              key={item.id} 
+            <div
+              key={item.id}
               onClick={() => setSelectedItem(item.id)}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -193,13 +247,15 @@ export default function CallFlowPage() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: "1.2rem", filter: enabled ? "none" : "grayscale(100%) opacity(50%)" }}>{item.icon}</span>
-                <span style={{ fontWeight: 600, fontSize: "0.95rem", color: enabled ? "var(--text)" : "var(--text-muted)" }}>{item.label}</span>
+                <div style={{ filter: enabled ? "none" : "grayscale(100%) opacity(45%)", flexShrink: 0 }}>
+                  {PLATFORM_ICONS[item.id]}
+                </div>
+                <span style={{ fontWeight: 600, fontSize: "0.88rem", color: enabled ? "var(--text)" : "var(--text-muted)", lineHeight: 1.2 }}>{item.label}</span>
               </div>
-              
+
               <div onClick={(e) => { e.stopPropagation(); toggleTool(item.id, item.phase); }} style={{
                 width: 40, height: 22, borderRadius: 11, background: enabled ? "var(--blue)" : "#e2e8f0",
-                position: "relative", cursor: "pointer", transition: "0.2s"
+                position: "relative", cursor: "pointer", transition: "0.2s", flexShrink: 0
               }}>
                 <div style={{
                   width: 18, height: 18, borderRadius: "50%", background: "#fff",
@@ -219,7 +275,15 @@ export default function CallFlowPage() {
       case "shopify":
         return (
           <div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>Shopify Setup</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#96BF48", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/shopify.svg`} width={22} height={22} alt="Shopify" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Shopify</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>E-commerce · Real-time order lookup</div>
+              </div>
+            </div>
             <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 10 }}>
               Allow your AI agent to look up order status and product information in real-time.
             </p>
@@ -277,7 +341,15 @@ export default function CallFlowPage() {
       case "airtable":
         return (
           <div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>Airtable Log</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#18BFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/airtable.svg`} width={22} height={22} alt="Airtable" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Airtable</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Database · Call log & transcripts</div>
+              </div>
+            </div>
             <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 10 }}>
               Automatically log every completed call, transcript, and summary to an Airtable base.
             </p>
@@ -334,7 +406,15 @@ export default function CallFlowPage() {
       case "webhook_post":
         return (
           <div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>Post-call Webhook</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#7C3AED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Custom Webhook</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Zapier · Make · Any REST endpoint</div>
+              </div>
+            </div>
             <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 10 }}>
               Send a POST request to a Zapier, Make, or custom URL after every call ends.
             </p>
@@ -386,7 +466,15 @@ export default function CallFlowPage() {
       case "hubspot_sync":
         return (
           <div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>HubSpot Sync</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FF7A59", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/hubspot.svg`} width={22} height={22} alt="HubSpot" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>HubSpot CRM</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>CRM · Contacts & deal sync</div>
+              </div>
+            </div>
             <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 20 }}>
               Log calls automatically to HubSpot Contacts.
             </p>
@@ -404,7 +492,15 @@ export default function CallFlowPage() {
       case "salesforce_sync":
         return (
           <div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: "0 0 10px" }}>Salesforce Sync</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#00A1E0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/salesforce.svg`} width={22} height={22} alt="Salesforce" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Salesforce</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>CRM · Enterprise lead & contact sync</div>
+              </div>
+            </div>
             <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 20 }}>
               Log calls automatically to Salesforce Leads/Contacts.
             </p>
@@ -519,9 +615,9 @@ export default function CallFlowPage() {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--blue)", color: "#fff", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: 800, fontSize: "1.2rem", marginBottom: 15 }}>1</div>
               {renderTimelineCard("During the Call", "What tools can the AI use while speaking?", [
-                { id: "knowledge_base", label: "Knowledge Base", icon: "📚", phase: "during_call" },
-                { id: "human_transfer", label: "Human Transfer", icon: "📞", phase: "during_call" },
-                { id: "shopify", label: "Shopify Lookup", icon: "🛍️", phase: "during_call" },
+                { id: "knowledge_base", label: "Knowledge Base", phase: "during_call" },
+                { id: "human_transfer", label: "Human Transfer", phase: "during_call" },
+                { id: "shopify", label: "Shopify Lookup", phase: "during_call" },
               ])}
             </div>
             
@@ -531,11 +627,11 @@ export default function CallFlowPage() {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#10b981", color: "#fff", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: 800, fontSize: "1.2rem", marginBottom: 15 }}>2</div>
               {renderTimelineCard("After the Call", "What automations run when the user hangs up?", [
-                { id: "email_summary", label: "Email Summary", icon: "📧", phase: "post_call" },
-                { id: "webhook_post", label: "Webhook", icon: "🪝", phase: "post_call" },
-                { id: "airtable_log", label: "Airtable Log", icon: "📊", phase: "post_call" },
-                { id: "hubspot_sync", label: "HubSpot Sync", icon: "🟧", phase: "post_call" },
-                { id: "salesforce_sync", label: "Salesforce Sync", icon: "☁️", phase: "post_call" },
+                { id: "email_summary", label: "Email Summary", phase: "post_call" },
+                { id: "webhook_post", label: "Webhook", phase: "post_call" },
+                { id: "airtable_log", label: "Airtable Log", phase: "post_call" },
+                { id: "hubspot_sync", label: "HubSpot Sync", phase: "post_call" },
+                { id: "salesforce_sync", label: "Salesforce Sync", phase: "post_call" },
               ])}
             </div>
 

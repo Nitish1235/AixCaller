@@ -786,7 +786,8 @@ export default function AgentDetailsPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
                   <div>
                     <h3 style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                      🛍️ Shopify Integration
+                      <div style={{ width: 26, height: 26, borderRadius: 6, background: "#96BF48", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/shopify.svg" alt="Shopify" width={15} height={15} style={{ filter: "invert(1)" }} /></div>
+                      Shopify Integration
                       {shopifyStatus?.connected && (
                         <span style={{ fontSize: "0.65rem", padding: "2px 8px", background: "var(--green-light)", color: "var(--green)", borderRadius: 99, fontWeight: 700, letterSpacing: 0.5 }}>
                           CONNECTED
@@ -858,7 +859,7 @@ export default function AgentDetailsPage() {
                             boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)",
                           }}
                         >
-                          🛍️ Connect with Shopify
+                          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/shopify.svg" alt="" width={16} height={16} style={{ filter: "invert(1)" }} /> Connect with Shopify
                         </button>
                       </>
                     ) : (
@@ -887,7 +888,7 @@ export default function AgentDetailsPage() {
                             boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)",
                           }}
                         >
-                          {shopifyBusy ? "Connecting…" : "🛍️ Connect with Token"}
+                          {shopifyBusy ? "Connecting…" : <><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/shopify.svg" alt="" width={16} height={16} style={{ filter: "invert(1)" }} /> Connect with Token</>}
                         </button>
                       </>
                     )}

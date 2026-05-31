@@ -546,7 +546,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                   <>
                     {/* Google */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.google_connected ? "#059669" : "#e2e8f0"}`, background: integrationStatus.google_connected ? "#f0fdf4" : "#fff" }}>
-                      <span style={{ fontSize: "1rem" }}>📅</span>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#4285F4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlecalendar.svg" alt="Google" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Google Workspace</div>
                         <div style={{ fontSize: "0.68rem", color: integrationStatus.google_connected ? "#059669" : "#94a3b8" }}>{integrationStatus.google_connected ? "✓ Connected — Calendar & Sheets" : "Not connected"}</div>
@@ -560,7 +560,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
 
                     {/* HubSpot CRM */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.hubspot_connected ? "#ff7a59" : "#e2e8f0"}`, background: integrationStatus.hubspot_connected ? "#fff7ed" : "#fff" }}>
-                      <span style={{ fontSize: "1rem" }}>🟠</span>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#FF7A59", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/hubspot.svg" alt="HubSpot" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>HubSpot CRM</div>
                         <div style={{ fontSize: "0.68rem", color: integrationStatus.hubspot_connected ? "#d97706" : "#94a3b8" }}>{integrationStatus.hubspot_connected ? "✓ Connected — Syncing leads" : "Not connected"}</div>
@@ -574,7 +574,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
 
                     {/* Salesforce */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.salesforce_connected ? "#00a1e0" : "#e2e8f0"}`, background: integrationStatus.salesforce_connected ? "#f0f9ff" : "#fff" }}>
-                      <span style={{ fontSize: "1rem" }}>☁️</span>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#00A1E0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/salesforce.svg" alt="Salesforce" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Salesforce</div>
                         <div style={{ fontSize: "0.68rem", color: integrationStatus.salesforce_connected ? "#0c4a6e" : "#94a3b8" }}>{integrationStatus.salesforce_connected ? "✓ Connected — Enterprise sync" : "Not connected"}</div>
@@ -588,7 +588,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
 
                     {/* Shopify */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.shopify_store_url ? "#10b981" : "#e2e8f0"}`, background: integrationStatus.shopify_store_url ? "#ecfdf5" : "#fff" }}>
-                      <span style={{ fontSize: "1rem" }}>🛍️</span>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#96BF48", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/shopify.svg" alt="Shopify" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Shopify</div>
                         <div style={{ fontSize: "0.68rem", color: integrationStatus.shopify_store_url ? "#047857" : "#94a3b8" }}>{integrationStatus.shopify_store_url ? `✓ Connected to ${integrationStatus.shopify_store_url}` : "Not connected"}</div>
@@ -602,7 +602,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
 
                     {/* Webhook */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.webhook_url ? "#8b5cf6" : "#e2e8f0"}`, background: integrationStatus.webhook_url ? "#f5f3ff" : "#fff" }}>
-                      <span style={{ fontSize: "1rem" }}>🔗</span>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#7C3AED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Custom Webhook</div>
                         <div style={{ fontSize: "0.68rem", color: integrationStatus.webhook_url ? "#5b21b6" : "#94a3b8" }}>{integrationStatus.webhook_url ? "✓ Active — Data forwarding" : "Not connected"}</div>
@@ -616,7 +616,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
 
                     {/* Airtable */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 9, border: `1.5px solid ${integrationStatus.airtable_connected ? "#18bfff" : "#e2e8f0"}`, background: integrationStatus.airtable_connected ? "#ecfeff" : "#fff" }}>
-                      <span style={{ fontSize: "1rem" }}>📊</span>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#18BFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/airtable.svg" alt="Airtable" width={16} height={16} style={{ filter: "invert(1)" }} /></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Airtable</div>
                         <div style={{ fontSize: "0.68rem", color: integrationStatus.airtable_connected ? "#0891b2" : "#94a3b8" }}>{integrationStatus.airtable_connected ? "✓ Connected — Call logging active" : "Not connected"}</div>

@@ -88,12 +88,8 @@ function IntegrationCard({ icon, title, description, connected, accentColor, com
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", gap: "0.5rem" }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: connected ? `${accentColor}10` : comingSoon ? "#fffbeb" : "var(--surface)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "1.4rem", flexShrink: 0,
-            border: `1.5px solid ${connected ? `${accentColor}25` : comingSoon ? "rgba(217,119,6,0.15)" : "var(--border)"}`,
-            transition: "all 0.25s",
+            flexShrink: 0, transition: "all 0.25s",
           }}>
             {icon}
           </div>
@@ -274,15 +270,41 @@ const GUIDES: Record<string, { title: string, steps: { title: string; desc: Reac
   }
 };
 
+const CDN_SI = "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons";
+function BrandIcon({ slug, alt, bg, size = 22 }: { slug?: string; alt: string; bg: string; size?: number; children?: React.ReactNode }) {
+  return (
+    <div style={{ width: size + 10, height: size + 10, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <img src={`${CDN_SI}/${slug}.svg`} alt={alt} width={size} height={size} style={{ filter: "invert(1)" }} />
+    </div>
+  );
+}
+function CustomBrandIcon({ bg, size = 22, children }: { bg: string; size?: number; children: React.ReactNode }) {
+  return (
+    <div style={{ width: size + 10, height: size + 10, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+      {children}
+    </div>
+  );
+}
 const Icons = {
-  google: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12.005 11.196v2.54h4.636c-.204 1.256-1.468 3.684-4.636 3.684-2.793 0-5.076-2.327-5.076-5.187 0-2.86 2.283-5.187 5.076-5.187 1.577 0 2.628.673 3.23 1.246l2.008-1.938C15.897 4.966 14.12 4.195 12.005 4.195c-4.42 0-8.005 3.584-8.005 8.038s3.585 8.038 8.005 8.038c4.617 0 7.68-3.245 7.68-7.817 0-.525-.057-.925-.125-1.258H12.005z"/></svg>,
-  hubspot: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M21 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM7.33 13.91l6.76-3.83A3 3 0 0 0 18 9.5a3.5 3.5 0 0 0-.5-1.8L10.3 12.1a4 4 0 0 0-4.3 6.4 4 4 0 1 0 1.33-4.59ZM3 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM7.92 8.78A3.01 3.01 0 0 1 6 9a3.02 3.02 0 0 1-1.68-.5L8.5 4.54A3.01 3.01 0 0 1 9 6a3 3 0 0 1-1.08 2.78Z"/></svg>,
-  salesforce: <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17.5 10c-.3 0-.6.1-.8.2C16.2 8.3 14.2 7 12 7c-2.8 0-5.1 2-5.8 4.7-.3-.1-.7-.2-1-.2-2.2 0-4 1.8-4 4s1.8 4 4 4h12.5c2.5 0 4.5-2 4.5-4.5S20 10 17.5 10z"/></svg>,
-  shopify: <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 7h-3V5c0-2.8-2.2-5-5-5S7 2.2 7 5v2H4c-.6 0-1 .4-1 1v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-.6-.4-1-1-1zM9 5c0-1.7 1.3-3 3-3s3 1.3 3 3v2H9V5zm9 15H6V9h12v11z"/></svg>,
-  airtable: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2l10 5.6-10 5.6L2 7.6 12 2zm0 13.2L3.2 9.6v4.8L12 20l8.8-5.6V9.6L12 15.2z"/></svg>,
-  webhook: <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4"/><path d="M10 22v-4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M10 14h4"/></svg>,
-  // telegram integration removed
-  email: <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"/><path d="M3 7l9 6 9-6"/></svg>
+  google:    <BrandIcon slug="googlecalendar" alt="Google Calendar" bg="#4285F4" />,
+  hubspot:   <BrandIcon slug="hubspot"        alt="HubSpot"         bg="#FF7A59" />,
+  salesforce:<BrandIcon slug="salesforce"     alt="Salesforce"      bg="#00A1E0" />,
+  shopify:   <BrandIcon slug="shopify"        alt="Shopify"         bg="#96BF48" />,
+  airtable:  <BrandIcon slug="airtable"       alt="Airtable"        bg="#18BFFF" />,
+  webhook: (
+    <CustomBrandIcon bg="#7C3AED">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      </svg>
+    </CustomBrandIcon>
+  ),
+  email: (
+    <CustomBrandIcon bg="#F59E0B">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>
+      </svg>
+    </CustomBrandIcon>
+  ),
 };
 
 /* ─── MAIN PAGE ────────────────────────────────────────────────── */
