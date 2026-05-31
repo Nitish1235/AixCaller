@@ -88,7 +88,10 @@ const INTEGRATIONS = [
     color: "#7C3AED",
     textColor: "#fff",
     icon: (
-      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/api.svg" alt="Custom API" width={28} height={28} style={{ filter: 'invert(1)' }} />
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#fff" }}>
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
     ),
   },
 ];
