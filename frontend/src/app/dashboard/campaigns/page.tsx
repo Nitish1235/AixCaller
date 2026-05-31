@@ -800,10 +800,8 @@ export default function CampaignsPage() {
       fetchCampaigns(tid),
       fetchAgents(tid),
     ]);
-    const list = await fetchAgents(tid);
-    const voices = await fetchVoices();
-    setAgents(list);
-    setVoiceList(voices);
+    setCampaigns(campaignData);
+    setAgents(agentData);
     setLoading(false);
   }, []);
 
