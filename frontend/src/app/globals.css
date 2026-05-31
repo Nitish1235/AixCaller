@@ -300,6 +300,31 @@ a { color: inherit; text-decoration: none; }
   gap: 1.25rem;
 }
 
+/* Dashboard overview hover cards */
+.dash-action-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 13px; border-radius: 10px;
+  border: 1px solid #f0f0f0; background: #fff;
+  cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  text-decoration: none;
+}
+.dash-action-row:hover {
+  border-color: #dbeafe !important;
+  background: #fafcff !important;
+}
+
+.dash-agent-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 9px;
+  border: 1px solid #f0f0f0; background: #fff;
+  cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  text-decoration: none;
+}
+.dash-agent-row:hover {
+  border-color: #dbeafe;
+  background: #fafcff;
+}
+
 .dashboard-action-card:hover {
   border-color: var(--blue) !important;
   background: var(--blue-light) !important;

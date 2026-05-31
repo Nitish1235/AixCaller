@@ -1,21 +1,22 @@
 """
 Database Migration: Add sms_sent column to CallRecord
 """
-import asyncio
-from sqlmodel import Session, text
-from shared.database import engine
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-async def migrate():
+from dotenv import load_dotenv
+load_dotenv()
+
+from shared.database import engine
+from sqlalchemy import text
+
+def upgrade():
     with engine.begin() as conn:
         print("Adding sms_sent column to callrecord table...")
-        try:
-            conn.execute(text("ALTER TABLE callrecord ADD COLUMN sms_sent BOOLEAN DEFAULT FALSE;"))
-            print("Successfully added sms_sent column.")
-        except Exception as e:
-            if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
-                print("Column sms_sent already exists.")
-            else:
-                print(f"Error adding column: {e}")
+        conn.execute(text(
+            "ALTER TABLE callrecord ADD COLUMN IF NOT EXISTS sms_sent BOOLEAN DEFAULT FALSE;"
+        ))
+        print("Migration complete: sms_sent added.")
 
 if __name__ == "__main__":
-    asyncio.run(migrate())
+    upgrade()

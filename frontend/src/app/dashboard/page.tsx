@@ -268,29 +268,19 @@ export default async function DashboardPage() {
               { label: "Upload knowledge base",   href: "/dashboard/knowledge",      icon: <BookIcon />,      iconBg: "#dcfce7", iconColor: "#059669", desc: "PDFs, URLs, or plain text" },
               { label: "Outbound campaign",       href: "/dashboard/campaigns",      icon: <MegaphoneIcon />, iconBg: "#ede9fe", iconColor: "#7c3aed", desc: "Dial leads automatically" },
             ].map(a => (
-              <Link key={a.href} href={a.href} style={{ textDecoration: "none" }}>
+              <Link key={a.href} href={a.href} className="dash-action-row">
                 <div style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "11px 13px", borderRadius: 10,
-                  border: "1px solid #f0f0f0", background: "#fff",
-                  cursor: "pointer", transition: "all 0.15s",
-                }}
-                onMouseEnter={(e: any) => { e.currentTarget.style.borderColor = "#dbeafe"; e.currentTarget.style.background = "#fafcff"; }}
-                onMouseLeave={(e: any) => { e.currentTarget.style.borderColor = "#f0f0f0"; e.currentTarget.style.background = "#fff"; }}
-                >
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 9,
-                    background: a.iconBg, color: a.iconColor,
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  }}>
-                    {a.icon}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111827" }}>{a.label}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: 1 }}>{a.desc}</div>
-                  </div>
-                  <span style={{ color: "#d1d5db", flexShrink: 0 }}><ArrowRightIcon /></span>
+                  width: 36, height: 36, borderRadius: 9,
+                  background: a.iconBg, color: a.iconColor,
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  {a.icon}
                 </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111827" }}>{a.label}</div>
+                  <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: 1 }}>{a.desc}</div>
+                </div>
+                <span style={{ color: "#d1d5db", flexShrink: 0 }}><ArrowRightIcon /></span>
               </Link>
             ))}
           </div>
@@ -323,34 +313,24 @@ export default async function DashboardPage() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
               {agents.slice(0, 4).map((agent: any) => (
-                <Link key={agent.id} href={`/dashboard/agents/${agent.id}`} style={{ textDecoration: "none" }}>
+                <Link key={agent.id} href={`/dashboard/agents/${agent.id}`} className="dash-agent-row">
+                  <AgentAvatar name={agent.name} size={34} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {agent.name}
+                    </div>
+                    <div className="mono" style={{ fontSize: "0.7rem", color: "#9ca3af" }}>
+                      {agent.phone_number || agent.legacy_number || "No phone connected"}
+                    </div>
+                  </div>
                   <div style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    padding: "10px 12px", borderRadius: 9,
-                    border: "1px solid #f0f0f0", background: "#fff",
-                    cursor: "pointer", transition: "all 0.15s",
-                  }}
-                  onMouseEnter={(e: any) => { e.currentTarget.style.borderColor = "#dbeafe"; e.currentTarget.style.background = "#fafcff"; }}
-                  onMouseLeave={(e: any) => { e.currentTarget.style.borderColor = "#f0f0f0"; e.currentTarget.style.background = "#fff"; }}
-                  >
-                    <AgentAvatar name={agent.name} size={34} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {agent.name}
-                      </div>
-                      <div className="mono" style={{ fontSize: "0.7rem", color: "#9ca3af" }}>
-                        {agent.phone_number || agent.legacy_number || "No phone connected"}
-                      </div>
-                    </div>
-                    <div style={{
-                      display: "flex", alignItems: "center", gap: 5,
-                      background: "#f0fdf4", border: "1px solid #bbf7d0",
-                      borderRadius: 999, padding: "3px 9px",
-                      fontSize: "0.68rem", fontWeight: 600, color: "#059669",
-                    }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#059669", display: "inline-block" }} />
-                      Active
-                    </div>
+                    display: "flex", alignItems: "center", gap: 5,
+                    background: "#f0fdf4", border: "1px solid #bbf7d0",
+                    borderRadius: 999, padding: "3px 9px",
+                    fontSize: "0.68rem", fontWeight: 600, color: "#059669",
+                  }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#059669", display: "inline-block" }} />
+                    Active
                   </div>
                 </Link>
               ))}
