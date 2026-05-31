@@ -159,61 +159,100 @@ function FlowArrow({ active, color }: { active: boolean; color: string }) {
 
 /* ─── INTEGRATION GUIDE MODAL ──────────────────────────────────── */
 function IntegrationGuideModal({
-  isOpen,
-  onClose,
-  title,
-  steps,
+  isOpen, onClose, title, steps, icon,
+  onConnect, connectLabel, connectColor,
 }: {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  icon?: React.ReactNode;
   steps: { title: string; desc: React.ReactNode }[];
+  onConnect?: () => void;
+  connectLabel?: string;
+  connectColor?: string;
 }) {
   if (!isOpen) return null;
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 9999,
-      background: "rgba(15,23,42,0.4)", backdropFilter: "blur(4px)",
+      background: "rgba(15,23,42,0.55)", backdropFilter: "blur(6px)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
     }} onClick={onClose}>
       <div style={{
-        background: "#fff", borderRadius: 20, width: "100%", maxWidth: 600,
-        maxHeight: "90vh", overflowY: "auto", position: "relative",
-        boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
+        background: "#fff", borderRadius: 20, width: "100%", maxWidth: 580,
+        maxHeight: "90vh", display: "flex", flexDirection: "column",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
       }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
+
+        {/* ── Sticky Header ── */}
         <div style={{
-          padding: "1.5rem", borderBottom: "1.5px solid var(--border)",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          position: "sticky", top: 0, background: "#fff", zIndex: 10
+          padding: "1.4rem 1.5rem", borderBottom: "1.5px solid var(--border)",
+          display: "flex", alignItems: "center", gap: 14,
+          position: "sticky", top: 0, background: "#fff", borderRadius: "20px 20px 0 0", zIndex: 10,
+          flexShrink: 0,
         }}>
-          <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800 }}>{title} Setup Guide</h2>
+          {icon && <div style={{ flexShrink: 0 }}>{icon}</div>}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 900, fontSize: "1.1rem", color: "var(--text)", lineHeight: 1.2 }}>
+              {title} Setup Guide
+            </div>
+            <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 2 }}>
+              Read through the steps below before connecting
+            </div>
+          </div>
           <button onClick={onClose} style={{
-            background: "var(--surface)", border: "none", width: 32, height: 32,
+            background: "var(--surface)", border: "1px solid var(--border)", width: 32, height: 32,
             borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", fontSize: "1.2rem", color: "var(--text-muted)"
+            cursor: "pointer", fontSize: "1.1rem", color: "var(--text-muted)", flexShrink: 0,
           }}>×</button>
         </div>
 
-        {/* Body (Steps) */}
-        <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {/* ── Scrollable Body ── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
           {steps.map((step, i) => (
             <div key={i} style={{
-              display: "flex", gap: "1rem", background: "var(--surface)",
-              padding: "1.25rem", borderRadius: 12, border: "1px solid var(--border)"
+              display: "flex", gap: "1rem",
+              background: "var(--surface)", padding: "1.1rem 1.25rem",
+              borderRadius: 12, border: "1px solid var(--border)",
             }}>
               <div style={{
-                width: 28, height: 28, borderRadius: "50%", background: "var(--blue)", color: "#fff",
+                width: 28, height: 28, borderRadius: "50%",
+                background: connectColor || "var(--blue)", color: "#fff",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 800, fontSize: "0.85rem", flexShrink: 0
+                fontWeight: 800, fontSize: "0.82rem", flexShrink: 0,
               }}>{i + 1}</div>
               <div>
-                <h4 style={{ margin: "0 0 4px 0", fontSize: "0.95rem", fontWeight: 700, color: "var(--text)" }}>{step.title}</h4>
-                <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>{step.desc}</div>
+                <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "var(--text)", marginBottom: 4 }}>{step.title}</div>
+                <div style={{ fontSize: "0.83rem", color: "var(--text-muted)", lineHeight: 1.65 }}>{step.desc}</div>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* ── Sticky Footer CTA ── */}
+        <div style={{
+          padding: "1.1rem 1.5rem", borderTop: "1.5px solid var(--border)",
+          background: "#fff", borderRadius: "0 0 20px 20px", flexShrink: 0,
+          display: "flex", gap: 10,
+        }}>
+          <button onClick={onClose} style={{
+            flex: "0 0 auto", background: "none", border: "1.5px solid var(--border)",
+            borderRadius: 10, padding: "10px 18px", fontSize: "0.85rem", fontWeight: 600,
+            color: "var(--text-muted)", cursor: "pointer",
+          }}>
+            Close
+          </button>
+          {onConnect && (
+            <button onClick={() => { onConnect(); onClose(); }} style={{
+              flex: 1, background: connectColor || "var(--blue)", color: "#fff", border: "none",
+              borderRadius: 10, padding: "11px 20px", fontWeight: 800, fontSize: "0.9rem",
+              cursor: "pointer", boxShadow: `0 4px 16px ${connectColor || "var(--blue)"}40`,
+              transition: "all 0.2s",
+            }}>
+              {connectLabel || "Continue →"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -313,6 +352,21 @@ export default function IntegrationsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [guideOpen, setGuideOpen] = useState<string | null>(null);
+  // Stores the action + label to fire when user clicks CTA inside the guide modal
+  const [connectAction, setConnectAction] = useState<{ action: () => void; label: string; color: string } | null>(null);
+  // Tracks which credential-based integrations have had their guide accepted (form now visible)
+  const [formVisible, setFormVisible] = useState<Record<string, boolean>>({});
+
+  // Open guide as a mandatory step before connecting
+  const openConnectGuide = (key: string, action: () => void, label: string, color: string) => {
+    setConnectAction({ action, label, color });
+    setGuideOpen(key);
+  };
+  // Close guide and clear pending action
+  const closeGuide = () => {
+    setGuideOpen(null);
+    setConnectAction(null);
+  };
 
   const [settings, setSettings] = useState({
     googleCalendarId: "primary",
@@ -584,7 +638,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon={Icons.google} title="Google Workspace" description="Calendar booking & availability"
               connected={!!cfg.google_connected} accentColor="#2563eb"
-              onGuideClick={() => setGuideOpen("google")}
+              onGuideClick={() => { setConnectAction(null); setGuideOpen("google"); }}
             >
               {cfg.google_connected ? (
                 <>
@@ -636,14 +690,15 @@ export default function IntegrationsPage() {
                     Connect Google to let your AI agent check calendar availability and book appointments during calls.
                   </div>
                   <button
-                    className="int-btn" onClick={connectGoogle}
+                    className="int-btn"
+                    onClick={() => openConnectGuide("google", connectGoogle, "Authorize Google Calendar →", "#4285F4")}
                     style={{
-                      width: "100%", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10,
+                      width: "100%", background: "#4285F4", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(37,99,235,0.2)", marginTop: "auto",
+                      boxShadow: "0 4px 14px rgba(66,133,244,0.25)", marginTop: "auto",
                     }}
                   >
-                    🔗 Connect Google Workspace
+                    📖 View Setup Guide & Connect
                   </button>
                 </>
               )}
@@ -655,7 +710,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon={Icons.hubspot} title="HubSpot CRM" description="Automatic lead & deal sync"
               connected={!!cfg.hubspot_connected} accentColor="#ff7a59"
-              onGuideClick={() => setGuideOpen("hubspot")}
+              onGuideClick={() => { setConnectAction(null); setGuideOpen("hubspot"); }}
             >
               {cfg.hubspot_connected ? (
                 <>
@@ -683,14 +738,15 @@ export default function IntegrationsPage() {
                     Automatically push leads, call transcripts, and deal updates to your HubSpot CRM after every AI call.
                   </div>
                   <button
-                    className="int-btn" onClick={connectHubspot}
+                    className="int-btn"
+                    onClick={() => openConnectGuide("hubspot", connectHubspot, "Authorize HubSpot →", "#FF7A59")}
                     style={{
-                      width: "100%", background: "#ff7a59", color: "#fff", border: "none", borderRadius: 10,
+                      width: "100%", background: "#FF7A59", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(255,122,89,0.2)", marginTop: "auto",
+                      boxShadow: "0 4px 14px rgba(255,122,89,0.25)", marginTop: "auto",
                     }}
                   >
-                    🔗 Connect HubSpot
+                    📖 View Setup Guide & Connect
                   </button>
                 </>
               )}
@@ -702,7 +758,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon={Icons.salesforce} title="Salesforce" description="Enterprise CRM sync"
               connected={!!cfg.salesforce_connected} accentColor="#00a1e0"
-              onGuideClick={() => setGuideOpen("salesforce")}
+              onGuideClick={() => { setConnectAction(null); setGuideOpen("salesforce"); }}
             >
               {cfg.salesforce_connected ? (
                 <>
@@ -730,14 +786,15 @@ export default function IntegrationsPage() {
                     Sync leads, opportunities, and call activity directly to your Salesforce org. Built for enterprise teams.
                   </div>
                   <button
-                    className="int-btn" onClick={connectSalesforce}
+                    className="int-btn"
+                    onClick={() => openConnectGuide("salesforce", connectSalesforce, "Authorize Salesforce →", "#00A1E0")}
                     style={{
-                      width: "100%", background: "#00a1e0", color: "#fff", border: "none", borderRadius: 10,
+                      width: "100%", background: "#00A1E0", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(0,161,224,0.2)", marginTop: "auto",
+                      boxShadow: "0 4px 14px rgba(0,161,224,0.25)", marginTop: "auto",
                     }}
                   >
-                    🔗 Connect Salesforce
+                    📖 View Setup Guide & Connect
                   </button>
                 </>
               )}
@@ -749,7 +806,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon={Icons.shopify} title="Shopify" description="Real-time order & inventory checks"
               connected={!!cfg.shopify_store_url} accentColor="#10b981"
-              onGuideClick={() => setGuideOpen("shopify")}
+              onGuideClick={() => { setConnectAction(null); setGuideOpen("shopify"); }}
             >
               {cfg.shopify_store_url ? (
                 <>
@@ -792,10 +849,10 @@ export default function IntegrationsPage() {
                     </button>
                   </div>
                 </>
-              ) : (
+              ) : formVisible.shopify ? (
                 <>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-                    Let your AI check real-time order status and inventory directly from your Shopify store during calls.
+                  <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Enter your Shopify store details below. You created the Admin API token in the setup guide.
                   </div>
                   <div>
                     <label style={lbl}>Store URL</label>
@@ -803,7 +860,7 @@ export default function IntegrationsPage() {
                       style={inp} value={settings.shopifyStoreUrl}
                       onChange={e => setSettings({ ...settings, shopifyStoreUrl: e.target.value })}
                       placeholder="your-store.myshopify.com"
-                      onFocus={e => e.target.style.borderColor = "#10b981"}
+                      onFocus={e => e.target.style.borderColor = "#96BF48"}
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                   </div>
@@ -813,22 +870,41 @@ export default function IntegrationsPage() {
                       type="password" style={inp} value={settings.shopifyApiKey}
                       onChange={e => setSettings({ ...settings, shopifyApiKey: e.target.value })}
                       placeholder="shpat_••••••••"
-                      onFocus={e => e.target.style.borderColor = "#10b981"}
+                      onFocus={e => e.target.style.borderColor = "#96BF48"}
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                   </div>
+                  <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
+                    <button
+                      className="int-btn" onClick={saveShopifySettings}
+                      disabled={!settings.shopifyStoreUrl || !settings.shopifyApiKey || saving === "shopify"}
+                      style={{
+                        flex: 1, background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
+                        padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                        boxShadow: "0 4px 14px rgba(150,191,72,0.25)",
+                        opacity: (!settings.shopifyStoreUrl || !settings.shopifyApiKey || saving === "shopify") ? 0.5 : 1,
+                      }}
+                    >
+                      {saving === "shopify" ? "Saving…" : "💾 Save & Connect"}
+                    </button>
+                    <button onClick={() => setFormVisible(f => ({ ...f, shopify: false }))} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, padding: "10px 14px", fontSize: "0.8rem", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}>Back</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Let your AI check real-time order status and inventory directly from your Shopify store during calls.
+                  </div>
                   <button
-                    className="int-btn" onClick={saveShopifySettings}
-                    disabled={!settings.shopifyStoreUrl || !settings.shopifyApiKey || saving === "shopify"}
+                    className="int-btn"
+                    onClick={() => openConnectGuide("shopify", () => setFormVisible(f => ({ ...f, shopify: true })), "I'm ready — show connection form →", "#96BF48")}
                     style={{
-                      width: "100%", background: "#10b981", color: "#fff", border: "none", borderRadius: 10,
+                      width: "100%", background: "#96BF48", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(16,185,129,0.2)",
-                      opacity: (!settings.shopifyStoreUrl || !settings.shopifyApiKey || saving === "shopify") ? 0.5 : 1,
-                      marginTop: "auto",
+                      boxShadow: "0 4px 14px rgba(150,191,72,0.25)", marginTop: "auto",
                     }}
                   >
-                    {saving === "shopify" ? "Saving…" : "💾 Save & Connect"}
+                    📖 View Setup Guide & Connect
                   </button>
                 </>
               )}
@@ -840,7 +916,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon={Icons.webhook} title="Custom Webhook" description="Send data to Zapier/Make"
               connected={!!cfg.webhook_url} accentColor="#8b5cf6"
-              onGuideClick={() => setGuideOpen("webhook")}
+              onGuideClick={() => { setConnectAction(null); setGuideOpen("webhook"); }}
             >
               {cfg.webhook_url ? (
                 <>
@@ -883,10 +959,10 @@ export default function IntegrationsPage() {
                     </button>
                   </div>
                 </>
-              ) : (
+              ) : formVisible.webhook ? (
                 <>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-                    Send a POST request with the call transcript, summary, and sentiment to any custom URL instantly after a call ends.
+                  <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Paste your Zapier or Make.com Catch Hook URL below.
                   </div>
                   <div>
                     <label style={lbl}>Webhook URL</label>
@@ -898,18 +974,37 @@ export default function IntegrationsPage() {
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                   </div>
+                  <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
+                    <button
+                      className="int-btn" onClick={saveWebhookSettings}
+                      disabled={!settings.webhookUrl || saving === "webhook"}
+                      style={{
+                        flex: 1, background: "#8b5cf6", color: "#fff", border: "none", borderRadius: 10,
+                        padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                        boxShadow: "0 4px 14px rgba(139,92,246,0.25)",
+                        opacity: (!settings.webhookUrl || saving === "webhook") ? 0.5 : 1,
+                      }}
+                    >
+                      {saving === "webhook" ? "Saving…" : "🔗 Save Webhook"}
+                    </button>
+                    <button onClick={() => setFormVisible(f => ({ ...f, webhook: false }))} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, padding: "10px 14px", fontSize: "0.8rem", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}>Back</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Send a POST request with the call transcript, summary, and sentiment to any custom URL instantly after a call ends.
+                  </div>
                   <button
-                    className="int-btn" onClick={saveWebhookSettings}
-                    disabled={!settings.webhookUrl || saving === "webhook"}
+                    className="int-btn"
+                    onClick={() => openConnectGuide("webhook", () => setFormVisible(f => ({ ...f, webhook: true })), "I'm ready — enter my webhook URL →", "#8b5cf6")}
                     style={{
                       width: "100%", background: "#8b5cf6", color: "#fff", border: "none", borderRadius: 10,
                       padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                      boxShadow: "0 4px 14px rgba(139,92,246,0.2)",
-                      opacity: (!settings.webhookUrl || saving === "webhook") ? 0.5 : 1,
-                      marginTop: "auto",
+                      boxShadow: "0 4px 14px rgba(139,92,246,0.25)", marginTop: "auto",
                     }}
                   >
-                    {saving === "webhook" ? "Saving…" : "🔗 Connect Webhook"}
+                    📖 View Setup Guide & Connect
                   </button>
                 </>
               )}
@@ -921,7 +1016,7 @@ export default function IntegrationsPage() {
             <IntegrationCard
               icon={Icons.airtable} title="Airtable" description="Auto-log calls to your base"
               connected={!!cfg.airtable_base_id} accentColor="#18bfff"
-              onGuideClick={() => setGuideOpen("airtable")}
+              onGuideClick={() => { setConnectAction(null); setGuideOpen("airtable"); }}
             >
               {cfg.airtable_connected ? (
                 <>
@@ -994,10 +1089,10 @@ export default function IntegrationsPage() {
                     </button>
                   </div>
                 </>
-              ) : (
+              ) : formVisible.airtable ? (
                 <>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-                    Auto-log every call to your Airtable base. Phone, summary, sentiment, duration, and action items — all captured as a row.
+                  <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Paste your Airtable credentials below. You created the token and found the Base ID in the setup guide.
                   </div>
                   <div>
                     <label style={lbl}>Personal Access Token</label>
@@ -1039,24 +1134,31 @@ export default function IntegrationsPage() {
                       style={{
                         flex: 1, background: "#18bfff", color: "#fff", border: "none", borderRadius: 10,
                         padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
-                        boxShadow: "0 4px 14px rgba(24,191,255,0.2)",
+                        boxShadow: "0 4px 14px rgba(24,191,255,0.25)",
                         opacity: (!settings.airtablePat || !settings.airtableBaseId || saving === "airtable") ? 0.5 : 1,
                       }}
                     >
                       {saving === "airtable" ? "Saving…" : "💾 Save & Connect"}
                     </button>
-                    <button
-                      className="int-btn" onClick={testAirtable}
-                      disabled={!cfg.airtable_connected || airtableTesting}
-                      style={{
-                        background: "none", border: "1.5px solid #18bfff", color: "#18bfff",
-                        borderRadius: 10, padding: "11px 16px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
-                        opacity: (!cfg.airtable_connected || airtableTesting) ? 0.5 : 1,
-                      }}
-                    >
-                      {airtableTesting ? "Testing…" : "🧪 Test"}
-                    </button>
+                    <button onClick={() => setFormVisible(f => ({ ...f, airtable: false }))} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, padding: "10px 14px", fontSize: "0.8rem", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}>Back</button>
                   </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Auto-log every call to your Airtable base. Phone, summary, sentiment, duration, and action items — all captured as a row.
+                  </div>
+                  <button
+                    className="int-btn"
+                    onClick={() => openConnectGuide("airtable", () => setFormVisible(f => ({ ...f, airtable: true })), "I'm ready — enter my credentials →", "#18bfff")}
+                    style={{
+                      width: "100%", background: "#18bfff", color: "#fff", border: "none", borderRadius: 10,
+                      padding: "11px", fontWeight: 700, cursor: "pointer", fontSize: "0.88rem",
+                      boxShadow: "0 4px 14px rgba(24,191,255,0.25)", marginTop: "auto",
+                    }}
+                  >
+                    📖 View Setup Guide & Connect
+                  </button>
                 </>
               )}
             </IntegrationCard>
@@ -1178,9 +1280,13 @@ export default function IntegrationsPage() {
 
       <IntegrationGuideModal
         isOpen={!!guideOpen}
-        onClose={() => setGuideOpen(null)}
-        title={guideOpen ? GUIDES[guideOpen]?.title : ""}
-        steps={guideOpen ? GUIDES[guideOpen]?.steps : []}
+        onClose={closeGuide}
+        title={guideOpen ? GUIDES[guideOpen]?.title ?? "" : ""}
+        icon={guideOpen ? Icons[guideOpen as keyof typeof Icons] : undefined}
+        steps={guideOpen ? GUIDES[guideOpen]?.steps ?? [] : []}
+        onConnect={connectAction?.action}
+        connectLabel={connectAction?.label}
+        connectColor={connectAction?.color}
       />
     </>
   );

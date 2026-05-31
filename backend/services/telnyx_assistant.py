@@ -152,7 +152,7 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
         })
         
     # 5. Shopify Lookup Tool
-    if tenant and tenant.shopify_store_url and tenant.shopify_access_token and tool_config.get("shopify", {}).get("enabled", True):
+    if tenant and tenant.shopify_domain and tenant.shopify_token and tool_config.get("shopify", {}).get("enabled", True):
         base_url = f"https://{server_host}" if not server_host.startswith("http") else server_host
         tools.append({
             "type": "webhook",
@@ -217,7 +217,7 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
     if tenant and tenant.google_connected and tool_config.get("google_calendar", {}).get("enabled", True):
         final_instructions += "\n\nCALENDAR INSTRUCTIONS: You have access to the 'check_calendar_availability' and 'book_appointment' tools. To book an appointment, ALWAYS ask the user for their preferred date first, check availability, offer them available times, and then ask for their name and phone to book it."
         
-    if tenant and tenant.shopify_store_url and tool_config.get("shopify", {}).get("enabled", True):
+    if tenant and tenant.shopify_domain and tool_config.get("shopify", {}).get("enabled", True):
         final_instructions += "\n\nSHOPIFY INSTRUCTIONS: You have access to the 'check_order_status' tool. If the user asks about an order, ask for their order number or email, and use the tool to fetch their status."
 
     # Define full request payload

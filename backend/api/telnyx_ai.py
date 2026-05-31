@@ -254,11 +254,11 @@ async def telnyx_shopify_lookup(request: Request, tenant_id: str, db: Session = 
             return {"status": "success", "result": "Please provide an order number or email."}
             
         tenant = db.get(Tenant, uuid.UUID(tenant_id))
-        if not tenant or not tenant.shopify_store_url or not tenant.shopify_access_token:
+        if not tenant or not tenant.shopify_domain or not tenant.shopify_token:
             return {"status": "success", "result": "Shopify integration is not connected."}
-            
+
         # Call Shopify GraphQL/REST Admin API
-        url = f"https://{tenant.shopify_store_url}/admin/api/2024-01/orders.json"
+        url = f"https://{tenant.shopify_domain}/admin/api/2024-01/orders.json"
         
         # Determine if query is email or order number
         params = {"status": "any"}
@@ -269,7 +269,7 @@ async def telnyx_shopify_lookup(request: Request, tenant_id: str, db: Session = 
         else:
             params["query"] = query
             
-        headers = {"X-Shopify-Access-Token": tenant.shopify_access_token}
+        headers = {"X-Shopify-Access-Token": tenant.shopify_token}
         
         async with httpx.AsyncClient() as client:
             resp = await client.get(url, headers=headers, params=params, timeout=10.0)
