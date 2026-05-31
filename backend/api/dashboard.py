@@ -189,7 +189,7 @@ async def test_airtable(tenant_id: str, db: Session = Depends(get_db)):
 # ─────────────────────────────────────────────────────────────────────────────
 class CreateAgentRequest(BaseModel):
     name: str
-    business_name: str
+    business_name: Optional[str] = None
     system_prompt: str
     voice_id: str = "Telnyx.Ultra.Grace"
     tenant_id: str
@@ -246,12 +246,10 @@ async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    if not req.business_name or not req.business_name.strip():
-        raise HTTPException(status_code=400, detail="Business name is required for agent creation.")
     new_agent = Agent(
         tenant_id=tenant_uuid,
-        name=req.name,
-        business_name=req.business_name,
+        name=req.name.strip(),
+        business_name=(req.business_name.strip() or None) if req.business_name else None,
         system_prompt=req.system_prompt,
         voice_id=req.voice_id,
         template_id=req.template_id,
