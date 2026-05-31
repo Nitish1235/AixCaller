@@ -520,27 +520,6 @@ export default function CreateAgentPage() {
               </div>
             </div>
 
-            {/* Website URL sync */}
-            <div style={{
-              border: "1.5px dashed var(--border)", borderRadius: 12, overflow: "hidden"
-            }}>
-              <div style={{ background: "var(--surface)", padding: "10px 16px", borderBottom: "1.5px dashed var(--border)", fontWeight: 600, fontSize: "0.82rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8 }}>
-                <span>🌐 Sync Website URL</span>
-              </div>
-              <div style={{ padding: "0.85rem 1.25rem" }}>
-                <input
-                  type="url"
-                  value={kbUrl}
-                  onChange={e => setKbUrl(e.target.value)}
-                  placeholder="https://example.com"
-                  style={{ ...inp, padding: "8px 12px" }}
-                />
-                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 8 }}>
-                  We will extract the text content from this webpage.
-                </div>
-              </div>
-            </div>
-
             {/* Status messages */}
             {kbStatus.length > 0 && (
               <div style={{ background: "var(--blue-light)", border: "1px solid rgba(29, 78, 216, 0.2)", borderRadius: 10, padding: "12px 16px" }}>

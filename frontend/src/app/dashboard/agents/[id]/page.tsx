@@ -1381,14 +1381,14 @@ export default function AgentDetailsPage() {
 
             {/* Sub-tabs */}
             <div style={{ display: "flex", gap: 6, marginBottom: "1.25rem" }}>
-              {(["text", "file", "url", "sheet"] as const).map(t => (
+              {(["text", "file", "sheet"] as const).map(t => (
                 <button key={t} onClick={() => setKbTab(t)} style={{
                   padding: "6px 14px", borderRadius: 7, fontWeight: 700, fontSize: "0.8rem",
                   cursor: "pointer", border: "1.5px solid var(--border)",
                   background: kbTab === t ? "var(--blue)" : "var(--blue-light)",
                   color: kbTab === t ? "#fff" : "var(--blue)",
                 }}>
-                  {t === "text" ? "✏️ Text" : t === "file" ? "📄 File" : t === "url" ? "🌐 Website" : "📊 Google Sheet"}
+                  {t === "text" ? "✏️ Text" : t === "file" ? "📄 File" : "📊 Google Sheet"}
                 </button>
               ))}
             </div>
@@ -1445,31 +1445,6 @@ export default function AgentDetailsPage() {
                 </div>
                 <button onClick={ingestFile} disabled={kbBusy || !kbFile} style={btn("var(--blue)", { opacity: kbBusy || !kbFile ? 0.6 : 1, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}>
                   {kbBusy ? "Uploading..." : "Upload File"}
-                </button>
-              </div>
-            )}
-
-            {kbTab === "url" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div>
-                  <label style={lbl}>Website URL</label>
-                  <input
-                    type="url"
-                    value={kbUrl}
-                    onChange={e => setKbUrl(e.target.value)}
-                    placeholder="https://example.com"
-                    style={inp}
-                  />
-                  <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>
-                    We will extract the text content from this webpage.
-                  </p>
-                </div>
-                <button
-                  onClick={ingestUrl}
-                  disabled={kbBusy || !kbUrl.trim()}
-                  style={btn("var(--blue)", { opacity: kbBusy || !kbUrl.trim() ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 12px rgba(29, 78, 216, 0.15)" })}
-                >
-                  {kbBusy ? "Syncing..." : "⚡ Sync Website Content"}
                 </button>
               </div>
             )}
