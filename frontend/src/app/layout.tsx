@@ -27,101 +27,21 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "AIxCaller — AI Receptionist & Outbound AI Calling for Businesses",
+    default: "AIxCaller | AI Receptionist & Outbound Voice Agents",
     template: "%s | AIxCaller",
   },
   description:
-    "AIxCaller is the AI phone platform that answers every inbound call 24/7 AND dials your leads automatically with outbound AI calling campaigns. Book appointments, qualify leads, and close more deals — starting at $50/mo.",
+    "Never miss a lead. AIxCaller provides 24/7 AI receptionists and automated outbound sales dialers to book appointments and qualify leads. Try it for free.",
 
   metadataBase: new URL("https://aixcaller.com"),
 
   keywords: [
-    // ── Highest-intent inbound (what buyers type right before purchasing) ──
     "AI receptionist",
-    "AI phone answering service",
-    "AI answering service for small business",
-    "AI virtual receptionist",
+    "outbound AI dialer",
     "AI phone agent",
-    "AI call answering",
-    "automated phone answering service",
-    "24/7 phone answering service",
-    "after hours answering service",
-    "AI call center software",
-
-    // ── Outbound AI calling (high-intent, fast-growing) ──
-    "AI outbound calling",
-    "AI outbound dialer",
-    "automated outbound calling software",
-    "AI sales dialer",
-    "AI cold calling software",
-    "AI lead calling",
-    "outbound call automation",
-    "AI appointment setter",
-    "AI appointment booking calls",
-    "outbound AI voice agent",
-    "automated lead follow-up calls",
-    "AI sales outreach tool",
-    "speed to lead software",
-    "AI lead dialer",
-
-    // ── Voice agent & automation ──
-    "AI voice agent",
-    "AI voice assistant for business",
-    "AI call handler",
-    "AI phone call automation",
+    "automated calling software",
     "voice AI for business",
-    "conversational AI phone",
-    "no-code AI voice agent",
-    "AI inbound call handling",
-
-    // ── Problem-driven searches ──
-    "never miss a business call",
-    "missed call automation",
-    "AI lead qualification",
-    "AI appointment booking",
-    "AI appointment scheduling phone",
-    "automated appointment reminders",
-    "AI customer service phone",
-    "reduce missed calls small business",
-    "replace receptionist with AI",
-    "how to automate sales calls",
-    "how to follow up leads automatically",
-
-    // ── Vertical / niche ──
-    "AI receptionist for dental office",
-    "AI receptionist for real estate",
-    "AI phone answering for HVAC",
-    "AI receptionist for law firm",
-    "AI receptionist for restaurants",
-    "AI receptionist for healthcare",
-    "AI receptionist for e-commerce",
-    "AI receptionist for plumbers",
-    "AI outbound calling for solar",
-    "AI outbound calling for insurance",
-    "AI sales calls for real estate",
-
-    // ── Integration / technical ──
-    "AI receptionist with CRM integration",
-    "AI receptionist Google Calendar",
-    "Shopify AI phone support",
-    "HubSpot CRM AI calling",
-    "AI call transcription and summary",
-    "call sentiment analysis AI",
-    "AI voicemail drop software",
-    "Google Sheets lead tracking AI",
-
-    // ── Competitor comparison (people searching alternatives) ──
-    "Bland AI alternative",
-    "Air AI alternative",
-    "Synthflow alternative",
-    "Vapi alternative",
-    "Retell AI alternative",
-    "cheaper AI calling software",
-
-    // ── Brand ──
-    "AIxCaller",
-    "callerx",
-    "aixcaller.com",
+    "AIxCaller"
   ],
 
   authors: [{ name: "AIxCaller", url: "https://aixcaller.com" }],
@@ -133,15 +53,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://aixcaller.com",
     siteName: "AIxCaller",
-    title: "AIxCaller — AI Receptionist & Outbound AI Calling Platform",
+    title: "AIxCaller | AI Receptionist & Outbound Voice Agents",
     description:
-      "Never miss another business call. AIxCaller answers inbound calls 24/7 AND runs outbound AI calling campaigns — books appointments, qualifies leads, syncs CRM. From $50/mo.",
+      "Never miss a lead. AIxCaller provides 24/7 AI receptionists and automated outbound sales dialers to book appointments and qualify leads. Try it for free.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "AIxCaller — AI Receptionist & Outbound Calling Platform for Businesses",
+        alt: "AIxCaller — AI Receptionist & Outbound Calling Platform",
       },
     ],
   },
@@ -150,9 +70,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@aixcaller",
     creator: "@aixcaller",
-    title: "AIxCaller — AI Receptionist & Outbound AI Calling Platform",
+    title: "AIxCaller | AI Receptionist & Outbound Voice Agents",
     description:
-      "Inbound AI that answers every call 24/7 + Outbound AI that dials your leads automatically. Books appointments, qualifies leads, syncs CRM. From $50/mo.",
+      "Never miss a lead. AIxCaller provides 24/7 AI receptionists and automated outbound sales dialers to book appointments and qualify leads. Try it for free.",
     images: ["/opengraph-image"],
   },
 
@@ -178,9 +98,7 @@ export const metadata: Metadata = {
     },
   },
 
-  alternates: {
-    canonical: "https://aixcaller.com",
-  },
+  // Removed static alternates.canonical to allow Next.js metadataBase to resolve canonicals dynamically for subpages.
 
   category: "technology",
 };

@@ -11,44 +11,6 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
     {
-      "@type": "Organization",
-      "@id": "https://aixcaller.com/#organization",
-      "name": "AIxCaller",
-      "url": "https://aixcaller.com",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://aixcaller.com/logo.svg",
-        "width": 100,
-        "height": 100
-      },
-      "description": "Automate outbound & inbound calls with intelligent AI voice agents.",
-      "sameAs": ["https://twitter.com/aixcaller"]
-    },
-    {
-      "@type": "WebSite",
-      "@id": "https://aixcaller.com/#website",
-      "url": "https://aixcaller.com",
-      "name": "AIxCaller",
-      "publisher": { "@id": "https://aixcaller.com/#organization" },
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://aixcaller.com/?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
-    },
-    {
-      "@type": "SoftwareApplication",
-      "name": "AIxCaller",
-      "operatingSystem": "Web",
-      "applicationCategory": "BusinessApplication",
-      "offers": {
-        "@type": "Offer",
-        "price": "50",
-        "priceCurrency": "USD"
-      },
-      "description": "AI-powered calling platform. Automate outbound & inbound calls with intelligent voice agents."
-    },
-    {
       "@type": "ItemList",
       "itemListElement": [
         {
