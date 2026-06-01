@@ -80,6 +80,71 @@ def init_db():
         conn.commit()
         logger.info("CallRecord (tenant_id, created_at) index created.")
 
+        # ── Campaign / dialer performance indexes ────────────────────────────
+        # These are hit on every cron tick and every webhook — critical at scale.
+
+        # 6. Dialer main query: pick pending leads for a campaign ordered by score
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS campaignlead_dial_queue_idx
+            ON campaignlead (campaign_id, status, lead_score DESC, next_retry_at)
+            WHERE status = 'pending' AND opted_out = FALSE;
+        """))
+        conn.commit()
+        logger.info("CampaignLead dial-queue index created.")
+
+        # 7. Count in-progress leads per campaign (concurrency check)
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS campaignlead_inprogress_idx
+            ON campaignlead (campaign_id, status)
+            WHERE status = 'in_progress';
+        """))
+        conn.commit()
+        logger.info("CampaignLead in-progress index created.")
+
+        # 8. reconcile_stuck_calls: find old in-progress leads
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS campaignlead_updated_status_idx
+            ON campaignlead (status, updated_at)
+            WHERE status = 'in_progress';
+        """))
+        conn.commit()
+        logger.info("CampaignLead (status, updated_at) index created.")
+
+        # 9. Active campaigns lookup for dialer engine and scheduled-campaign check
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS campaign_tenant_status_idx
+            ON campaign (tenant_id, status);
+        """))
+        conn.commit()
+        logger.info("Campaign (tenant_id, status) index created.")
+
+        # 10. Reminder engine: find leads with upcoming appointments
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS campaignlead_appointment_idx
+            ON campaignlead (appointment_datetime, status)
+            WHERE appointment_datetime IS NOT NULL AND opted_out = FALSE;
+        """))
+        conn.commit()
+        logger.info("CampaignLead appointment index created.")
+
+        # 11. Call deduplication: look up call by call_control_id quickly
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS callrecord_call_control_id_idx
+            ON callrecord (call_control_id)
+            WHERE call_control_id IS NOT NULL;
+        """))
+        conn.commit()
+        logger.info("CallRecord call_control_id index created.")
+
+        # 12. Agent lookup by phone_number (inbound call routing — hot path)
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS agent_phone_number_idx
+            ON agent (phone_number)
+            WHERE phone_number IS NOT NULL;
+        """))
+        conn.commit()
+        logger.info("Agent phone_number index created.")
+
     logger.info("Database initialization complete.")
 
 

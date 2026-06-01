@@ -47,7 +47,7 @@ async def handle_sales_answer(request: Request, lead_id: str, db: Session = Depe
 
     # 1. Update database state
     lead.status = "answered"
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = datetime.now(timezone.utc)
     db.add(lead)
     db.commit()
 
@@ -130,7 +130,7 @@ async def handle_amd_callback(request: Request, lead_id: str, db: Session = Depe
         lead = db.get(CampaignLead, lead_uuid)
         if lead:
             lead.status = "voicemail"
-            lead.updated_at = datetime.utcnow()
+            lead.updated_at = datetime.now(timezone.utc)
             db.add(lead)
             db.commit()
 
@@ -492,7 +492,7 @@ async def handle_conversation_ended(request: Request, lead_id: str, db: Session 
     transcript_str = _json.dumps(transcript_messages) if transcript_messages else ""
     lead.call_transcript = transcript_str
     lead.call_duration_seconds = duration_secs
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = datetime.now(timezone.utc)
 
     # Opt-out detection
     OPT_OUT_PHRASES = [

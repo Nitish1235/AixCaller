@@ -50,7 +50,17 @@ async def process_completed_call(
     existing_call = None
     if call_id and call_id != "unknown":
         existing_call = db.exec(select(CallRecord).where(CallRecord.call_control_id == call_id)).first()
-        
+
+    # ── Idempotency guard — prevent double-billing on duplicate webhooks ───────
+    # Telnyx can fire conversation-ended twice on network retries.
+    # If the call is already completed and billing has run, bail out immediately.
+    if existing_call and existing_call.status == "completed" and existing_call.duration_seconds > 0:
+        logger.warning(
+            f"Duplicate webhook detected for call {call_id} — already processed "
+            f"({existing_call.duration_seconds}s billed). Skipping to prevent double-billing."
+        )
+        return {"status": "already_processed", "call_record_id": str(existing_call.id)}
+
     # Fallback: if we don't have a call_control_id from the webhook, find the most recent in_progress call for this agent
     if not existing_call:
         existing_call = db.exec(

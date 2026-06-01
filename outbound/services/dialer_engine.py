@@ -150,7 +150,7 @@ class OutboundDialerEngine:
                 # Mark as in_progress to prevent race conditions
                 lead.status = "in_progress"
                 lead.attempts += 1
-                lead.updated_at = datetime.utcnow()
+                lead.updated_at = datetime.now(timezone.utc)
                 db.add(lead)
                 db.commit()
 

@@ -43,11 +43,15 @@ async def run_reminder_sweep() -> dict:
     skipped = 0
 
     with Session(engine) as db:
-        # Find all answered leads with an appointment in the 24h window
+        # Find all leads with a confirmed appointment in the 24h window.
+        # Must include BOTH "answered" and "booked" statuses — bookings made
+        # via the AI mid-call set status="booked", not "answered".
+        from sqlalchemy import or_ as _or
         leads = db.exec(
             select(CampaignLead).where(
                 and_(
-                    CampaignLead.status == "answered",
+                    _or(CampaignLead.status == "answered", CampaignLead.status == "booked"),
+                    CampaignLead.appointment_datetime != None,
                     CampaignLead.appointment_datetime >= window_start,
                     CampaignLead.appointment_datetime <= window_end,
                     CampaignLead.opted_out == False,

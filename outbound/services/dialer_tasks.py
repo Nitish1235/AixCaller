@@ -221,6 +221,26 @@ async def dial_next_lead(ctx, campaign_id):
 
         if not target_lead:
             if active_calls == 0:
+                # Double-check: are there any pending leads that are simply outside
+                # their calling window right now? If so, don't mark complete —
+                # they will be picked up when their timezone window opens.
+                any_pending_at_all = db.exec(
+                    select(sqlfunc.count(CampaignLead.id)).where(
+                        CampaignLead.campaign_id == campaign.id,
+                        CampaignLead.status == "pending",
+                        CampaignLead.opted_out == False,
+                        CampaignLead.attempts < max_attempts,
+                    )
+                ).one()
+
+                if any_pending_at_all > 0:
+                    # Leads exist but are outside calling window — don't complete yet
+                    logger.debug(
+                        f"Campaign {campaign.id}: {any_pending_at_all} pending leads exist "
+                        f"but none are in calling window right now. Will retry next cycle."
+                    )
+                    return
+
                 campaign.status = "completed"
                 db.add(campaign)
                 db.commit()
@@ -232,7 +252,7 @@ async def dial_next_lead(ctx, campaign_id):
         target_lead.attempts += 1
         # naive vs aware fix for sqlmodel datetime handling if needed
         # updated_at is sometimes expected naive in postgres but it depends on model
-        target_lead.updated_at = datetime.utcnow()
+        target_lead.updated_at = datetime.now(timezone.utc)
         db.add(target_lead)
         db.commit()
 
@@ -358,15 +378,12 @@ async def check_scheduled_campaigns(ctx):
 
 async def reconcile_stuck_calls(ctx):
     """
-    Runs periodically to reset any calls that have been 'in_progress' for > 15 minutes,
-    assuming the webhook failed or dropped.
+    Runs every 5 minutes. Resets any leads stuck in 'in_progress' for > 8 minutes
+    (Telnyx calls time out after ~6 minutes of ringing with no answer, so 8 min
+    is a safe window to catch webhook-drop failures without false-positives).
     """
     logger.info("Running reconcile_stuck_calls...")
-    now_utc = datetime.now(timezone.utc)
-    # Since updated_at might be naive in the DB depending on sqlmodel configuration,
-    # let's use naive datetime for threshold if updated_at is typically naive.
-    # Usually `datetime.utcnow()` is used.
-    threshold = datetime.utcnow() - timedelta(minutes=15)
+    threshold = datetime.now(timezone.utc) - timedelta(minutes=8)
     
     with Session(engine) as db:
         stuck_leads = db.exec(
