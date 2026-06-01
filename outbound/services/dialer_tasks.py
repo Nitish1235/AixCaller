@@ -12,6 +12,7 @@ from shared.database import engine
 from shared.models import Campaign, CampaignLead, Agent, CallRecord, Tenant
 from outbound.services.sheet_poller import GoogleSheetPoller
 from outbound.services.lead_scorer import score_campaign_leads
+from sqlalchemy import func as sqlfunc
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 redis_settings = RedisSettings.from_dsn(REDIS_URL)
@@ -62,7 +63,7 @@ def _schedule_next_retry(lead: CampaignLead, campaign: Campaign, db: Session):
     db.commit()
 
 
-async def start_campaign(ctx, campaign_id: int):
+async def start_campaign(ctx, campaign_id):
     """
     Triggered when a campaign is started. 
     It checks how many slots are available based on max_concurrent_calls (max 3),
@@ -90,6 +91,7 @@ async def start_campaign(ctx, campaign_id: int):
                     f"({tenant.minutes_used:.2f} used / {tenant.minutes_included} included)."
                 )
                 campaign.status = "paused"
+                campaign.pause_reason = "minutes_exhausted"
                 db.add(campaign)
                 db.commit()
                 return
@@ -119,7 +121,7 @@ async def start_campaign(ctx, campaign_id: int):
         logger.info(f"Enqueued dial_next_lead for campaign {campaign_id}")
 
 
-async def dial_next_lead(ctx, campaign_id: int):
+async def dial_next_lead(ctx, campaign_id):
     """
     Finds exactly one lead that is ready to be dialed, checks concurrency, and dials it.
     """
@@ -149,11 +151,30 @@ async def dial_next_lead(ctx, campaign_id: int):
                 logger.warning(
                     f"OUTBOUND CAMPAIGN PAUSED — tenant {tenant.id} exhausted minutes "
                     f"({tenant.minutes_used:.2f} used / {tenant.minutes_included} included). "
-                    f"Campaign {campaign.id} set to paused."
+                    f"Campaign {campaign.id} → paused (minutes_exhausted). "
+                    f"Remaining leads will resume automatically when plan renews."
                 )
                 campaign.status = "paused"
+                campaign.pause_reason = "minutes_exhausted"
                 db.add(campaign)
                 db.commit()
+                return
+
+        # ── Daily call limit gate ─────────────────────────────────────────────
+        if campaign.daily_call_limit and campaign.daily_call_limit > 0:
+            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            calls_today = db.exec(
+                select(sqlfunc.count(CampaignLead.id)).where(
+                    CampaignLead.campaign_id == campaign.id,
+                    CampaignLead.attempts > 0,
+                    CampaignLead.updated_at >= today_start,
+                )
+            ).one()
+            if calls_today >= campaign.daily_call_limit:
+                logger.info(
+                    f"Campaign {campaign.id} hit daily limit "
+                    f"({calls_today}/{campaign.daily_call_limit}) — waiting until tomorrow."
+                )
                 return
 
         concurrency_limit = min(campaign.max_concurrent_calls, 3)
@@ -280,6 +301,59 @@ async def dial_next_lead(ctx, campaign_id: int):
                 _schedule_next_retry(target_lead, campaign, db)
                 redis = ctx.get('redis')
                 await redis.enqueue_job('dial_next_lead', campaign_id)
+
+
+async def check_scheduled_campaigns(ctx):
+    """
+    Runs every minute. Finds campaigns in 'scheduled' status whose
+    scheduled_start_at has arrived (or passed) and auto-activates them.
+
+    Flow:
+      scheduled_start_at <= now  →  status = "active"  →  enqueue start_campaign
+    """
+    now_utc = datetime.now(timezone.utc)
+
+    with Session(engine) as db:
+        from shared.models import Tenant
+        due_campaigns = db.exec(
+            select(Campaign).where(
+                Campaign.status == "scheduled",
+                Campaign.scheduled_start_at != None,
+                Campaign.scheduled_start_at <= now_utc,
+            )
+        ).all()
+
+        if not due_campaigns:
+            return
+
+        redis = ctx.get("redis")
+        for campaign in due_campaigns:
+            # Minutes gate before auto-activating
+            tenant = db.get(Tenant, campaign.tenant_id)
+            if tenant:
+                minutes_remaining = (tenant.minutes_included or 0) - (tenant.minutes_used or 0)
+                if minutes_remaining <= 0:
+                    logger.warning(
+                        f"Scheduled campaign {campaign.id} NOT auto-activated — "
+                        f"tenant {tenant.id} has no remaining minutes."
+                    )
+                    campaign.status = "paused"
+                    db.add(campaign)
+                    continue
+
+            campaign.status = "active"
+            db.add(campaign)
+            db.commit()
+            logger.info(
+                f"Campaign {campaign.id} auto-activated — "
+                f"scheduled_start_at={campaign.scheduled_start_at} reached."
+            )
+            if redis:
+                await redis.enqueue_job("start_campaign", campaign.id)
+            else:
+                # Fallback: create a fresh pool if ctx doesn't have redis
+                pool = await create_pool(redis_settings)
+                await pool.enqueue_job("start_campaign", campaign.id)
 
 
 async def reconcile_stuck_calls(ctx):

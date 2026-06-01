@@ -5,7 +5,7 @@ from loguru import logger
 from backend.services.payments import DodoPaymentsService
 
 from shared.database import get_db
-from shared.models import Tenant
+from shared.models import Tenant, Campaign
 import uuid
 import os
 import json
@@ -14,6 +14,51 @@ import hashlib
 
 router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 dodo_service = DodoPaymentsService()
+
+
+async def _resume_exhausted_campaigns(tenant_id: str, db):
+    """
+    Called in background after a successful plan renewal.
+    Finds every campaign that was auto-paused due to minutes_exhausted
+    and re-activates it so dialing resumes from where it left off.
+    Remaining pending leads are untouched and will be picked up immediately.
+    """
+    try:
+        from sqlmodel import Session as _S, select as _sel
+        from shared.database import engine as _engine
+        import os as _os
+        from arq import create_pool as _arq_pool
+        from arq.connections import RedisSettings as _RS
+
+        with _S(_engine) as fresh_db:
+            paused = fresh_db.exec(
+                _sel(Campaign).where(
+                    Campaign.tenant_id == uuid.UUID(tenant_id),
+                    Campaign.status == "paused",
+                    Campaign.pause_reason == "minutes_exhausted",
+                )
+            ).all()
+
+            if not paused:
+                return
+
+            redis = await _arq_pool(_RS.from_dsn(_os.environ.get("REDIS_URL", "redis://localhost:6379/0")))
+
+            for campaign in paused:
+                campaign.status = "active"
+                campaign.pause_reason = None
+                fresh_db.add(campaign)
+                fresh_db.commit()
+
+                await redis.enqueue_job("start_campaign", campaign.id)
+                logger.info(
+                    f"Auto-resumed campaign {campaign.id} ({campaign.name}) "
+                    f"after plan renewal for tenant {tenant_id}. "
+                    f"Remaining pending leads will be dialed now."
+                )
+
+    except Exception as e:
+        logger.error(f"Failed to auto-resume exhausted campaigns for tenant {tenant_id}: {e}")
 
 
 # ─── Plan Catalogue ──────────────────────────────────────────────────────────
@@ -173,9 +218,12 @@ async def dodo_webhook(request: Request, background_tasks: BackgroundTasks, db: 
         db.add(tenant)
         db.commit()
         logger.info(f"✅ Tenant {tenant_id} subscribed to {plan_tier} ({plan['minutes']} min)")
-        
         logger.info(f"💰 Payment received: {tenant.name} ({tenant.contact_email}) — {plan_tier.upper()} ${plan['price_usd']}")
-        
+
+        # ── Auto-resume campaigns that were paused due to exhausted minutes ──
+        # Now that new minutes are credited, resume them in background.
+        background_tasks.add_task(_resume_exhausted_campaigns, tenant_id, db)
+
         return {"status": "subscription_activated", "plan": plan_tier}
 
     if event_type in ("subscription.cancelled", "subscription.failed"):

@@ -98,8 +98,8 @@ class GoogleSheetPoller:
             if not token:
                 return 0
 
-            # 1. Fetch values from Google Sheet
-            range_name = f"{sheet_name}!A1:Z500"
+            # 1. Fetch values from Google Sheet (5000 rows = practical max for campaigns)
+            range_name = f"{sheet_name}!A1:Z5000"
             rows = await self._fetch_sheet_values(token, sheet_id, range_name)
             if not rows or len(rows) < 2:
                 logger.info(f"Sheet {sheet_id} is empty or has headers only.")

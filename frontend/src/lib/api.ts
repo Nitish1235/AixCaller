@@ -178,6 +178,7 @@ export async function createCampaignAPI(data: {
   calling_window_end?: string;
   speed_to_lead_enabled?: boolean;
   sms_enabled?: boolean;
+  scheduled_start_at?: string;   // ISO-8601 UTC, e.g. "2026-03-15T10:00:00.000Z"
 }) {
   return await apiPost("/campaigns", data);
 }

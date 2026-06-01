@@ -257,9 +257,20 @@ class Campaign(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", index=True)
     agent_id: uuid.UUID = Field(foreign_key="agent.id", index=True)
     name: str
-    status: str = Field(default="inactive")  # active | inactive | completed
+    status: str = Field(default="inactive")  # active | inactive | completed | scheduled | paused
     max_concurrent_calls: int = Field(default=3)  # 1–3; capped at 3 in API layer
     daily_call_limit: Optional[int] = Field(default=None)
+
+    # ── Scheduled Start ──────────────────────────────────────────────────────
+    # When set, the campaign sits in "scheduled" status until this UTC datetime
+    # arrives. The ARQ worker auto-activates it and begins dialing.
+    # When None and status="active", dialing starts immediately.
+    scheduled_start_at: Optional[datetime] = Field(default=None)
+
+    # ── Pause Reason ─────────────────────────────────────────────────────────
+    # Set automatically when the system pauses the campaign.
+    # Values: "minutes_exhausted" | "daily_limit" | "manual" | None
+    pause_reason: Optional[str] = Field(default=None)
 
     # ── Timezone-Aware Calling Window ────────────────────────────────────────
     # HH:MM strings. Defaults to 'lead_local' to use the area-code detected timezone.

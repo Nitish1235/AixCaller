@@ -31,6 +31,7 @@ class CreateCampaignRequest(BaseModel):
     speed_to_lead_enabled: bool = False
     sms_enabled: bool = False
     daily_call_limit: Optional[int] = None
+    scheduled_start_at: Optional[str] = None   # ISO-8601 UTC string, e.g. "2026-03-15T10:00:00Z"
 
     @validator("max_concurrent_calls")
     def cap_concurrency(cls, v: int) -> int:
@@ -47,6 +48,7 @@ class UpdateCampaignRequest(BaseModel):
     retry_cadence_hours: Optional[List[int]] = None
     speed_to_lead_enabled: Optional[bool] = None
     sms_enabled: Optional[bool] = None
+    scheduled_start_at: Optional[str] = None   # ISO-8601 UTC string or null to clear
 
 
 class LeadItem(BaseModel):
@@ -83,6 +85,14 @@ async def create_campaign(req: CreateCampaignRequest, db: Session = Depends(get_
     if not agent.phone_number:
         raise HTTPException(status_code=400, detail="Selected agent does not have a phone number assigned. Please assign a phone number before creating a campaign.")
 
+    # Parse optional scheduled start datetime
+    scheduled_dt = None
+    if req.scheduled_start_at:
+        try:
+            scheduled_dt = datetime.fromisoformat(req.scheduled_start_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid scheduled_start_at format. Use ISO-8601 UTC, e.g. '2026-03-15T10:00:00Z'")
+
     campaign = Campaign(
         tenant_id=tenant_uuid,
         agent_id=agent_uuid,
@@ -95,11 +105,15 @@ async def create_campaign(req: CreateCampaignRequest, db: Session = Depends(get_
         speed_to_lead_enabled=req.speed_to_lead_enabled,
         sms_enabled=req.sms_enabled,
         daily_call_limit=req.daily_call_limit,
+        scheduled_start_at=scheduled_dt,
+        # If a future schedule is provided, hold in "scheduled" status
+        status="scheduled" if scheduled_dt and scheduled_dt > datetime.now(timezone.utc) else "inactive",
     )
     db.add(campaign)
     db.commit()
     db.refresh(campaign)
-    logger.info(f"Campaign {campaign.id} created for tenant {tenant_uuid}")
+    logger.info(f"Campaign {campaign.id} created for tenant {tenant_uuid} "
+                f"(status={campaign.status}, scheduled_start_at={scheduled_dt})")
     return campaign
 
 
@@ -138,6 +152,8 @@ async def list_campaigns(tenant_id: str, db: Session = Depends(get_db)):
             "speed_to_lead_enabled": c.speed_to_lead_enabled,
             "sms_enabled": c.sms_enabled,
             "leads_count": lead_count,
+            "pause_reason": c.pause_reason,
+            "scheduled_start_at": c.scheduled_start_at.isoformat() if c.scheduled_start_at else None,
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "updated_at": c.updated_at.isoformat() if c.updated_at else None,
         })
@@ -198,16 +214,56 @@ async def update_campaign(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
+    was_active_or_scheduled = campaign.status in ("active", "scheduled")
+
     update_data = req.model_dump(exclude_unset=True)
+
+    # Handle scheduled_start_at parsing separately (string → datetime)
+    if "scheduled_start_at" in update_data:
+        raw = update_data.pop("scheduled_start_at")
+        if raw:
+            try:
+                update_data["scheduled_start_at"] = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid scheduled_start_at format. Use ISO-8601 UTC.")
+        else:
+            update_data["scheduled_start_at"] = None
+
     for key, value in update_data.items():
         setattr(campaign, key, value)
     campaign.updated_at = datetime.now(timezone.utc)
 
+    # If a scheduled_start_at is set and in the future, force status to "scheduled"
+    if campaign.scheduled_start_at and campaign.scheduled_start_at > datetime.now(timezone.utc):
+        campaign.status = "scheduled"
+    # If scheduled_start_at was cleared and status was "scheduled", revert to "inactive"
+    elif not campaign.scheduled_start_at and campaign.status == "scheduled":
+        campaign.status = "inactive"
+
     db.add(campaign)
     db.commit()
     db.refresh(campaign)
-    logger.info(f"Campaign {campaign.id} updated: {list(update_data.keys())}")
-    return {"status": "updated", "campaign_id": str(campaign.id)}
+    logger.info(f"Campaign {campaign.id} updated: {list(update_data.keys())} → status={campaign.status}")
+
+    # Immediate activation: only enqueue ARQ if status just became "active" with no future schedule
+    now_active = campaign.status == "active"
+    if now_active and not was_active_or_scheduled:
+        try:
+            import os as _os
+            from arq import create_pool as _arq_pool
+            from arq.connections import RedisSettings as _RS
+            _redis = await _arq_pool(_RS.from_dsn(_os.environ.get("REDIS_URL", "redis://localhost:6379/0")))
+            await _redis.enqueue_job("start_campaign", campaign.id)
+            logger.info(f"Enqueued start_campaign ARQ job for campaign {campaign.id}")
+        except Exception as _e:
+            logger.error(f"Failed to enqueue start_campaign for campaign {campaign.id}: {_e}")
+
+    return {
+        "status": "updated",
+        "campaign_id": str(campaign.id),
+        "campaign_status": campaign.status,
+        "scheduled_start_at": campaign.scheduled_start_at.isoformat() if campaign.scheduled_start_at else None,
+    }
 
 
 @router.delete("/{campaign_id}")

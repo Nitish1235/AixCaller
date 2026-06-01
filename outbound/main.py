@@ -4,7 +4,6 @@ from fastapi import FastAPI, BackgroundTasks
 from loguru import logger
 from outbound.api.webhooks import router as webhooks_router
 from outbound.api.campaigns import router as campaigns_router
-from outbound.services.dialer_engine import OutboundDialerEngine
 from outbound.services.reminder_engine import run_reminder_sweep
 
 app = FastAPI(title="AIxCaller Outbound Microservice")

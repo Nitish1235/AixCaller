@@ -33,6 +33,8 @@ interface CampaignData {
   sms_enabled: boolean;
   calling_window_start: string;
   calling_window_end: string;
+  pause_reason: string | null;
+  scheduled_start_at: string | null;
 }
 
 interface CampaignStats {
@@ -65,6 +67,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
   active:    { bg: "#ecfdf5", text: "#059669", dot: "#059669" },
   completed: { bg: "#f5f3ff", text: "#7c3aed", dot: "#7c3aed" },
   paused:    { bg: "#fefce8", text: "#ca8a04", dot: "#ca8a04" },
+  scheduled: { bg: "#fffbeb", text: "#92400e", dot: "#f59e0b" },
 };
 
 const inp: React.CSSProperties = {
@@ -154,6 +157,8 @@ interface BuilderState {
   callingWindowEnd: string;
   speedToLead: boolean;
   smsEnabled: boolean;
+  scheduledDate: string;   // "YYYY-MM-DD" or "" for immediate
+  scheduledTime: string;   // "HH:MM" or ""
 }
 
 /* Avatar initial badge for an agent */
@@ -180,6 +185,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
     callingWindowTimezone: "lead_local",
     callingWindowStart: "09:00", callingWindowEnd: "20:00",
     speedToLead: false, smsEnabled: false,
+    scheduledDate: "", scheduledTime: "",
   });
 
   const [launching, setLaunching] = useState(false);
@@ -213,6 +219,21 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
     setLaunching(true); setLaunchError("");
     try {
       setLaunchProgress("Creating campaign…");
+
+      // Build ISO-8601 UTC scheduled_start_at if the user picked a date+time
+      let scheduledStartAt: string | undefined;
+      if (data.scheduledDate && data.scheduledTime) {
+        // Combine date + time in user's local timezone, convert to UTC ISO string
+        const localDt = new Date(`${data.scheduledDate}T${data.scheduledTime}:00`);
+        if (isNaN(localDt.getTime())) {
+          throw new Error("Invalid scheduled date/time — please check the values.");
+        }
+        if (localDt <= new Date()) {
+          throw new Error("Scheduled start time must be in the future.");
+        }
+        scheduledStartAt = localDt.toISOString();
+      }
+
       const campaign = await createCampaignAPI({
         tenant_id: tenantId,
         agent_id: data.agentId,
@@ -222,12 +243,13 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
         calling_window_end: data.callingWindowEnd,
         speed_to_lead_enabled: data.speedToLead,
         sms_enabled: data.smsEnabled,
+        scheduled_start_at: scheduledStartAt,
       });
       if (data.parsedLeads.length > 0) {
         setLaunchProgress(`Uploading ${data.parsedLeads.length} leads…`);
         await uploadCampaignLeads(campaign.id, tenantId, data.parsedLeads);
       }
-      setLaunchProgress("✅ Campaign created!");
+      setLaunchProgress(scheduledStartAt ? "✅ Campaign scheduled!" : "✅ Campaign created!");
       setTimeout(() => onComplete(), 1000);
     } catch (err: any) {
       setLaunchError(err.message || "Something went wrong.");
@@ -477,6 +499,50 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                 </div>
               </div>
 
+              {/* ── Scheduled Start ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "1.25rem", background: "#fffbeb", borderRadius: 12, border: "1.5px solid #fcd34d" }}>
+                <div style={{ fontWeight: 700, fontSize: "0.84rem", color: "#92400e" }}>📅 Schedule Start (optional)</div>
+                <div style={{ fontSize: "0.78rem", color: "#b45309", lineHeight: 1.5 }}>
+                  Leave blank to start dialing immediately when you launch.
+                  Set a date and time to schedule it for later — the campaign activates automatically.
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={lbl}>Start Date</label>
+                    <input
+                      type="date"
+                      style={inp}
+                      value={data.scheduledDate}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={e => upd({ scheduledDate: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={lbl}>Start Time (your local time)</label>
+                    <input
+                      type="time"
+                      style={inp}
+                      value={data.scheduledTime}
+                      onChange={e => upd({ scheduledTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+                {data.scheduledDate && data.scheduledTime && (
+                  <div style={{ fontSize: "0.78rem", color: "#059669", fontWeight: 700 }}>
+                    ✓ Campaign will auto-start on {new Date(`${data.scheduledDate}T${data.scheduledTime}:00`).toLocaleString()} (your local time)
+                  </div>
+                )}
+                {(data.scheduledDate || data.scheduledTime) && (
+                  <button
+                    type="button"
+                    onClick={() => upd({ scheduledDate: "", scheduledTime: "" })}
+                    style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "0.75rem", cursor: "pointer", textDecoration: "underline", alignSelf: "flex-start", padding: 0 }}
+                  >
+                    Clear — start immediately instead
+                  </button>
+                )}
+              </div>
+
               {/* Timezone + window */}
               <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "1.25rem", background: "#f8fafc", borderRadius: 12, border: "1.5px solid #e2e8f0" }}>
                 <div>
@@ -575,12 +641,12 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                 </div>
 
                 {/* Schedule row */}
-                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderBottom: (data.scheduledDate && data.scheduledTime) ? "1px solid #f1f5f9" : "none" }}>
                   <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>🕐</div>
                   <div>
-                    <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Schedule</div>
+                    <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Daily Calling Window</div>
                     <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#0f172a" }}>
-                      🕐 {data.callingWindowStart}–{data.callingWindowEnd}
+                      {data.callingWindowStart}–{data.callingWindowEnd}
                     </div>
                     <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: 2 }}>
                       {data.callingWindowTimezone === "lead_local" ? "Lead's local time" : data.callingWindowTimezone}
@@ -589,6 +655,22 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                     </div>
                   </div>
                 </div>
+
+                {/* Scheduled start row — only shown when a date is set */}
+                {data.scheduledDate && data.scheduledTime && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "#fffbeb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>📅</div>
+                    <div>
+                      <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Scheduled Start</div>
+                      <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "#92400e" }}>
+                        {new Date(`${data.scheduledDate}T${data.scheduledTime}:00`).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: "#b45309", marginTop: 2 }}>
+                        Campaign activates automatically at this time
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Progress / Error */}
@@ -831,6 +913,35 @@ export default function CampaignsPage() {
                   <span style={{ fontSize: "0.65rem", fontWeight: 700, color: (STATUS_COLORS[selectedCampaign.status] || STATUS_COLORS.inactive).text, background: (STATUS_COLORS[selectedCampaign.status] || STATUS_COLORS.inactive).bg, borderRadius: 99, padding: "2px 8px" }}>● {selectedCampaign.status}</span>
                   <span style={{ fontSize: "0.65rem", color: "#94a3b8", marginLeft: "auto" }}>Agent: {selectedCampaign.agent_name} · {selectedCampaign.agent_phone || "No phone"}</span>
                 </div>
+
+                {/* Pause reason banner */}
+                {selectedCampaign.status === "paused" && selectedCampaign.pause_reason && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderRadius: 10, flexShrink: 0,
+                    background: selectedCampaign.pause_reason === "minutes_exhausted" ? "#fef2f2" : "#fefce8",
+                    border: `1px solid ${selectedCampaign.pause_reason === "minutes_exhausted" ? "#fecaca" : "#fde68a"}`,
+                  }}>
+                    <span style={{ fontSize: "1rem", flexShrink: 0 }}>
+                      {selectedCampaign.pause_reason === "minutes_exhausted" ? "⚠️" : "ℹ️"}
+                    </span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "0.82rem",
+                        color: selectedCampaign.pause_reason === "minutes_exhausted" ? "#dc2626" : "#92400e" }}>
+                        {selectedCampaign.pause_reason === "minutes_exhausted"
+                          ? "Campaign paused — monthly call minutes exhausted"
+                          : selectedCampaign.pause_reason === "daily_limit"
+                          ? "Campaign paused — daily call limit reached"
+                          : "Campaign manually paused"}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 2, lineHeight: 1.5 }}>
+                        {selectedCampaign.pause_reason === "minutes_exhausted"
+                          ? `${selectedCampaign.leads_count} leads remain pending. The campaign resumes automatically when your plan renews, or you can upgrade your plan now.`
+                          : selectedCampaign.pause_reason === "daily_limit"
+                          ? "Dialing will resume automatically tomorrow within the calling window."
+                          : "Click Activate to resume dialing from where it stopped."}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Dot-grid pipeline canvas */}
                 <div style={{ flex: 1, background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, padding: "1.75rem", position: "relative", backgroundImage: "radial-gradient(#e2e8f0 1px, transparent 1px)", backgroundSize: "22px 22px", overflowX: "auto", overflowY: "auto" }}>

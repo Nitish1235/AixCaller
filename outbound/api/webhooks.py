@@ -339,7 +339,7 @@ async def create_booking(request: Request, tenant_id: str, lead_id: str, backgro
         with Session(engine) as db:
             lead = db.get(CampaignLead, lead_uuid)
             if lead:
-                lead.status = "answered"
+                lead.status = "booked"           # ← was "answered" — status must reflect booking
                 lead.appointment_datetime = dt_start.replace(tzinfo=timezone.utc)
                 db.add(lead)
                 db.commit()
@@ -531,13 +531,29 @@ async def handle_conversation_ended(request: Request, lead_id: str, db: Session 
             )
         logger.info(f"Outbound call_processor pipeline complete for lead {lead_id}: {result}")
         
-        # Enqueue the next lead to maintain concurrency
+        # Enqueue the next lead to maintain concurrency.
+        # Every 10th completed call also re-syncs the sheet so rows added
+        # mid-campaign are picked up without restarting.
         from arq import create_pool
         from arq.connections import RedisSettings
         redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         redis = await create_pool(RedisSettings.from_dsn(redis_url))
         await redis.enqueue_job("dial_next_lead", campaign.id)
         logger.info(f"Enqueued dial_next_lead for campaign {campaign.id}")
+
+        # Periodic sheet re-sync: every 10th call attempt triggers start_campaign
+        # so new rows added to the Google Sheet mid-campaign are imported.
+        from sqlmodel import func as sqlfunc, Session as _Sess
+        with _Sess(shared_engine) as _db:
+            total_attempts = _db.exec(
+                select(sqlfunc.count(CampaignLead.id)).where(
+                    CampaignLead.campaign_id == campaign.id,
+                    CampaignLead.attempts > 0,
+                )
+            ).one()
+        if total_attempts % 10 == 0:
+            await redis.enqueue_job("start_campaign", campaign.id)
+            logger.info(f"Periodic sheet re-sync enqueued for campaign {campaign.id} after {total_attempts} attempts")
     except Exception as proc_ex:
         logger.error(f"call_processor pipeline failed for outbound lead {lead_id}: {proc_ex}")
 
