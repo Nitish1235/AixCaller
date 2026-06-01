@@ -429,7 +429,16 @@ async def handle_conversation_ended(request: Request, lead_id: str, db: Session 
 
     conversation_id  = event_payload.get("conversation_id")
     call_control_id  = event_payload.get("call_control_id", "unknown")
-    duration_secs    = int(event_payload.get("duration_sec", event_payload.get("duration_seconds", 0)))
+    _raw_dur_out = (
+        event_payload.get("duration_sec")
+        or event_payload.get("duration_seconds")
+        or event_payload.get("duration")
+        or 0
+    )
+    try:
+        duration_secs = int(float(_raw_dur_out))
+    except (TypeError, ValueError):
+        duration_secs = 0
     from_number      = event_payload.get("from") or event_payload.get("from_number", "unknown")
     to_number        = event_payload.get("to")   or event_payload.get("to_number",   "unknown")
 

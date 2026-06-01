@@ -100,22 +100,18 @@ async def process_completed_call(
     except Exception as e:
         logger.warning(f"Could not fetch agent context for analytics: {e}")
 
-    # 3. Analyze Call via AnalyticsService
-    # Use list transcript if available to support system filter logic
-    raw_transcript_for_analysis = transcript if isinstance(transcript, list) else transcript_str
-    analysis = await analytics_service.analyze_call(raw_transcript_for_analysis, agent_context=agent_context)
-    
-    if analysis:
-        new_call.summary = analysis.get("summary")
-        new_call.sentiment = analysis.get("sentiment")
-        action_items = analysis.get("action_items", [])
-        new_call.action_items = json.dumps(action_items) if isinstance(action_items, list) else str(action_items)
-        
-        # --- Post-call intent detection — processed after tenant is loaded below ---
-
+    # ── Persist the call record FIRST so it is never lost even if analytics fails ──
     db.add(new_call)
+    try:
+        db.commit()
+        db.refresh(new_call)
+    except Exception as e:
+        logger.error(f"Failed to persist CallRecord for call {call_id}: {e}")
+        db.rollback()
+        # Re-add after rollback so billing can still proceed
+        db.add(new_call)
 
-    # 4. Atomically Bill Minutes
+    # 3. Atomically Bill Minutes — always runs, independent of analytics
     if duration_seconds > 0:
         try:
             db.execute(
@@ -126,12 +122,36 @@ async def process_completed_call(
                 {"delta": round(duration_seconds / 60.0, 6), "tid": str(tenant_id)},
             )
             db.commit()
-            logger.info(f"Billed {duration_seconds} seconds successfully to tenant {tenant_id}")
+            logger.info(
+                f"Billed {duration_seconds}s ({duration_seconds / 60.0:.4f} min) "
+                f"to tenant {tenant_id} for call {call_id}"
+            )
         except Exception as e:
-            logger.error(f"Failed to bill minutes atomically: {e}")
+            logger.error(f"Failed to bill minutes for call {call_id}: {e}")
             db.rollback()
     else:
+        logger.warning(f"Call {call_id} has duration_seconds=0 — no minutes billed")
+
+    # 4. Analyze Call via AnalyticsService (non-blocking — failure must not lose billing)
+    raw_transcript_for_analysis = transcript if isinstance(transcript, list) else transcript_str
+    analysis = None
+    try:
+        analysis = await analytics_service.analyze_call(raw_transcript_for_analysis, agent_context=agent_context)
+    except Exception as e:
+        logger.error(f"Analytics failed for call {call_id} (billing already done): {e}")
+
+    if analysis:
+        new_call.summary = analysis.get("summary")
+        new_call.sentiment = analysis.get("sentiment")
+        action_items = analysis.get("action_items", [])
+        new_call.action_items = json.dumps(action_items) if isinstance(action_items, list) else str(action_items)
+
+    db.add(new_call)
+    try:
         db.commit()
+    except Exception as e:
+        logger.error(f"Failed to persist analytics fields for call {call_id}: {e}")
+        db.rollback()
 
     # Refresh tenant after billing updates
     tenant = db.get(Tenant, tenant_id)

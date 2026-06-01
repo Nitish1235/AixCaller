@@ -96,6 +96,25 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
 </Response>"""
         return PlainTextResponse(texml, media_type="application/xml")
 
+    # ── Minutes gate — block call if account has no remaining minutes ──────────
+    tenant = db.get(Tenant, agent.tenant_id)
+    if tenant:
+        minutes_remaining = (tenant.minutes_included or 0) - (tenant.minutes_used or 0)
+        if minutes_remaining <= 0:
+            logger.warning(
+                f"INBOUND CALL BLOCKED — tenant {tenant.id} exhausted minutes "
+                f"({tenant.minutes_used:.2f} used / {tenant.minutes_included} included). "
+                f"From: {from_number} → {to_number}"
+            )
+            texml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>We're sorry, this account has reached its monthly call minute limit.
+    Please contact the business directly or try again after the plan renews.
+    Goodbye.</Say>
+    <Hangup/>
+</Response>"""
+            return PlainTextResponse(texml, media_type="application/xml")
+
     # Auto-provision Telnyx Assistant on first call
     if not agent.telnyx_assistant_id:
         try:

@@ -111,12 +111,49 @@ export default function BillingPage() {
             <div style={{ background: "#fff", borderRadius: 24, padding: "2rem", border: "1.5px solid var(--border)", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)" }}>
               <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8 }}>Minutes Used</div>
               <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--text)" }}>{Math.floor(sub.minutes_used)} <span style={{ fontSize: "1rem", color: "var(--text-muted)" }}>/ {sub.minutes_included}</span></div>
+              {/* Usage bar */}
+              <div style={{ marginTop: 12, height: 6, borderRadius: 99, background: "#f1f5f9", overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 99,
+                  width: `${Math.min(100, sub.minutes_included > 0 ? (sub.minutes_used / sub.minutes_included) * 100 : 100)}%`,
+                  background: sub.minutes_left <= 0 ? "#ef4444" : sub.minutes_left / sub.minutes_included < 0.15 ? "#f59e0b" : "var(--blue)",
+                  transition: "width 0.4s ease",
+                }} />
+              </div>
             </div>
-            <div style={{ background: "#fff", borderRadius: 24, padding: "2rem", border: "1.5px solid var(--border)", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--blue)", textTransform: "uppercase", marginBottom: 8 }}>Minutes Remaining</div>
-              <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--text)" }}>{Math.floor(sub.minutes_left)}</div>
+            <div style={{
+              background: sub.minutes_left <= 0 ? "#fef2f2" : "#fff",
+              borderRadius: 24, padding: "2rem",
+              border: `1.5px solid ${sub.minutes_left <= 0 ? "#fecaca" : "var(--border)"}`,
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)"
+            }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 900, color: sub.minutes_left <= 0 ? "#ef4444" : "var(--blue)", textTransform: "uppercase", marginBottom: 8 }}>
+                {sub.minutes_left <= 0 ? "⚠ Minutes Exhausted" : "Minutes Remaining"}
+              </div>
+              <div style={{ fontSize: "2rem", fontWeight: 900, color: sub.minutes_left <= 0 ? "#ef4444" : "var(--text)" }}>
+                {Math.floor(sub.minutes_left)}
+              </div>
+              {sub.minutes_left <= 0 && (
+                <div style={{ fontSize: "0.78rem", color: "#dc2626", marginTop: 6, fontWeight: 600, lineHeight: 1.4 }}>
+                  Inbound and outbound calls are blocked until your plan renews or you upgrade.
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Low-minutes warning banner */}
+          {sub.minutes_left > 0 && sub.minutes_included > 0 && (sub.minutes_left / sub.minutes_included) < 0.15 && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 18px", background: "#fffbeb", border: "1.5px solid #fcd34d", borderRadius: 12 }}>
+              <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>⚠️</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#92400e" }}>You're running low — {Math.floor(sub.minutes_left)} minutes left</div>
+                <div style={{ fontSize: "0.8rem", color: "#b45309", marginTop: 2, lineHeight: 1.5 }}>
+                  When minutes reach zero, all inbound and outbound calls will be blocked automatically.
+                  Upgrade now to avoid interruption.
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ background: "rgba(245, 158, 11, 0.05)", border: "1.5px solid rgba(245, 158, 11, 0.2)", borderRadius: 16, padding: "1rem 1.5rem", color: "#b45309", fontSize: "0.9rem" }}>
             <strong>Billing Cycle:</strong> Your plan 

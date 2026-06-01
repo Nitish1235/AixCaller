@@ -9,7 +9,7 @@ from arq.connections import RedisSettings
 from arq import create_pool
 
 from shared.database import engine
-from shared.models import Campaign, CampaignLead, Agent, CallRecord
+from shared.models import Campaign, CampaignLead, Agent, CallRecord, Tenant
 from outbound.services.sheet_poller import GoogleSheetPoller
 from outbound.services.lead_scorer import score_campaign_leads
 
@@ -80,6 +80,20 @@ async def start_campaign(ctx, campaign_id: int):
             logger.info(f"Campaign {campaign_id} is not active. Aborting start.")
             return
 
+        # ── Minutes gate — block campaign start if tenant has no remaining minutes ──
+        tenant = db.get(Tenant, campaign.tenant_id)
+        if tenant:
+            minutes_remaining = (tenant.minutes_included or 0) - (tenant.minutes_used or 0)
+            if minutes_remaining <= 0:
+                logger.warning(
+                    f"Campaign {campaign_id} NOT STARTED — tenant {tenant.id} has no remaining minutes "
+                    f"({tenant.minutes_used:.2f} used / {tenant.minutes_included} included)."
+                )
+                campaign.status = "paused"
+                db.add(campaign)
+                db.commit()
+                return
+
         # Ensure max concurrency is capped at 3 per user request constraint
         concurrency_limit = min(campaign.max_concurrent_calls, 3)
 
@@ -126,6 +140,21 @@ async def dial_next_lead(ctx, campaign_id: int):
         if not agent or not agent.phone_number:
             logger.error(f"Campaign {campaign.id} agent {campaign.agent_id} has no phone number.")
             return
+
+        # ── Minutes gate — pause campaign if tenant has no remaining minutes ───
+        tenant = db.get(Tenant, campaign.tenant_id)
+        if tenant:
+            minutes_remaining = (tenant.minutes_included or 0) - (tenant.minutes_used or 0)
+            if minutes_remaining <= 0:
+                logger.warning(
+                    f"OUTBOUND CAMPAIGN PAUSED — tenant {tenant.id} exhausted minutes "
+                    f"({tenant.minutes_used:.2f} used / {tenant.minutes_included} included). "
+                    f"Campaign {campaign.id} set to paused."
+                )
+                campaign.status = "paused"
+                db.add(campaign)
+                db.commit()
+                return
 
         concurrency_limit = min(campaign.max_concurrent_calls, 3)
 

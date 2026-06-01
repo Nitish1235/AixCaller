@@ -126,13 +126,24 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
 
         conversation_id = event_payload.get("conversation_id")
         call_control_id = event_payload.get("call_control_id", "unknown")
-        duration_sec = int(event_payload.get("duration_sec", 0))
+
+        # Try every field name Telnyx may use; guard against None with `or 0`
+        _raw_dur = (
+            event_payload.get("duration_sec")
+            or event_payload.get("duration_seconds")
+            or event_payload.get("duration")
+            or 0
+        )
+        try:
+            duration_sec = int(float(_raw_dur))
+        except (TypeError, ValueError):
+            duration_sec = 0
 
         # Check for from/to number details
         from_number = event_payload.get("from") or event_payload.get("from_number") or "Customer"
         to_number = event_payload.get("to") or event_payload.get("to_number") or "AI Agent"
 
-        logger.info(f"Call conversation ended. ID: {conversation_id}, duration: {duration_sec}s")
+        logger.info(f"Call conversation ended. ID: {conversation_id}, duration: {duration_sec}s (raw: {_raw_dur!r})")
 
         if not conversation_id:
             logger.warning("No conversation_id provided in the ended webhook. Aborting sync.")
