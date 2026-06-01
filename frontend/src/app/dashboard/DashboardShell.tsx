@@ -101,9 +101,8 @@ const NAV_MAIN = [
 ];
 const NAV_TOOLS = [
   { href: "/dashboard/call-flow",    icon: IC.callflow,     label: "Inbound Call Setup" },
-  { href: "/dashboard/calls",        icon: IC.calls,        label: "Call History" },
   { href: "/dashboard/campaigns",    icon: IC.campaigns,    label: "Outbound Campaigns" },
-  { href: "/dashboard/leads",        icon: IC.leads,        label: "Leads" },
+  { href: "/dashboard/leads",        icon: IC.leads,        label: "Activity" },
   { href: "/dashboard/knowledge",    icon: IC.knowledge,    label: "Knowledge Base" },
   { href: "/dashboard/integrations", icon: IC.integrations, label: "Integrations" },
   { href: "/dashboard/billing",      icon: IC.billing,      label: "Billing" },
@@ -113,9 +112,9 @@ const NAV_TOOLS = [
 const NAV_MOBILE = [
   { href: "/dashboard",              icon: IC.overview,   label: "Home" },
   { href: "/dashboard/agents",       icon: IC.agents,     label: "Agents" },
-  { href: "/dashboard/calls",        icon: IC.calls,      label: "Calls" },
   { href: "/dashboard/campaigns",    icon: IC.campaigns,  label: "Campaigns" },
-  { href: "/dashboard/leads",        icon: IC.leads,      label: "Leads" },
+  { href: "/dashboard/leads",        icon: IC.leads,      label: "Activity" },
+  { href: "/dashboard/billing",      icon: IC.billing,    label: "Billing" },
 ];
 
 /* ─── NavItem ────────────────────────────────────────────────────── */
@@ -184,7 +183,9 @@ export default function DashboardShell({ user, children }: { user: User; childre
     : user.email[0].toUpperCase();
 
   const allNav = [...NAV_MAIN, ...NAV_TOOLS];
-  const currentLabel = allNav.find(n => n.href === path)?.label ?? "Dashboard";
+  // /dashboard/calls now redirects to /dashboard/leads — treat them as the same label
+  const normPath = path === "/dashboard/calls" ? "/dashboard/leads" : path;
+  const currentLabel = allNav.find(n => n.href === normPath)?.label ?? "Dashboard";
 
   const usagePct = billing && billing.minutes_included > 0
     ? Math.min(100, Math.max(0, (billing.minutes_left / billing.minutes_included) * 100))
