@@ -126,9 +126,13 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
             }
         })
         
-    # 4. Google Sheets Lead Record Tool
-    if tenant and tenant.google_connected and (agent.tools_config or {}).get("google_sheet", {}).get("sheet_id"):
+    # 4. Google Sheets Tools (record lead + KB search + slot availability)
+    _sheet_cfg = (agent.tools_config or {}).get("google_sheet", {})
+    _sheet_id  = _sheet_cfg.get("sheet_id", "")
+    if tenant and tenant.google_connected and _sheet_id:
         base_url = f"https://{server_host}" if not server_host.startswith("http") else server_host
+
+        # 4a. Record Lead (always on when sheet is configured)
         tools.append({
             "type": "webhook",
             "webhook": {
@@ -140,16 +144,64 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
                 "body_parameters": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string", "description": "The customer's full name."},
-                        "phone": {"type": "string", "description": "The customer's phone number."},
-                        "email": {"type": "string", "description": "The customer's email address (optional)."},
+                        "name":   {"type": "string", "description": "The customer's full name."},
+                        "phone":  {"type": "string", "description": "The customer's phone number."},
+                        "email":  {"type": "string", "description": "The customer's email address (optional)."},
                         "intent": {"type": "string", "description": "The intent or interest of the lead."},
-                        "notes": {"type": "string", "description": "Any additional notes from the conversation."}
+                        "notes":  {"type": "string", "description": "Any additional notes from the conversation."}
                     },
                     "required": ["name", "phone"]
                 }
             }
         })
+
+        # 4b. Sheet KB Search — only registers when client has explicitly configured it
+        #     with a description (stored in tools_config.google_sheet_kb).
+        #     The description is what tells the AI WHEN to call this vs the regular KB.
+        _sheet_kb_cfg  = (agent.tools_config or {}).get("google_sheet_kb", {})
+        _sheet_kb_desc = (_sheet_kb_cfg.get("description") or "").strip()
+        if _sheet_kb_desc and tool_config.get("google_sheet_kb", {}).get("enabled", True):
+            tools.append({
+                "type": "webhook",
+                "webhook": {
+                    "name": "search_sheet_data",
+                    "url": f"{base_url}/api/v1/telnyx-ai/sheet-search?tenant_id={agent.tenant_id}&agent_id={agent.id}",
+                    "method": "POST",
+                    "async": False,
+                    "description": _sheet_kb_desc,   # ← user's own description drives "when to call"
+                    "body_parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "The caller's exact question or the topic to look up."}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            })
+
+        # 4c. Sheet Slot Availability — check booking slots with Calendar fallback
+        if tool_config.get("google_sheet_slots", {}).get("enabled", False):
+            tools.append({
+                "type": "webhook",
+                "webhook": {
+                    "name": "check_slot_availability",
+                    "url": f"{base_url}/api/v1/telnyx-ai/sheet-slots?tenant_id={agent.tenant_id}&agent_id={agent.id}",
+                    "method": "POST",
+                    "async": False,
+                    "description": (
+                        "Checks which time slots are free or already booked on a specific date. "
+                        "Returns a list of available times so the caller can choose one. "
+                        "Always call this BEFORE offering the caller a time slot."
+                    ),
+                    "body_parameters": {
+                        "type": "object",
+                        "properties": {
+                            "date": {"type": "string", "description": "The date to check in YYYY-MM-DD format."}
+                        },
+                        "required": ["date"]
+                    }
+                }
+            })
         
     # 5. Shopify Lookup Tool
     if tenant and tenant.shopify_domain and tenant.shopify_token and tool_config.get("shopify", {}).get("enabled", True):
@@ -168,6 +220,32 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
                         "query": {
                             "type": "string",
                             "description": "The order number (e.g. 1001) or customer email address to lookup."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        })
+
+    # 6. Custom API Tool
+    custom_api_cfg = (agent.tools_config or {}).get("custom_api", {})
+    if custom_api_cfg and custom_api_cfg.get("endpoint") and tool_config.get("custom_api", {}).get("enabled", False):
+        base_url = f"https://{server_host}" if not server_host.startswith("http") else server_host
+        tool_desc = custom_api_cfg.get("description") or "Fetches live data from the business's custom API to answer caller questions."
+        tools.append({
+            "type": "webhook",
+            "webhook": {
+                "name": "fetch_custom_data",
+                "url": f"{base_url}/api/v1/telnyx-ai/custom-api?tenant_id={agent.tenant_id}&agent_id={agent.id}",
+                "method": "POST",
+                "async": False,
+                "description": tool_desc,
+                "body_parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The caller's question or data request to send to the custom API."
                         }
                     },
                     "required": ["query"]
@@ -219,6 +297,43 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
         
     if tenant and tenant.shopify_domain and tool_config.get("shopify", {}).get("enabled", True):
         final_instructions += "\n\nSHOPIFY INSTRUCTIONS: You have access to the 'check_order_status' tool. If the user asks about an order, ask for their order number or email, and use the tool to fetch their status."
+
+    if custom_api_cfg and custom_api_cfg.get("endpoint") and tool_config.get("custom_api", {}).get("enabled", False):
+        custom_desc = custom_api_cfg.get("description", "Fetches live data from the business's systems.")
+        final_instructions += f"\n\nCUSTOM API INSTRUCTIONS: You have access to the 'fetch_custom_data' tool. {custom_desc} Use it when the caller asks a question that you cannot answer from your knowledge base alone."
+
+    if tenant and tenant.google_connected and _sheet_id:
+        # Only inject instruction when client has saved a description (opt-in)
+        _sheet_kb_cfg  = (agent.tools_config or {}).get("google_sheet_kb", {})
+        _sheet_kb_desc = (_sheet_kb_cfg.get("description") or "").strip()
+        if _sheet_kb_desc and tool_config.get("google_sheet_kb", {}).get("enabled", True):
+            final_instructions += (
+                f"\n\nSHEET DATA SEARCH: You have access to the 'search_sheet_data' tool. "
+                f"Use it ONLY when the caller's question matches this: {_sheet_kb_desc} "
+                f"For all other questions use 'search_knowledge_base' or answer from your training. "
+                f"NEVER call search_sheet_data for booking or appointment enquiries — "
+                f"use check_slot_availability or book_appointment for those."
+            )
+        if tool_config.get("google_sheet_slots", {}).get("enabled", False):
+            final_instructions += (
+                "\n\nAPPOINTMENT BOOKING FLOW — follow these steps strictly:"
+                "\nStep 1: When a caller wants to book, ask: \"What date works best for you? "
+                "I can check our availability right now.\""
+                "\nStep 2: If they say a day of week (e.g. 'Tuesday'), confirm the full date. "
+                "If they say a date, repeat it back to confirm."
+                "\nStep 3: Call check_slot_availability with that date in YYYY-MM-DD format."
+                "\nStep 4: If slots are available, say: \"I have openings at [list times]. "
+                "Which one works for you?\""
+                "\nStep 5: If that date is fully booked, say: \"That day is taken. "
+                "I can check the next few days — which do you prefer?\" then call "
+                "check_slot_availability for the next 1–2 dates."
+                "\nStep 6: Once the caller picks a time, collect their name and phone number, "
+                "then call book_appointment to lock it in."
+                "\nStep 7: Confirm: \"You're all set! Booked for [date] at [time]. "
+                "You'll receive a confirmation shortly.\""
+                "\nIMPORTANT: NEVER offer or promise a specific time slot before calling "
+                "check_slot_availability first. Always verify before committing."
+            )
 
     # Define full request payload
     payload = {

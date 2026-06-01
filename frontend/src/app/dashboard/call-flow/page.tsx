@@ -23,10 +23,14 @@ function CustomLogo({ bg, size = 30, children }: { bg: string; size?: number; ch
 }
 
 const PLATFORM_ICONS: Record<string, React.ReactNode> = {
-  shopify:        <PlatformLogo slug="shopify"    alt="Shopify"    bg="#96BF48" />,
-  hubspot_sync:   <PlatformLogo slug="hubspot"    alt="HubSpot"    bg="#FF7A59" />,
-  salesforce_sync:<PlatformLogo slug="salesforce" alt="Salesforce" bg="#00A1E0" />,
-  airtable_log:   <PlatformLogo slug="airtable"   alt="Airtable"   bg="#18BFFF" />,
+  shopify:         <PlatformLogo slug="shopify"         alt="Shopify"          bg="#96BF48" />,
+  hubspot_sync:    <PlatformLogo slug="hubspot"         alt="HubSpot"          bg="#FF7A59" />,
+  salesforce_sync: <PlatformLogo slug="salesforce"      alt="Salesforce"       bg="#00A1E0" />,
+  airtable_log:    <PlatformLogo slug="airtable"        alt="Airtable"         bg="#18BFFF" />,
+  google_calendar:    <PlatformLogo slug="googlecalendar"  alt="Google Calendar"  bg="#4285F4" />,
+  google_sheets:      <PlatformLogo slug="googlesheets"    alt="Google Sheets"    bg="#0F9D58" />,
+  google_sheet_kb:    <PlatformLogo slug="googlesheets"    alt="Sheets KB Search" bg="#0F9D58" />,
+  google_sheet_slots: <PlatformLogo slug="googlesheets"    alt="Sheets Slots"     bg="#1a7340" />,
   email_summary: (
     <CustomLogo bg="#F59E0B">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -38,6 +42,14 @@ const PLATFORM_ICONS: Record<string, React.ReactNode> = {
     <CustomLogo bg="#7C3AED">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      </svg>
+    </CustomLogo>
+  ),
+  custom_api: (
+    <CustomLogo bg="#0891B2">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
       </svg>
     </CustomLogo>
   ),
@@ -74,8 +86,23 @@ const inp: React.CSSProperties = {
 
 const defaultFlow = {
   pre_call: { business_hours: "always" },
-  during_call: { tools: { knowledge_base: { enabled: true }, human_transfer: { enabled: false } } },
-  post_call: { email_summary: { enabled: true }, webhook_post: { enabled: false }, airtable_log: { enabled: false }, hubspot_sync: { enabled: false }, salesforce_sync: { enabled: false } }
+  during_call: { tools: {
+    knowledge_base:    { enabled: true  },
+    human_transfer:    { enabled: false },
+    google_calendar:   { enabled: false },
+    google_sheet_kb:   { enabled: true  },
+    google_sheet_slots:{ enabled: false },
+    shopify:           { enabled: false },
+    custom_api:        { enabled: false },
+  }},
+  post_call: {
+    email_summary:   { enabled: true  },
+    webhook_post:    { enabled: false },
+    google_sheets:   { enabled: false },
+    airtable_log:    { enabled: false },
+    hubspot_sync:    { enabled: false },
+    salesforce_sync: { enabled: false },
+  }
 };
 
 export default function CallFlowPage() {
@@ -98,6 +125,13 @@ export default function CallFlowPage() {
 
   const [savingInt, setSavingInt] = useState(false);
   const [intForm, setIntForm] = useState<any>({});
+
+  // Sheet KB config state
+  const [sheetKbDesc, setSheetKbDesc]         = useState("");
+  const [sheetKbColumns, setSheetKbColumns]   = useState<string[]>([]);
+  const [sheetKbAnalyzing, setSheetKbAnalyzing] = useState(false);
+  const [sheetKbSaving, setSheetKbSaving]     = useState(false);
+  const [sheetKbMsg, setSheetKbMsg]           = useState("");
 
   useEffect(() => {
     const loadAgents = async () => {
@@ -138,11 +172,19 @@ export default function CallFlowPage() {
         setIntegrations(res.integrations || {});
         setIntForm({
           shopify_store_url: res.integrations?.shopify_domain || "",
-          shopify_api_key: "", // Don't return secrets, user enters new if needed
+          shopify_api_key: "",
           airtable_pat: "",
           airtable_base_id: res.integrations?.airtable_base_id || "",
           webhook_url: res.integrations?.webhook_url || ""
         });
+        // Pre-fill Sheet KB config if already saved
+        if (res.sheet_kb_config?.description) {
+          setSheetKbDesc(res.sheet_kb_config.description);
+          setSheetKbColumns(res.sheet_kb_config.columns || []);
+        } else {
+          setSheetKbDesc("");
+          setSheetKbColumns([]);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -214,13 +256,18 @@ export default function CallFlowPage() {
   // Returns true when the integration is ready to be enabled
   const isIntegrationReady = (id: string): boolean => {
     switch (id) {
-      case "shopify":         return !!(integrations.shopify_connected || integrations.shopify_store_url);
-      case "hubspot_sync":    return !!integrations.hubspot_connected;
-      case "salesforce_sync": return !!integrations.salesforce_connected;
-      case "airtable_log":    return !!integrations.airtable_connected;
-      case "webhook_post":    return !!integrations.webhook_url;
+      case "shopify":          return !!(integrations.shopify_connected || integrations.shopify_store_url);
+      case "hubspot_sync":     return !!integrations.hubspot_connected;
+      case "salesforce_sync":  return !!integrations.salesforce_connected;
+      case "airtable_log":     return !!integrations.airtable_connected;
+      case "webhook_post":     return !!integrations.webhook_url;
+      case "google_calendar":    return !!integrations.google_connected;
+      case "google_sheets":      return !!integrations.google_connected;
+      case "google_sheet_kb":    return !!(integrations.google_connected && integrations.google_sheet_configured);
+      case "google_sheet_slots": return !!(integrations.google_connected && integrations.google_sheet_configured);
+      case "custom_api":         return !!integrations.custom_api_configured;
       // built-ins — no external account needed
-      default:                return true;
+      default:                 return true;
     }
   };
 
@@ -566,6 +613,269 @@ export default function CallFlowPage() {
             )}
           </div>
         );
+      case "google_sheet_kb":
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#0F9D58", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/googlesheets.svg`} width={22} height={22} alt="Sheets KB" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)" }}>Sheets KB Search</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Opt-in · only active when you configure it below</div>
+              </div>
+            </div>
+
+            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.65 }}>
+              <strong style={{ color: "#0f172a" }}>Sheets KB vs regular KB — when to use which:</strong>
+              <ul style={{ margin: "5px 0 0 14px", padding: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                <li><strong>Regular KB</strong> — FAQs, policies, small product lists → upload as text/PDF</li>
+                <li><strong>Sheets KB</strong> — large structured data (pricing tables, service menus, rosters) that lives in a spreadsheet and changes often</li>
+              </ul>
+            </div>
+
+            {!integrations.google_sheet_configured ? (
+              <div style={{ padding: 14, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.85rem" }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠ No Google Sheet connected yet</div>
+                Add a Sheet ID in Agent Settings → Tools Config → <code>google_sheet</code> first.
+                <a href={agentId ? `/dashboard/agents/${agentId}` : "/dashboard/agents"} style={{ display: "inline-block", marginTop: 10, padding: "7px 14px", background: "#f59e0b", color: "#fff", borderRadius: 7, fontWeight: 700, fontSize: "0.78rem", textDecoration: "none" }}>→ Open Agent Settings</a>
+              </div>
+            ) : (
+              <>
+                <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ background: "#f8fafc", padding: "9px 14px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, fontSize: "0.8rem", color: "#0f172a" }}>
+                    Step 1 — Detect your sheet's columns
+                  </div>
+                  <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0, lineHeight: 1.5 }}>
+                      Reads only the first row. Fast, minimal quota. Auto-generates a search description you can edit.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        setSheetKbAnalyzing(true); setSheetKbMsg("");
+                        try {
+                          const res = await apiPost(`/agents/${agentId}/sheet-kb/analyze`, {});
+                          setSheetKbColumns(res.columns || []);
+                          if (!sheetKbDesc) setSheetKbDesc(res.auto_description || "");
+                          setSheetKbMsg("✓ Columns detected. Review the description below then save.");
+                        } catch (e: any) { setSheetKbMsg(`✗ ${e.message || "Analysis failed"}`); }
+                        setSheetKbAnalyzing(false);
+                      }}
+                      disabled={sheetKbAnalyzing}
+                      style={{ background: "#0F9D58", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", opacity: sheetKbAnalyzing ? 0.7 : 1, alignSelf: "flex-start" }}
+                    >
+                      {sheetKbAnalyzing ? "Reading headers…" : "🔍 Analyze Sheet"}
+                    </button>
+                    {sheetKbColumns.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {sheetKbColumns.map(c => (
+                          <span key={c} style={{ background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0", borderRadius: 99, padding: "2px 9px", fontSize: "0.72rem", fontWeight: 700 }}>{c}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ background: "#f8fafc", padding: "9px 14px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, fontSize: "0.8rem", color: "#0f172a" }}>
+                    Step 2 — Tell the AI when to search this sheet
+                  </div>
+                  <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0, lineHeight: 1.5 }}>
+                      This is the AI's <em>decision rule</em>. It calls <code>search_sheet_data</code> only when the caller's question matches. Leave blank to disable the tool entirely.
+                    </p>
+                    <textarea
+                      rows={4}
+                      value={sheetKbDesc}
+                      onChange={e => setSheetKbDesc(e.target.value)}
+                      placeholder={`e.g. "Contains our service menu with columns Service, Price, Duration. Search when callers ask about pricing, what services we offer, or how long a treatment takes."`}
+                      style={{ ...inp, resize: "vertical", lineHeight: 1.55, fontSize: "0.82rem" }}
+                    />
+                    <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Tip: be specific about the column names and question types — the AI uses this verbatim.</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    onClick={async () => {
+                      setSheetKbSaving(true); setSheetKbMsg("");
+                      try {
+                        await apiPatch(`/agents/${agentId}/sheet-kb/config`, { description: sheetKbDesc, columns: sheetKbColumns, enabled: !!sheetKbDesc.trim() });
+                        setSheetKbMsg(sheetKbDesc.trim() ? "✓ Saved — AI will search this sheet when relevant." : "✓ Cleared — tool disabled.");
+                      } catch (e: any) { setSheetKbMsg(`✗ ${e.message || "Save failed"}`); }
+                      setSheetKbSaving(false);
+                    }}
+                    disabled={sheetKbSaving}
+                    style={{ background: "#0F9D58", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, fontSize: "0.83rem", cursor: "pointer", opacity: sheetKbSaving ? 0.7 : 1 }}
+                  >
+                    {sheetKbSaving ? "Saving…" : "💾 Save"}
+                  </button>
+                  {sheetKbDesc.trim() && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Disable Sheet KB? The AI will stop searching this sheet during calls.")) return;
+                        try {
+                          await apiPatch(`/agents/${agentId}/sheet-kb/config`, { description: "", columns: [], enabled: false });
+                          setSheetKbDesc(""); setSheetKbColumns([]); setSheetKbMsg("✓ Disabled.");
+                        } catch (e: any) { setSheetKbMsg(`✗ ${e.message || "Failed"}`); }
+                      }}
+                      style={{ background: "none", border: "1.5px solid #fecaca", color: "#ef4444", borderRadius: 8, padding: "9px 12px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+                    >Remove</button>
+                  )}
+                </div>
+                {sheetKbMsg && (
+                  <div style={{ padding: "8px 12px", borderRadius: 8, fontSize: "0.82rem", fontWeight: 600, background: sheetKbMsg.startsWith("✓") ? "#dcfce7" : "#fef2f2", color: sheetKbMsg.startsWith("✓") ? "#166534" : "#dc2626" }}>
+                    {sheetKbMsg}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      case "google_sheet_slots":
+        return (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#1a7340", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/googlesheets.svg`} width={22} height={22} alt="Sheet Booking Slots" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Sheet Booking Slots</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Date/time slot availability · Google Calendar fallback</div>
+              </div>
+            </div>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.6 }}>
+              When enabled, the AI checks your slots sheet for available times before committing to any booking. Falls back to Google Calendar FreeBusy if the sheet has no slot data for that date.
+            </p>
+            {integrations.google_sheet_configured ? (
+              <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", marginBottom: 16 }}>
+                ✓ Sheet connected — toggle on to activate slot checking during calls.
+              </div>
+            ) : (
+              <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>⚠ No sheet connected yet</div>
+                <div style={{ fontSize: "0.85rem", lineHeight: 1.5 }}>Connect a Google Sheet in Agent Settings first. The sheet needs Date, Time, and Status columns.</div>
+                <a href={agentId ? `/dashboard/agents/${agentId}` : "/dashboard/agents"} style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#1a7340", color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: "0.82rem", textDecoration: "none" }}>→ Open Agent Settings</a>
+              </div>
+            )}
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "12px 14px", fontSize: "0.82rem", color: "#166534", lineHeight: 1.7, marginBottom: 12 }}>
+              <strong>AI booking conversation flow:</strong>
+              <ol style={{ margin: "8px 0 0 16px", padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                <li>AI asks: <em>"What date works best for you?"</em></li>
+                <li>Caller names a date → AI calls <code>check_slot_availability</code></li>
+                <li>Slots free → <em>"I have openings at 10:00, 14:00, 16:00. Which works?"</em></li>
+                <li>Fully booked → AI offers the next available date automatically</li>
+                <li>Caller picks time → AI collects name/phone → calls <code>book_appointment</code></li>
+                <li>Confirms: <em>"You're all set for [date] at [time]!"</em></li>
+              </ol>
+            </div>
+            <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "10px 14px", fontSize: "0.8rem", color: "#92400e", lineHeight: 1.6 }}>
+              <strong>Required sheet columns (header row):</strong> <code>Date</code> (YYYY-MM-DD), <code>Time</code> (HH:MM), <code>Status</code> (leave blank = available, write "Booked" when taken). Additional columns are ignored.
+            </div>
+          </div>
+        );
+      case "google_calendar":
+        return (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#4285F4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/googlecalendar.svg`} width={22} height={22} alt="Google Calendar" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Google Calendar</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Scheduling · Book appointments live during the call</div>
+              </div>
+            </div>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 16 }}>
+              When enabled, the AI checks your Google Calendar availability in real-time and books appointments during the call — no back-and-forth required.
+            </p>
+            {integrations.google_connected ? (
+              <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", marginBottom: 16 }}>
+                ✓ Google Calendar connected — toggle it on in the card to activate booking during calls.
+              </div>
+            ) : (
+              <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>⚠ Not connected</div>
+                <div style={{ fontSize: "0.85rem", lineHeight: 1.5 }}>Connect your Google account first to enable calendar booking during calls.</div>
+                <a href="/dashboard/integrations" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#4285F4", color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: "0.82rem", textDecoration: "none" }}>
+                  → Connect Google Calendar
+                </a>
+              </div>
+            )}
+            <div style={{ background: "#f0f9ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 14px", fontSize: "0.82rem", color: "#1e40af", lineHeight: 1.6 }}>
+              💡 <strong>What the AI does:</strong> When a caller wants to schedule, the AI asks for a preferred date/time, checks your calendar for availability, and confirms the booking — all without putting the caller on hold.
+            </div>
+          </div>
+        );
+      case "custom_api":
+        return (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#0891B2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Custom API</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Developer · Live data fetch mid-conversation</div>
+              </div>
+            </div>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 16 }}>
+              When enabled, the AI calls your custom REST endpoint mid-conversation to fetch live data — inventory, bookings, customer info, or any business logic.
+            </p>
+            {integrations.custom_api_configured ? (
+              <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", marginBottom: 16 }}>
+                ✓ Custom API configured — toggle it on to enable mid-call data fetching.
+              </div>
+            ) : (
+              <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>⚠ Not configured</div>
+                <div style={{ fontSize: "0.85rem", lineHeight: 1.5 }}>Set up your Custom API endpoint in the Agent Settings first.</div>
+                <a href={agentId ? `/dashboard/agents/${agentId}` : "/dashboard/agents"} style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#0891B2", color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: "0.82rem", textDecoration: "none" }}>
+                  → Open Agent Settings
+                </a>
+              </div>
+            )}
+            <div style={{ background: "#f0fdff", border: "1px solid #a5f3fc", borderRadius: 8, padding: "10px 14px", fontSize: "0.82rem", color: "#155e75", lineHeight: 1.6 }}>
+              💡 <strong>How it works:</strong> The AI sends a <code>query</code> parameter to your endpoint and reads the response. GET requests use query params; POST requests send <code>{`{"query":"..."}`}</code>. Configure the endpoint URL and auth in Agent Settings → Custom URL.
+            </div>
+          </div>
+        );
+      case "google_sheets":
+        return (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#0F9D58", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={`${CDN}/googlesheets.svg`} width={22} height={22} alt="Google Sheets" style={{ filter: "invert(1)" }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>Google Sheets</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Data · Auto-log leads after every call</div>
+              </div>
+            </div>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: 16 }}>
+              When enabled, a new row is appended to your Google Sheet after every call — capturing caller name, phone, summary, sentiment, and booked appointment details.
+            </p>
+            {integrations.google_connected ? (
+              <div style={{ padding: 12, background: "#dcfce7", color: "#166534", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", marginBottom: 16 }}>
+                ✓ Google connected — toggle it on to start logging calls to Sheets automatically.
+              </div>
+            ) : (
+              <div style={{ padding: 15, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: "0.9rem", marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>⚠ Not connected</div>
+                <div style={{ fontSize: "0.85rem", lineHeight: 1.5 }}>Connect your Google account first to enable automatic call logging to Sheets.</div>
+                <a href="/dashboard/integrations" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#0F9D58", color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: "0.82rem", textDecoration: "none" }}>
+                  → Connect Google
+                </a>
+              </div>
+            )}
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: "0.82rem", color: "#166534", lineHeight: 1.6 }}>
+              💡 <strong>What gets logged:</strong> Caller phone, name, call duration, AI summary, sentiment score, action items, and appointment datetime (if booked). Each call = one new row.
+            </div>
+          </div>
+        );
       case "human_transfer":
         return (
           <div>
@@ -669,9 +979,13 @@ export default function CallFlowPage() {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--blue)", color: "#fff", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: 800, fontSize: "1.2rem", marginBottom: 15 }}>1</div>
               {renderTimelineCard("During the Call", "What tools can the AI use while speaking?", [
-                { id: "knowledge_base", label: "Knowledge Base", phase: "during_call" },
-                { id: "human_transfer", label: "Human Transfer", phase: "during_call" },
-                { id: "shopify", label: "Shopify Lookup", phase: "during_call" },
+                { id: "knowledge_base",     label: "Knowledge Base",    phase: "during_call" },
+                { id: "google_sheet_kb",    label: "Sheets KB Search",  phase: "during_call" },
+                { id: "human_transfer",     label: "Human Transfer",    phase: "during_call" },
+                { id: "google_calendar",    label: "Google Calendar",   phase: "during_call" },
+                { id: "google_sheet_slots", label: "Sheet Booking Slots", phase: "during_call" },
+                { id: "shopify",            label: "Shopify Lookup",    phase: "during_call" },
+                { id: "custom_api",         label: "Custom API",        phase: "during_call" },
               ])}
             </div>
             
@@ -681,10 +995,11 @@ export default function CallFlowPage() {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#10b981", color: "#fff", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: 800, fontSize: "1.2rem", marginBottom: 15 }}>2</div>
               {renderTimelineCard("After the Call", "What automations run when the user hangs up?", [
-                { id: "email_summary", label: "Email Summary", phase: "post_call" },
-                { id: "webhook_post", label: "Webhook", phase: "post_call" },
-                { id: "airtable_log", label: "Airtable Log", phase: "post_call" },
-                { id: "hubspot_sync", label: "HubSpot Sync", phase: "post_call" },
+                { id: "email_summary",   label: "Email Summary",   phase: "post_call" },
+                { id: "google_sheets",   label: "Google Sheets",   phase: "post_call" },
+                { id: "webhook_post",    label: "Webhook",         phase: "post_call" },
+                { id: "airtable_log",    label: "Airtable Log",    phase: "post_call" },
+                { id: "hubspot_sync",    label: "HubSpot Sync",    phase: "post_call" },
                 { id: "salesforce_sync", label: "Salesforce Sync", phase: "post_call" },
               ])}
             </div>

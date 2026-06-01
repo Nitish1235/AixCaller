@@ -151,7 +151,34 @@ async def process_completed_call(
             except Exception as e:
                 logger.error(f"Post-call KB lookup failed: {e}")
 
-    # 5. Airtable Call Log
+    # 5. Google Sheets Post-Call Append
+    if tenant.google_connected and post_call_config.get("google_sheets", {}).get("enabled", False):
+        try:
+            agent_for_sheet = db.get(Agent, agent_id)
+            sheet_cfg = (agent_for_sheet.tools_config or {}).get("google_sheet", {}) if agent_for_sheet else {}
+            sheet_id = sheet_cfg.get("sheet_id")
+            if sheet_id:
+                from backend.services.google_oauth import append_lead_to_sheet
+                sheet_row = {
+                    "name": new_call.from_number,
+                    "phone": new_call.from_number,
+                    "intent": new_call.summary or "",
+                    "notes": (
+                        f"Sentiment: {new_call.sentiment or 'neutral'} | "
+                        f"Duration: {duration_seconds}s | "
+                        f"Agent: {agent_name}"
+                    ),
+                    "status": "completed",
+                    "agent_name": agent_name,
+                }
+                # Pass sheet_id to append function via tenant attribute
+                tenant.google_sheet_id = sheet_id  # type: ignore[attr-defined]
+                await append_lead_to_sheet(tenant, sheet_row)
+                logger.info(f"Google Sheets post-call append complete for call {new_call.id}")
+        except Exception as e:
+            logger.warning(f"Google Sheets post-call append failed (non-blocking): {e}")
+
+    # 6. Airtable Call Log
     if tenant.airtable_pat and tenant.airtable_base_id and post_call_config.get("airtable_log", {}).get("enabled", True):
         try:
             airtable = AirtableService(tenant)

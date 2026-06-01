@@ -320,22 +320,180 @@ async def get_call_flow(agent_id: uuid.UUID, db: Session = Depends(get_db)):
         
     call_flow = agent.call_flow or {}
     
+    custom_api_cfg  = (agent.tools_config or {}).get("custom_api", {})
+    sheet_cfg       = (agent.tools_config or {}).get("google_sheet", {})
+    sheet_kb_cfg    = (agent.tools_config or {}).get("google_sheet_kb", {})
+
     return {
         "call_flow": call_flow,
+        "sheet_kb_config": {
+            "enabled":     sheet_kb_cfg.get("enabled", False),
+            "description": sheet_kb_cfg.get("description", ""),
+            "columns":     sheet_kb_cfg.get("columns", []),
+        },
         "integrations": {
-            "shopify_connected": bool(tenant.shopify_token),
-            "shopify_domain": tenant.shopify_domain,
-            "google_connected": tenant.google_connected,
-            "airtable_connected": bool(tenant.airtable_pat and tenant.airtable_base_id),
-            "hubspot_connected": bool(tenant.hubspot_access_token),
-            "salesforce_connected": bool(tenant.salesforce_access_token),
-            "webhook_connected": bool(tenant.webhook_url),
+            "shopify_connected":       bool(tenant.shopify_token),
+            "shopify_domain":          tenant.shopify_domain,
+            "google_connected":        tenant.google_connected,
+            "google_sheet_configured": bool(tenant.google_connected and sheet_cfg.get("sheet_id")),
+            "google_sheet_id":         sheet_cfg.get("sheet_id", ""),
+            "google_sheet_name":       sheet_cfg.get("sheet_name", "Sheet1"),
+            "airtable_connected":      bool(tenant.airtable_pat and tenant.airtable_base_id),
+            "airtable_base_id":        tenant.airtable_base_id or "",
+            "hubspot_connected":       bool(tenant.hubspot_access_token),
+            "salesforce_connected":    bool(tenant.salesforce_access_token),
+            "webhook_connected":       bool(tenant.webhook_url),
+            "webhook_url":             tenant.webhook_url or "",
+            "custom_api_configured":   bool(custom_api_cfg and custom_api_cfg.get("endpoint")),
+            "custom_api_endpoint":     custom_api_cfg.get("endpoint", "") if custom_api_cfg else "",
         }
     }
 
 
 class CallFlowUpdateRequest(BaseModel):
     call_flow: dict
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SHEET KB CONFIG  (analyze headers + save description)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SheetKbConfigRequest(BaseModel):
+    description: str
+    columns: List[str] = []
+    enabled: bool = True
+
+
+@router.post("/agents/{agent_id}/sheet-kb/analyze")
+async def analyze_sheet_kb(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+    """
+    Reads only the first row of the agent's Google Sheet to detect column names.
+    Returns columns + an auto-generated description of what the AI can search for.
+    Called from the call-flow dashboard when the user clicks 'Analyze Sheet'.
+    Only reads 1 row → fast, minimal API quota usage.
+    """
+    import httpx as _httpx
+
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    tenant = db.get(Tenant, agent.tenant_id)
+    if not tenant or not tenant.google_connected:
+        raise HTTPException(status_code=400, detail="Google is not connected for this account")
+
+    sheet_cfg  = (agent.tools_config or {}).get("google_sheet", {})
+    sheet_id   = sheet_cfg.get("sheet_id", "").strip()
+    sheet_name = (sheet_cfg.get("sheet_name") or "Sheet1").strip()
+
+    if not sheet_id:
+        raise HTTPException(status_code=400, detail="No Google Sheet is configured for this agent yet. Add a sheet ID in Agent Settings first.")
+
+    try:
+        from outbound.services.sheet_poller import get_valid_google_token
+        token = await get_valid_google_token(tenant, db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve Google token: {e}")
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Google authentication failed. Please reconnect Google in Integrations.")
+
+    # Fetch ONLY the header row (row 1) — one API call, minimal data transfer
+    async with _httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!1:1",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Google Sheets API error ({resp.status_code}). Check that the sheet ID is correct and the connected account has read access.")
+
+    values = resp.json().get("values", [])
+    columns = [str(c).strip() for c in (values[0] if values else []) if str(c).strip()]
+
+    if not columns:
+        raise HTTPException(status_code=400, detail="The sheet's first row appears empty. Add a header row with column names (e.g. Service, Price, Description).")
+
+    col_list = ", ".join(f'"{c}"' for c in columns)
+    auto_description = (
+        f"Contains structured business data with columns: {col_list}. "
+        f"Search this sheet when callers ask about "
+        f"{' or '.join(c.lower() for c in columns[:3])} or related details."
+    )
+
+    return {
+        "columns": columns,
+        "auto_description": auto_description,
+        "sheet_id": sheet_id,
+        "sheet_name": sheet_name,
+    }
+
+
+@router.patch("/agents/{agent_id}/sheet-kb/config")
+async def save_sheet_kb_config(
+    agent_id: uuid.UUID,
+    body: SheetKbConfigRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Saves the Sheet KB search configuration (description + columns) to the agent's
+    tools_config. The description is injected into the Telnyx tool definition so the
+    AI knows exactly WHEN to call search_sheet_data vs search_knowledge_base.
+    Also re-syncs the Telnyx Assistant so the change takes effect immediately.
+    """
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    tools_config = dict(agent.tools_config or {})
+    if body.enabled and body.description.strip():
+        tools_config["google_sheet_kb"] = {
+            "enabled": True,
+            "description": body.description.strip(),
+            "columns": body.columns,
+        }
+    else:
+        # Disabled or no description → remove so tool is NOT registered on Telnyx
+        tools_config.pop("google_sheet_kb", None)
+
+    agent.tools_config = tools_config
+    agent.updated_at = datetime.now(timezone.utc)
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+
+    # Re-sync Telnyx assistant so new tool description takes effect immediately
+    try:
+        from backend.services.telnyx_assistant import sync_agent_with_telnyx
+        await sync_agent_with_telnyx(agent, db)
+    except Exception as e:
+        logger.error(f"Telnyx sync failed after sheet-kb config save: {e}")
+
+    return {"status": "saved", "tool_registered": body.enabled and bool(body.description.strip())}
+
+
+@router.delete("/agents/{agent_id}/sheet-kb/config")
+async def remove_sheet_kb_config(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Remove the Sheet KB config entirely — tool is unregistered from Telnyx."""
+    agent = db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    tools_config = dict(agent.tools_config or {})
+    tools_config.pop("google_sheet_kb", None)
+    agent.tools_config = tools_config
+    agent.updated_at = datetime.now(timezone.utc)
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+
+    try:
+        from backend.services.telnyx_assistant import sync_agent_with_telnyx
+        await sync_agent_with_telnyx(agent, db)
+    except Exception as e:
+        logger.error(f"Telnyx sync failed after sheet-kb config removal: {e}")
+
+    return {"status": "removed"}
 
 
 @router.put("/agents/{agent_id}/call-flow")
