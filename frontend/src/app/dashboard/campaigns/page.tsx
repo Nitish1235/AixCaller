@@ -57,12 +57,8 @@ const WIZARD_STEPS = [
   { id: "launch",   label: "Review & Launch", icon: "🚀" },
 ];
 
-const STRATEGIES = [
-  { id: "immediate",    label: "Immediate Dial",     desc: "Call leads as soon as they're added", icon: "⚡" },
-  { id: "scheduled",    label: "Scheduled Windows",  desc: "Set specific calling hours & days",   icon: "📅" },
-  { id: "drip",         label: "Multi-Touch Drip",   desc: "Call + SMS follow-up cadence",        icon: "🌊" },
-  { id: "reactivation", label: "Lead Reactivation",  desc: "Re-engage cold or stale leads",       icon: "🔥" },
-];
+// Strategies removed — system always uses time-window scheduling.
+// Calls are triggered within the configured calling window only.
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   inactive:  { bg: "#f1f5f9", text: "#64748b", dot: "#94a3b8" },
@@ -153,7 +149,6 @@ interface BuilderState {
   agentId: string;
   parsedLeads: ParsedLead[];
   leadsFileName: string;
-  strategy: string;
   callingWindowTimezone: string;
   callingWindowStart: string;
   callingWindowEnd: string;
@@ -182,7 +177,6 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
   const [data, setData] = useState<BuilderState>({
     name: "", agentId: "",
     parsedLeads: [], leadsFileName: "",
-    strategy: "immediate",
     callingWindowTimezone: "lead_local",
     callingWindowStart: "09:00", callingWindowEnd: "20:00",
     speedToLead: false, smsEnabled: false,
@@ -200,7 +194,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
 
   const canContinue = () => {
     if (stepId === "name")  return data.name.trim().length > 0;
-    if (stepId === "agent") return data.agentId.length > 0;
+    if (stepId === "agent") return data.agentId.length > 0 && !!selectedAgent?.phone_number;
     return true;
   };
 
@@ -386,6 +380,28 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                   </a>
                 </div>
               )}
+
+              {/* Warning when selected agent has no phone */}
+              {selectedAgent && !selectedAgent.phone_number && (
+                <div style={{ marginTop: 14, display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", background: "#fffbeb", border: "1.5px solid #fcd34d", borderRadius: 12 }}>
+                  <div style={{ fontSize: "1.2rem", flexShrink: 0, lineHeight: 1 }}>⚠️</div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#92400e", marginBottom: 4 }}>
+                      {selectedAgent.name} has no phone number assigned
+                    </div>
+                    <div style={{ fontSize: "0.78rem", color: "#b45309", lineHeight: 1.6 }}>
+                      A phone number is required before this agent can make outbound calls.
+                      Assign one in the agent settings, then come back to create your campaign.
+                    </div>
+                    <a
+                      href="/dashboard/agents"
+                      style={{ display: "inline-block", marginTop: 10, padding: "7px 14px", background: "#f59e0b", color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: "0.78rem", textDecoration: "none" }}
+                    >
+                      Go to Agent Settings →
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -455,28 +471,10 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
           {stepId === "schedule" && (
             <div style={{ animation: "fadeSlideIn 0.25s ease" }}>
               <div style={{ marginBottom: "1.5rem" }}>
-                <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", marginBottom: 4 }}>Calling schedule & strategy</div>
-                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.6 }}>Choose how and when your agent places calls.</div>
-              </div>
-
-              {/* Strategy cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1.5rem" }}>
-                {STRATEGIES.map(s => {
-                  const sel = data.strategy === s.id;
-                  return (
-                    <div key={s.id} onClick={() => upd({ strategy: s.id })} style={{
-                      padding: "14px 16px", borderRadius: 12, cursor: "pointer",
-                      border: sel ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
-                      background: sel ? "#eff6ff" : "#fff",
-                      transition: "all 0.15s", position: "relative",
-                    }}>
-                      <div style={{ fontSize: "1.25rem", marginBottom: 6 }}>{s.icon}</div>
-                      <div style={{ fontWeight: 800, fontSize: "0.84rem", color: sel ? "#2563eb" : "#0f172a", marginBottom: 2 }}>{s.label}</div>
-                      <div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.4 }}>{s.desc}</div>
-                      {sel && <div style={{ position: "absolute", top: 10, right: 10, width: 18, height: 18, borderRadius: "50%", background: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.55rem", fontWeight: 800 }}>✓</div>}
-                    </div>
-                  );
-                })}
+                <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", marginBottom: 4 }}>Calling window</div>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.6 }}>
+                  Set when your agent is allowed to place calls. Calls run sequentially within this window, up to 3 at a time.
+                </div>
               </div>
 
               {/* Timezone + window */}
@@ -582,7 +580,7 @@ function BuilderModal({ onClose, onComplete, existingAgents, tenantId }: {
                   <div>
                     <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Schedule</div>
                     <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#0f172a" }}>
-                      {STRATEGIES.find(s => s.id === data.strategy)?.label} · {data.callingWindowStart}–{data.callingWindowEnd}
+                      🕐 {data.callingWindowStart}–{data.callingWindowEnd}
                     </div>
                     <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: 2 }}>
                       {data.callingWindowTimezone === "lead_local" ? "Lead's local time" : data.callingWindowTimezone}

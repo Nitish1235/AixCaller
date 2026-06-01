@@ -8,7 +8,7 @@ from sqlalchemy import func
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from shared.database import get_db
 from shared.models import Campaign, CampaignLead, Agent, Tenant
 from loguru import logger
@@ -23,7 +23,7 @@ class CreateCampaignRequest(BaseModel):
     tenant_id: str
     agent_id: str
     name: str
-    max_concurrent_calls: int = 1
+    max_concurrent_calls: int = 3          # default 3, hard cap 3
     calling_window_timezone: str = "lead_local"
     calling_window_start: str = "09:00"
     calling_window_end: str = "20:00"
@@ -31,6 +31,10 @@ class CreateCampaignRequest(BaseModel):
     speed_to_lead_enabled: bool = False
     sms_enabled: bool = False
     daily_call_limit: Optional[int] = None
+
+    @validator("max_concurrent_calls")
+    def cap_concurrency(cls, v: int) -> int:
+        return min(max(v, 1), 3)           # clamp to [1, 3]
 
 
 class UpdateCampaignRequest(BaseModel):

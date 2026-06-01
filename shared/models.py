@@ -258,7 +258,7 @@ class Campaign(SQLModel, table=True):
     agent_id: uuid.UUID = Field(foreign_key="agent.id", index=True)
     name: str
     status: str = Field(default="inactive")  # active | inactive | completed
-    max_concurrent_calls: int = Field(default=1)
+    max_concurrent_calls: int = Field(default=3)  # 1–3; capped at 3 in API layer
     daily_call_limit: Optional[int] = Field(default=None)
 
     # ── Timezone-Aware Calling Window ────────────────────────────────────────
