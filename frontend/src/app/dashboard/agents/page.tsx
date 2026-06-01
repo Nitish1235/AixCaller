@@ -58,7 +58,15 @@ export default async function AgentsPage() {
       {/* Agents grid */}
       {agents.length === 0 ? (
         <div style={card({ padding: "5rem 2rem", textAlign: "center" })}>
-          <div style={{ fontSize: "4rem", marginBottom: "1.5rem" }}>🤖</div>
+          <div style={{ width: 72, height: 72, borderRadius: 20, background: "var(--blue-light)", border: "1.5px solid rgba(29,78,216,0.12)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="8" width="16" height="10" rx="2"/>
+              <path d="M8 8V6a4 4 0 0 1 8 0v2"/>
+              <circle cx="9" cy="13" r="1" fill="var(--blue)" stroke="none"/>
+              <circle cx="15" cy="13" r="1" fill="var(--blue)" stroke="none"/>
+              <path d="M4 13H2m20 0h-2"/>
+            </svg>
+          </div>
           <h2 style={{ fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>No agents yet</h2>
           <p style={{ color: "var(--text-muted)", marginBottom: "2rem", maxWidth: 360, margin: "0 auto 2rem" }}>
             Create your first AI voice agent. It'll be trained and live on your phone line in under 5 minutes.
@@ -76,23 +84,41 @@ export default async function AgentsPage() {
               {/* Card header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--blue-light)", color: "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>🤖</div>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--blue-light)", color: "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="4" y="8" width="16" height="10" rx="2"/>
+                      <path d="M8 8V6a4 4 0 0 1 8 0v2"/>
+                      <circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/>
+                      <circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/>
+                      <path d="M4 13H2m20 0h-2"/>
+                    </svg>
+                  </div>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)" }}>{agent.name}</div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>ID: {agent.id?.slice(0, 8)}...</div>
                   </div>
                 </div>
-                <span style={{ background: "var(--green-light)", color: "var(--green)", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid rgba(5,150,105,0.15)" }}>
-                  ● Active
-                </span>
+                {agent.telnyx_assistant_id && agent.phone_number ? (
+                  <span style={{ background: "var(--green-light)", color: "var(--green)", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid rgba(5,150,105,0.15)" }}>
+                    ● Live
+                  </span>
+                ) : agent.phone_number ? (
+                  <span style={{ background: "#fef3c7", color: "#d97706", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid #fde68a" }}>
+                    ⚙ Syncing
+                  </span>
+                ) : (
+                  <span style={{ background: "#f1f5f9", color: "#64748b", borderRadius: 999, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid #e2e8f0" }}>
+                    ○ No number
+                  </span>
+                )}
               </div>
 
               {/* Details */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.5rem" }}>
                 {[
-                  ["📞 Phone", agent.phone_number || "Not connected"],
-                  ["🎙️ Voice", agent.voice_id || "Telnyx.Ultra.Grace"],
-                  ["🔧 Tools", `${agent.tools_config ? Object.keys(agent.tools_config).length : 0} configured`],
+                  ["Phone", agent.phone_number || "Not connected"],
+                  ["Voice", (agent.voice_id || "Grace").split(".").pop()],
+                  ["Tools", `${agent.tools_config ? Object.keys(agent.tools_config).length : 0} configured`],
                 ].map(([label, val]) => (
                   <div key={label as string} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
                     <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>{label}</span>

@@ -881,10 +881,10 @@ export default function CampaignsPage() {
             </button>
           </div>
 
-          {/* Body: sidebar + pipeline + drawer */}
-          <div style={{ display: "flex", gap: "1rem", flex: 1, minHeight: 0 }}>
+          {/* Body: sidebar + pipeline (drawer is absolute inside pipeline) */}
+          <div style={{ display: "flex", gap: "1rem", flex: 1, minHeight: 0, overflow: "hidden" }}>
             {/* Campaign list */}
-            <div style={{ width: 210, flexShrink: 0, display: "flex", flexDirection: "column", gap: "0.5rem", overflowY: "auto" }}>
+            <div style={{ width: 190, flexShrink: 0, display: "flex", flexDirection: "column", gap: "0.5rem", overflowY: "auto" }}>
               <div style={{ fontSize: "0.62rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, padding: "0 4px", marginBottom: 4 }}>My Campaigns</div>
               {campaigns.map(c => {
                 const sc = STATUS_COLORS[c.status] || STATUS_COLORS.inactive;
@@ -903,9 +903,9 @@ export default function CampaignsPage() {
               <div onClick={() => setShowBuilder(true)} style={{ border: "1.5px dashed #e2e8f0", borderRadius: 11, padding: "10px", cursor: "pointer", textAlign: "center", color: "#94a3b8", fontSize: "0.75rem", fontWeight: 600 }}>+ New Campaign</div>
             </div>
 
-            {/* Pipeline canvas */}
+            {/* Pipeline canvas — drawer slides in as absolute overlay so it never overflows */}
             {selectedCampaign && (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.75rem", minWidth: 0 }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.75rem", minWidth: 0, position: "relative" }}>
                 {/* Campaign bar */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 11, flexShrink: 0, flexWrap: "wrap" }}>
                   <div style={{ width: 26, height: 26, borderRadius: 7, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem" }}>📣</div>
@@ -977,65 +977,80 @@ export default function CampaignsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Right config drawer */}
-            {selectedNode && selectedCampaign && (
-              <div style={{ width: 270, flexShrink: 0, background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden", animation: "fadeSlideIn 0.2s ease", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
-                <div style={{ padding: "1rem 1.25rem", borderBottom: "1.5px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 800, fontSize: "0.88rem", color: "#0f172a" }}>
-                    {selectedNode === "list" ? "📋 Lead List" : selectedNode === "agent" ? "🤖 AI Agent" : "📊 Analytics"}
-                  </span>
-                  <button onClick={() => setSelectedNode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "1.2rem", cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
-                </div>
-                <div style={{ padding: "1.25rem", flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                  {selectedNode === "list" && (
-                    <>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#eff6ff", borderRadius: 8, fontSize: "0.75rem", color: "#2563eb", fontWeight: 600 }}>
-                        📋 {selectedCampaign.leads_count} leads loaded
+                {/* ── Config drawer — absolute overlay so it never pushes outside the viewport ── */}
+                {selectedNode && (
+                  <>
+                    {/* Click-away backdrop */}
+                    <div
+                      onClick={() => setSelectedNode(null)}
+                      style={{ position: "absolute", inset: 0, zIndex: 19, background: "rgba(15,23,42,0.08)" }}
+                    />
+                    {/* Drawer panel */}
+                    <div style={{
+                      position: "absolute", right: 0, top: 0, bottom: 0, zIndex: 20,
+                      width: 280, background: "#fff",
+                      border: "1.5px solid #e2e8f0", borderRadius: "0 14px 14px 0",
+                      display: "flex", flexDirection: "column", overflow: "hidden",
+                      animation: "fadeSlideIn 0.2s ease",
+                      boxShadow: "-6px 0 24px rgba(0,0,0,0.08)",
+                    }}>
+                      <div style={{ padding: "1rem 1.25rem", borderBottom: "1.5px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                        <span style={{ fontWeight: 800, fontSize: "0.88rem", color: "#0f172a" }}>
+                          {selectedNode === "list" ? "📋 Lead List" : selectedNode === "agent" ? "🤖 AI Agent" : "📊 Analytics"}
+                        </span>
+                        <button onClick={() => setSelectedNode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
                       </div>
-                      <div style={{ fontSize: "0.78rem", color: "#64748b", lineHeight: 1.6 }}>
-                        Calling window: <strong>{selectedCampaign.calling_window_start}</strong> – <strong>{selectedCampaign.calling_window_end}</strong>
+                      <div style={{ padding: "1.25rem", flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        {selectedNode === "list" && (
+                          <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#eff6ff", borderRadius: 8, fontSize: "0.75rem", color: "#2563eb", fontWeight: 600 }}>
+                              📋 {selectedCampaign.leads_count} leads loaded
+                            </div>
+                            <div style={{ fontSize: "0.78rem", color: "#64748b", lineHeight: 1.6 }}>
+                              Calling window: <strong>{selectedCampaign.calling_window_start}</strong> – <strong>{selectedCampaign.calling_window_end}</strong>
+                            </div>
+                            <Link href="/dashboard/leads" style={{ textDecoration: "none" }}>
+                              <button style={{ width: "100%", background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>Manage Leads →</button>
+                            </Link>
+                          </>
+                        )}
+                        {selectedNode === "agent" && (
+                          <>
+                            <div style={{ background: "#ecfdf5", borderRadius: 8, padding: "8px 10px", fontSize: "0.75rem", color: "#059669", fontWeight: 600 }}>🤖 {selectedCampaign.agent_name}</div>
+                            <div style={{ fontSize: "0.78rem", color: "#64748b", lineHeight: 1.6 }}>Phone: <strong>{selectedCampaign.agent_phone || "Not assigned"}</strong></div>
+                            <Link href="/dashboard/agents" style={{ textDecoration: "none" }}>
+                              <button style={{ width: "100%", background: "#059669", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>Open Agent Settings →</button>
+                            </Link>
+                            <div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.5 }}>Edit prompt, voice, knowledge base, and tools in the full agent editor.</div>
+                          </>
+                        )}
+                        {selectedNode === "analytics" && (
+                          <>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" }}>
+                              {[
+                                { label: "Total",     val: campaignStats?.total_leads ?? "—" },
+                                { label: "Answered",  val: campaignStats?.by_status?.answered ?? "—" },
+                                { label: "Voicemail", val: campaignStats?.by_status?.voicemail ?? "—" },
+                                { label: "Pending",   val: campaignStats?.by_status?.pending ?? "—" },
+                                { label: "Failed",    val: campaignStats?.by_status?.failed ?? "—" },
+                                { label: "Opted Out", val: campaignStats?.by_status?.opted_out ?? "—" },
+                              ].map(m => (
+                                <div key={m.label} style={{ background: "#f8fafc", borderRadius: 8, padding: "10px", textAlign: "center" }}>
+                                  <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a" }}>{m.val}</div>
+                                  <div style={{ fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{m.label}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <Link href="/dashboard/calls" style={{ textDecoration: "none" }}>
+                              <button style={{ width: "100%", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>View All Call Logs →</button>
+                            </Link>
+                          </>
+                        )}
                       </div>
-                      <Link href="/dashboard/leads" style={{ textDecoration: "none" }}>
-                        <button style={{ width: "100%", background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>Manage Leads →</button>
-                      </Link>
-                    </>
-                  )}
-                  {selectedNode === "agent" && (
-                    <>
-                      <div style={{ background: "#ecfdf5", borderRadius: 8, padding: "8px 10px", fontSize: "0.75rem", color: "#059669", fontWeight: 600 }}>🤖 {selectedCampaign.agent_name}</div>
-                      <div style={{ fontSize: "0.78rem", color: "#64748b", lineHeight: 1.6 }}>Phone: <strong>{selectedCampaign.agent_phone || "Not assigned"}</strong></div>
-                      <Link href="/dashboard/agents" style={{ textDecoration: "none" }}>
-                        <button style={{ width: "100%", background: "#059669", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>Open Agent Settings →</button>
-                      </Link>
-                      <div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.5 }}>Edit prompt, voice, knowledge base, and tools in the full agent editor.</div>
-                    </>
-                  )}
-                  {selectedNode === "analytics" && (
-                    <>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" }}>
-                        {[
-                          { label: "Total", val: campaignStats?.total_leads ?? "—" },
-                          { label: "Answered", val: campaignStats?.by_status?.answered ?? "—" },
-                          { label: "Voicemail", val: campaignStats?.by_status?.voicemail ?? "—" },
-                          { label: "Pending", val: campaignStats?.by_status?.pending ?? "—" },
-                          { label: "Failed", val: campaignStats?.by_status?.failed ?? "—" },
-                          { label: "Opted Out", val: campaignStats?.by_status?.opted_out ?? "—" },
-                        ].map(m => (
-                          <div key={m.label} style={{ background: "#f8fafc", borderRadius: 8, padding: "10px", textAlign: "center" }}>
-                            <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a" }}>{m.val}</div>
-                            <div style={{ fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{m.label}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <Link href="/dashboard/calls" style={{ textDecoration: "none" }}>
-                        <button style={{ width: "100%", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>View All Call Logs →</button>
-                      </Link>
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

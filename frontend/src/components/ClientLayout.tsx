@@ -10,7 +10,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <>
       {!isDashboard && (
-        <div className="bg-mesh">
+        <div className="bg-mesh" aria-hidden="true" role="presentation">
           <div className="blob blob-1" />
           <div className="blob blob-2" />
           <div className="blob blob-3" />

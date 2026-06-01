@@ -129,7 +129,7 @@ function NavItem({ href, icon, label, active, onClick }: {
         padding: "7px 10px", borderRadius: 8,
         background: active ? "var(--sidebar-item-active-bg)" : "transparent",
         border: active ? "1px solid var(--sidebar-item-active-border)" : "1px solid transparent",
-        color: active ? "#1d4ed8" : "#374151",
+        color: active ? "var(--blue)" : "#374151",
         fontWeight: active ? 600 : 500,
         fontSize: "0.875rem",
         transition: "all 0.15s ease",
@@ -149,7 +149,7 @@ function NavItem({ href, icon, label, active, onClick }: {
         }
       }}
       >
-        <span style={{ color: active ? "#1d4ed8" : "#6b7280", flexShrink: 0, display: "flex", transition: "color 0.15s" }}>
+        <span style={{ color: active ? "var(--blue)" : "#6b7280", flexShrink: 0, display: "flex", transition: "color 0.15s" }}>
           {icon}
         </span>
         {label}
@@ -446,8 +446,8 @@ export default function DashboardShell({ user, children }: { user: User; childre
 
       {/* ─── Responsive styles ─── */}
       <style>{`
-        .dashboard-sidebar { width: 252px; transform: translateX(0); }
-        .dashboard-main { margin-left: 252px; }
+        .dashboard-sidebar { width: var(--sidebar-width); transform: translateX(0); }
+        .dashboard-main { margin-left: var(--sidebar-width); }
         .hamburger-btn { display: none !important; }
         .sidebar-close-btn { display: none !important; }
 

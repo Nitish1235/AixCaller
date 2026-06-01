@@ -25,6 +25,7 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState("");
 
   useEffect(() => {
     const tenantId = typeof window !== "undefined" ? localStorage.getItem("tenant_id") : null;
@@ -59,20 +60,31 @@ export default function BillingPage() {
       if (res.checkout_url) {
         window.location.href = res.checkout_url;
       }
-    } catch (err) {
-      console.error("Checkout failed", err);
-      alert("Failed to initiate checkout. Please try again.");
+    } catch (err: any) {
+      setCheckoutError(err.message || "Failed to start checkout. Please try again.");
     } finally {
       setCheckoutLoading(null);
     }
   };
 
-  if (loading) return <div style={{ padding: "2rem", color: "#94a3b8" }}>Loading billing profile...</div>;
+  if (loading) return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* Skeleton header */}
+      <div style={{ height: 36, width: 240, background: "#f1f5f9", borderRadius: 8, animation: "pulse 1.5s ease infinite" }} />
+      {/* Skeleton plan card */}
+      <div style={{ height: 180, borderRadius: 24, background: "linear-gradient(135deg, #dbeafe, #eff6ff)", animation: "pulse 1.5s ease infinite" }} />
+      {/* Skeleton stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+        {[1,2].map(i => <div key={i} style={{ height: 100, borderRadius: 24, background: "#f1f5f9", animation: "pulse 1.5s ease infinite" }} />)}
+      </div>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+    </div>
+  );
 
   return (
     <div>
       <header style={{ marginBottom: "2rem" }}>
-        <h1 style={{ fontWeight: 900, fontSize: "2rem", color: "var(--text)", textTransform: "uppercase", margin: 0 }}>
+        <h1 style={{ fontWeight: 900, fontSize: "1.6rem", color: "var(--text)", margin: 0, letterSpacing: "-0.5px" }}>
           Billing & Subscription
         </h1>
         <p style={{ color: "#64748b" }}>Manage your plan, track usage, and upgrade for more volume.</p>
@@ -164,9 +176,15 @@ export default function BillingPage() {
 
       {/* Upgrade Section */}
       <div>
-        <h2 style={{ fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", textTransform: "uppercase", marginBottom: "1.5rem" }}>
+        <h2 style={{ fontWeight: 800, fontSize: "1.3rem", color: "var(--text)", marginBottom: "1.5rem", letterSpacing: "-0.3px" }}>
           Available Plans
         </h2>
+        {checkoutError && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "var(--red-light)", border: "1px solid #fca5a5", borderRadius: 10, marginBottom: "1.25rem", fontSize: "0.85rem", color: "var(--red)", fontWeight: 600 }}>
+            <span>⚠</span> {checkoutError}
+            <button onClick={() => setCheckoutError("")} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}>×</button>
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem" }}>
           {plans.map((plan) => {
             const isCurrentPlan = sub?.plan_tier === plan.tier;

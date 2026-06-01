@@ -125,6 +125,7 @@ export default function CallFlowPage() {
 
   const [savingInt, setSavingInt] = useState(false);
   const [intForm, setIntForm] = useState<any>({});
+  const [saveMsg, setSaveMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Sheet KB config state
   const [sheetKbDesc, setSheetKbDesc]         = useState("");
@@ -198,13 +199,13 @@ export default function CallFlowPage() {
 
   const saveFlow = async () => {
     if (!agentId) return;
-    setSaving(true);
+    setSaving(true); setSaveMsg(null);
     try {
       await apiPut(`/agents/${agentId}/call-flow`, { call_flow: callFlow });
-      alert("Call flow saved successfully!");
-    } catch (e) {
-      alert("Failed to save call flow.");
-      console.error(e);
+      setSaveMsg({ type: "ok", text: "Call flow deployed successfully." });
+      setTimeout(() => setSaveMsg(null), 3000);
+    } catch (e: any) {
+      setSaveMsg({ type: "err", text: e.message || "Failed to save call flow." });
     }
     setSaving(false);
   };
@@ -272,16 +273,16 @@ export default function CallFlowPage() {
   };
 
   const saveIntegration = async (fields: any) => {
-    setSavingInt(true);
+    setSavingInt(true); setSaveMsg(null);
     try {
       const tid = getTenantId();
       await apiPatch(`/integrations?tenant_id=${tid}`, fields);
-      alert("Integration saved successfully!");
-      // Reload integrations
+      setSaveMsg({ type: "ok", text: "Integration saved." });
+      setTimeout(() => setSaveMsg(null), 3000);
       const res = await apiGet(`/agents/${agentId}/call-flow`);
       setIntegrations(res.integrations || {});
-    } catch (e) {
-      alert("Failed to save integration.");
+    } catch (e: any) {
+      setSaveMsg({ type: "err", text: e.message || "Failed to save integration." });
     }
     setSavingInt(false);
   };
@@ -959,6 +960,16 @@ export default function CallFlowPage() {
           <button onClick={saveFlow} disabled={saving || !agentId} style={{ ...btn(), opacity: !agentId ? 0.5 : 1 }}>
             {saving ? "Saving..." : "Deploy Flow"}
           </button>
+          {saveMsg && (
+            <span style={{
+              fontSize: "0.78rem", fontWeight: 600, padding: "5px 11px", borderRadius: 7,
+              background: saveMsg.type === "ok" ? "#dcfce7" : "#fee2e2",
+              color: saveMsg.type === "ok" ? "#166534" : "var(--red)",
+              border: `1px solid ${saveMsg.type === "ok" ? "#bbf7d0" : "#fca5a5"}`,
+            }}>
+              {saveMsg.type === "ok" ? "✓" : "⚠"} {saveMsg.text}
+            </span>
+          )}
         </div>
       </div>
 

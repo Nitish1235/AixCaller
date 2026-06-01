@@ -176,6 +176,7 @@ export default function CreateAgentPage() {
   const uploadKB = async () => {
     if (!agentId) return;
     setLoading(true); setKbStatus([]); setError("");
+    const tid = getTenantId();
     let uploaded = false;
 
     // 2a. Plain text
