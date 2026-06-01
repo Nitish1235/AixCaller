@@ -75,7 +75,10 @@ const INTEGRATIONS = [
     color: "#F59E0B",
     textColor: "#1a1a00",
     icon: (
-      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/email.svg" alt="Email Summaries" width={28} height={28} style={{ filter: 'invert(1)' }} />
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <path d="M2 7l10 7 10-7" />
+      </svg>
     ),
   },
   {
