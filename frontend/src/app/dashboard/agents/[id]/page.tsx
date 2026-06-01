@@ -68,6 +68,7 @@ export default function AgentDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [voice, setVoice] = useState("");
@@ -189,7 +190,7 @@ export default function AgentDetailsPage() {
   useEffect(() => { if (tab === "kb") loadKb(); }, [tab]);
 
   const save = async () => {
-    setSaving(true);
+    setSaving(true); setSaveError("");
     try {
       await updateAgent(id as string, {
         name,
@@ -199,10 +200,9 @@ export default function AgentDetailsPage() {
         human_transfer_enabled: transferEnabled,
         human_transfer_timezone: transferTz,
         human_transfer_hours: transferHours,
-
       });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
-    } catch (e) { console.error(e); }
+    } catch (e: any) { setSaveError(e.message || "Failed to save changes."); }
     setSaving(false);
   };
 
@@ -351,8 +351,8 @@ export default function AgentDetailsPage() {
     try {
       const data = await apiPost("/numbers/search", { country_code: countryCode, area_code: areaCode, limit: 5 });
       if (data.numbers?.length > 0) setAvailableNumbers(data.numbers);
-      else setProvError(`No numbers found for ${countryCode} ${areaCode ? `(area ${areaCode})` : ""}.`);
-    } catch { setProvError("Failed to search numbers."); }
+      else setProvError(`No numbers found for ${countryCode}${areaCode ? ` area code ${areaCode}` : ""}. Try a different area code or country.`);
+    } catch (e: any) { setProvError(e.message || "Failed to search numbers."); }
     setProvLoading(false);
   };
 
@@ -365,7 +365,7 @@ export default function AgentDetailsPage() {
       const updated = list.find((a: any) => a.id === id);
       if (updated) setAgent(updated);
       setProvisioning(false);
-    } catch { setProvError("Failed to purchase number."); }
+    } catch (e: any) { setProvError(e.message || "Failed to purchase number."); }
     setProvLoading(false);
   };
 
@@ -513,14 +513,21 @@ export default function AgentDetailsPage() {
             <p style={{ color: "var(--text-muted)", margin: "2px 0 0", fontSize: "0.85rem" }}>Configure behaviour and knowledge.</p>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {saved && <span style={{ fontSize: "0.82rem", color: "var(--blue)", fontWeight: 700 }}>✓ Saved!</span>}
-          <button onClick={() => router.push(`/dashboard/call-flow?agent=${agent.id}`)} style={btn("var(--blue-light)", { color: "var(--blue)", border: "1.5px solid var(--border)" })}>
-            Configure Call Flow →
-          </button>
-          <button onClick={save} disabled={saving} style={btn("var(--blue)", { opacity: saving ? 0.7 : 1 })}>
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {saved && <span style={{ fontSize: "0.82rem", color: "var(--blue)", fontWeight: 700 }}>✓ Saved!</span>}
+            <button onClick={() => router.push(`/dashboard/call-flow?agent=${agent.id}`)} style={btn("var(--blue-light)", { color: "var(--blue)", border: "1.5px solid var(--border)" })}>
+              Configure Call Flow →
+            </button>
+            <button onClick={save} disabled={saving} style={btn("var(--blue)", { opacity: saving ? 0.7 : 1 })}>
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+          {saveError && (
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 14px", fontSize: "0.8rem", color: "#dc2626", fontWeight: 600, maxWidth: 400, textAlign: "right" }}>
+              ⚠ {saveError}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1353,7 +1360,11 @@ export default function AgentDetailsPage() {
                   <input value={areaCode} onChange={e => setAreaCode(e.target.value)} placeholder="Area code (optional)" style={{ ...inp, flex: 1 }} />
                   <button onClick={searchNumbers} disabled={provLoading} style={btn()}>{provLoading ? "..." : "Search"}</button>
                 </div>
-                {provError && <div style={{ color: "#DC2626", fontSize: "0.75rem" }}>{provError}</div>}
+                {provError && (
+                  <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, padding: "10px 14px", fontSize: "0.82rem", color: "#dc2626", fontWeight: 600 }}>
+                    ⚠ {provError}
+                  </div>
+                )}
                 {availableNumbers.map(n => (
                   <div key={n.phone_number} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 10, background: "var(--blue-light)", border: "1.5px solid var(--border)", borderRadius: 10 }}>
                     <div style={{ fontWeight: 700, color: "var(--blue)" }}>{n.phone_number}</div>

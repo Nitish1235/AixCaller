@@ -692,8 +692,8 @@ export default function CampaignsPage() {
       showToast("🚀 Campaign activated! Dialing will begin.");
       await loadData();
       setSelectedCampaign(prev => prev ? { ...prev, status: "active" } : prev);
-    } catch {
-      showToast("⚠️ Failed to activate campaign.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Failed to activate campaign."}`);
     }
     setActivating(false);
   };
@@ -707,8 +707,8 @@ export default function CampaignsPage() {
       showToast(newStatus === "active" ? "▶️ Campaign resumed" : "⏸️ Campaign paused");
       await loadData();
       setSelectedCampaign(prev => prev ? { ...prev, status: newStatus } : prev);
-    } catch {
-      showToast("⚠️ Action failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Action failed."}`);
     }
   };
 
@@ -721,8 +721,8 @@ export default function CampaignsPage() {
       setSelectedCampaign(null);
       setSelectedNode(null);
       await loadData();
-    } catch {
-      showToast("⚠️ Failed to delete campaign.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Failed to delete campaign."}`);
     }
   };
 

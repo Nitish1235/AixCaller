@@ -67,10 +67,23 @@ export async function fetchVoices() {
   }
 }
 
+async function extractError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === "string") return body.detail;
+    if (typeof body?.message === "string") return body.message;
+    if (Array.isArray(body?.detail)) {
+      // FastAPI validation errors: [{loc, msg, type}]
+      return body.detail.map((e: any) => e.msg || JSON.stringify(e)).join("; ");
+    }
+  } catch {}
+  return `${fallback} (${res.status})`;
+}
+
 export async function apiGet(path: string) {
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`API GET failed: ${res.status}`);
+  if (!res.ok) throw new Error(await extractError(res, "Request failed"));
   return await res.json();
 }
 
@@ -81,7 +94,7 @@ export async function apiPost(path: string, body: any) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API POST failed: ${res.status}`);
+  if (!res.ok) throw new Error(await extractError(res, "Request failed"));
   return await res.json();
 }
 
@@ -92,7 +105,7 @@ export async function apiPatch(path: string, body: any) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API PATCH failed: ${res.status}`);
+  if (!res.ok) throw new Error(await extractError(res, "Request failed"));
   return await res.json();
 }
 
@@ -103,14 +116,14 @@ export async function apiPut(path: string, body: any) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API PUT failed: ${res.status}`);
+  if (!res.ok) throw new Error(await extractError(res, "Request failed"));
   return await res.json();
 }
 
 export async function apiDelete(path: string) {
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
   const res = await fetch(url, { method: "DELETE" });
-  if (!res.ok) throw new Error(`API DELETE failed: ${res.status}`);
+  if (!res.ok) throw new Error(await extractError(res, "Request failed"));
   return await res.json();
 }
 

@@ -401,7 +401,9 @@ export default function IntegrationsPage() {
           webhookUrl: data.webhook_url || "",
         }));
       }
-    } catch {}
+    } catch {
+      showToast("⚠️ Failed to load integration settings. Please refresh.");
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -417,8 +419,8 @@ export default function IntegrationsPage() {
       await fetch(`${API_BASE_URL}/google/disconnect?tenant_id=${getTenantId()}`, { method: "DELETE" });
       await load();
       showToast("✅ Google disconnected");
-    } catch {
-      showToast("⚠️ Disconnect failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Disconnect failed."}`);
     }
     setSaving(null);
   };
@@ -427,13 +429,17 @@ export default function IntegrationsPage() {
   const saveGoogleSettings = async () => {
     setSaving("google");
     try {
-      await fetch(`${API_BASE_URL}/google/settings`, {
+      const res = await fetch(`${API_BASE_URL}/google/settings`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenant_id: getTenantId(), calendar_id: settings.googleCalendarId }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || body?.message || `Request failed (${res.status})`);
+      }
       showToast("✅ Google Calendar settings saved!");
-    } catch {
-      showToast("⚠️ Failed to save Google settings.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Failed to save Google settings."}`);
     }
     setSaving(null);
   };
@@ -448,8 +454,8 @@ export default function IntegrationsPage() {
       });
       await load();
       showToast("✅ Email settings saved!");
-    } catch {
-      showToast("⚠️ Failed to save email settings.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Failed to save email settings."}`);
     }
     setSaving(null);
   };
@@ -465,8 +471,8 @@ export default function IntegrationsPage() {
       });
       await load();
       showToast("✅ Airtable settings saved!");
-    } catch {
-      showToast("⚠️ Failed to save Airtable settings.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Failed to save Airtable settings."}`);
     }
     setSaving(null);
   };
@@ -481,8 +487,8 @@ export default function IntegrationsPage() {
       });
       await load();
       showToast("✅ Shopify settings saved!");
-    } catch {
-      showToast("⚠️ Failed to save Shopify settings.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Failed to save Shopify settings."}`);
     }
     setSaving(null);
   };
@@ -494,8 +500,8 @@ export default function IntegrationsPage() {
       await load();
       setSettings(prev => ({ ...prev, shopifyStoreUrl: "", shopifyApiKey: "" }));
       showToast("✅ Shopify disconnected");
-    } catch {
-      showToast("⚠️ Disconnect failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Disconnect failed."}`);
     }
     setSaving(null);
   };
@@ -509,8 +515,8 @@ export default function IntegrationsPage() {
       });
       await load();
       showToast("✅ Webhook URL saved!");
-    } catch {
-      showToast("⚠️ Failed to save Webhook URL.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Failed to save Webhook URL."}`);
     }
     setSaving(null);
   };
@@ -522,8 +528,8 @@ export default function IntegrationsPage() {
       await load();
       setSettings(prev => ({ ...prev, webhookUrl: "" }));
       showToast("✅ Webhook disconnected");
-    } catch {
-      showToast("⚠️ Disconnect failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Disconnect failed."}`);
     }
     setSaving(null);
   };
@@ -539,8 +545,8 @@ export default function IntegrationsPage() {
       await fetch(`${API_BASE_URL}/integrations/hubspot?tenant_id=${getTenantId()}`, { method: "DELETE" });
       await load();
       showToast("✅ HubSpot disconnected");
-    } catch {
-      showToast("⚠️ Disconnect failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Disconnect failed."}`);
     }
     setSaving(null);
   };
@@ -555,8 +561,8 @@ export default function IntegrationsPage() {
       await fetch(`${API_BASE_URL}/integrations/salesforce?tenant_id=${getTenantId()}`, { method: "DELETE" });
       await load();
       showToast("✅ Salesforce disconnected");
-    } catch {
-      showToast("⚠️ Disconnect failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Disconnect failed."}`);
     }
     setSaving(null);
   };
@@ -569,10 +575,10 @@ export default function IntegrationsPage() {
       if (resp.ok) {
         showToast(`✅ Airtable connected! Table: ${data.table}`);
       } else {
-        showToast(`⚠️ ${data.detail || "Connection failed"}`);
+        showToast(`⚠️ ${data.detail || data.message || "Connection failed."}`);
       }
-    } catch {
-      showToast("⚠️ Connection test failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Connection test failed."}`);
     }
     setAirtableTesting(false);
   };
@@ -584,8 +590,8 @@ export default function IntegrationsPage() {
       await load();
       setSettings(prev => ({ ...prev, airtablePat: "", airtableBaseId: "", airtableTableName: "Call Log" }));
       showToast("✅ Airtable disconnected");
-    } catch {
-      showToast("⚠️ Disconnect failed.");
+    } catch (e: any) {
+      showToast(`⚠️ ${e.message || "Disconnect failed."}`);
     }
     setSaving(null);
   };
