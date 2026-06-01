@@ -282,12 +282,6 @@ export default function RootLayout({
         "serviceType": "AI Outbound Call Center Software",
         "areaServed": "Worldwide",
         "url": "https://aixcaller.com/#outbound",
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.9",
-          "bestRating": "5",
-          "reviewCount": "128",
-        },
         "offers": {
           "@type": "Offer",
           "price": "50",
@@ -307,12 +301,6 @@ export default function RootLayout({
         "serviceType": "AI Virtual Receptionist",
         "areaServed": "Worldwide",
         "url": "https://aixcaller.com",
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.9",
-          "bestRating": "5",
-          "reviewCount": "128",
-        },
         "offers": {
           "@type": "Offer",
           "price": "50",
