@@ -52,14 +52,14 @@ async def search_numbers(req: SearchRequest, tenant_id: str = "", db: Session = 
     if req.area_code:
         params["filter[national_destination_code]"] = req.area_code
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
         # Using Telnyx API to find local numbers
         response = await client.get(
             "https://api.telnyx.com/v2/available_phone_numbers",
             headers={"Authorization": f"Bearer {api_key}"},
             params=params
         )
-        
+
         if response.status_code != 200:
             logger.error(f"Telnyx search failed: {response.text}")
             # If Telnyx returns 10031 (No numbers found), don't crash, just return empty list
@@ -148,7 +148,7 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
         )
 
     # ── Step 1: Purchase via Telnyx Number Orders API ───────────────────────
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         order_payload = {
             "phone_numbers": [{"phone_number": req.phone_number}],
             "connection_id": connection_id
@@ -159,8 +159,22 @@ async def purchase_number(req: PurchaseRequest, db: Session = Depends(get_db)):
             json=order_payload
         )
         if response.status_code not in [200, 201]:
-            logger.error(f"Telnyx purchase failed: {response.text}")
-            raise HTTPException(status_code=500, detail="Failed to purchase number")
+            logger.error(f"Telnyx purchase failed ({response.status_code}): {response.text}")
+            # Extract the real Telnyx error message so the user knows what went wrong
+            try:
+                err_body = response.json()
+                telnyx_msg = (
+                    err_body.get("errors", [{}])[0].get("detail")
+                    or err_body.get("errors", [{}])[0].get("title")
+                    or err_body.get("detail")
+                    or "Unknown Telnyx error"
+                )
+            except Exception:
+                telnyx_msg = response.text[:200] or "Unknown error"
+            raise HTTPException(
+                status_code=502,
+                detail=f"Telnyx rejected the number purchase: {telnyx_msg}"
+            )
 
     logger.info(f"Successfully purchased {req.phone_number}.")
 
@@ -239,7 +253,7 @@ async def test_forwarding(req: TestForwardingRequest, db: Session = Depends(get_
     # The TeXML for this test call lives at /forwarding-test-answer
     answer_url = f"https://{server_host}/forwarding-test-answer"
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
         response = await client.post(
             "https://api.telnyx.com/v2/texml/calls",
             headers={

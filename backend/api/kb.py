@@ -14,13 +14,13 @@ kb_service = IngestionService()
 
 
 @router.get("/chunks")
-async def list_kb_chunks(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+async def list_kb_chunks(agent_id: uuid.UUID, tenant_id: uuid.UUID, db: Session = Depends(get_db)):
     """
     List all knowledge base chunks for a specific agent.
     Returns source groups with chunk counts so the dashboard can show what's ingested.
     """
     agent = db.get(Agent, agent_id)
-    if not agent:
+    if not agent or agent.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     chunks = db.exec(
@@ -51,6 +51,7 @@ class TextUploadBody(BaseModel):
 @router.post("/upload-text")
 async def upload_text(
     agent_id: uuid.UUID,
+    tenant_id: uuid.UUID,
     body: TextUploadBody,
     db: Session = Depends(get_db)
 ):
@@ -60,7 +61,7 @@ async def upload_text(
     Send JSON body: { "content": "...", "source": "manual" }
     """
     agent = db.get(Agent, agent_id)
-    if not agent:
+    if not agent or agent.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     count = await kb_service.ingest_text(
@@ -75,6 +76,7 @@ async def upload_text(
 @router.post("/upload-file")
 async def upload_file(
     agent_id: uuid.UUID,
+    tenant_id: uuid.UUID,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -82,7 +84,7 @@ async def upload_file(
     Upload a text file (.txt, .md) directly into the knowledge base.
     """
     agent = db.get(Agent, agent_id)
-    if not agent:
+    if not agent or agent.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     raw = await file.read()
@@ -104,6 +106,7 @@ async def upload_file(
 async def sync_website_url(
     url: str,
     agent_id: uuid.UUID,
+    tenant_id: uuid.UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
@@ -112,7 +115,7 @@ async def sync_website_url(
     Runs in the background to avoid blocking the request.
     """
     agent = db.get(Agent, agent_id)
-    if not agent:
+    if not agent or agent.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     tenant_id = agent.tenant_id
@@ -144,10 +147,10 @@ async def sync_website_url(
 
 
 @router.delete("/clear")
-async def clear_agent_kb(agent_id: uuid.UUID, db: Session = Depends(get_db)):
+async def clear_agent_kb(agent_id: uuid.UUID, tenant_id: uuid.UUID, db: Session = Depends(get_db)):
     """Delete all knowledge base chunks for a specific agent."""
     agent = db.get(Agent, agent_id)
-    if not agent:
+    if not agent or agent.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     await kb_service.delete_agent_kb(agent_id)
@@ -178,8 +181,8 @@ async def sync_google_sheet_kb(body: GoogleSheetSyncRequest, db: Session = Depen
         raise HTTPException(status_code=400, detail="Google account not connected for this tenant.")
 
     try:
-        # Fetch up to 500 rows across columns A to Z
-        range_name = f"{body.sheet_name}!A1:Z500"
+        # Fetch up to 5000 rows across columns A to Z
+        range_name = f"{body.sheet_name}!A1:Z5000"
         rows = await fetch_sheet_values(tenant, body.sheet_id, range_name)
     except Exception as e:
         logger.error(f"Google Sheet fetch failed: {e}")

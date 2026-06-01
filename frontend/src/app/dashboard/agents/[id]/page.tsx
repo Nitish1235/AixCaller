@@ -180,7 +180,8 @@ export default function AgentDetailsPage() {
   const loadKb = async () => {
     setKbLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/kb/chunks?agent_id=${agentId}`);
+      const tid = getTenantId();
+      const res = await fetch(`${API_BASE_URL}/kb/chunks?agent_id=${agentId}&tenant_id=${tid}`);
       const data = await res.json();
       setKbSources(data.sources || []);
       setKbTotal(data.total_chunks || 0);
@@ -267,7 +268,7 @@ export default function AgentDetailsPage() {
     if (!kbText.trim()) return;
     setKbBusy(true); setKbStatus("");
     try {
-      const res = await fetch(`${API_BASE_URL}/kb/upload-text?agent_id=${agentId}`, {
+      const res = await fetch(`${API_BASE_URL}/kb/upload-text?agent_id=${agentId}&tenant_id=${getTenantId()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: kbText, source: "manual" }),
@@ -286,7 +287,7 @@ export default function AgentDetailsPage() {
     try {
       const form = new FormData();
       form.append("file", kbFile);
-      const res = await fetch(`${API_BASE_URL}/kb/upload-file?agent_id=${agentId}`, {
+      const res = await fetch(`${API_BASE_URL}/kb/upload-file?agent_id=${agentId}&tenant_id=${getTenantId()}`, {
         method: "POST", body: form
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -302,7 +303,7 @@ export default function AgentDetailsPage() {
     setKbBusy(true); setKbStatus("");
     try {
       const res = await fetch(
-        `${API_BASE_URL}/kb/sync-url?agent_id=${agentId}&url=${encodeURIComponent(kbUrl)}`,
+        `${API_BASE_URL}/kb/sync-url?agent_id=${agentId}&tenant_id=${getTenantId()}&url=${encodeURIComponent(kbUrl)}`,
         { method: "POST" }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -339,7 +340,7 @@ export default function AgentDetailsPage() {
     if (!confirm("Delete ALL knowledge base content for this agent?")) return;
     setKbBusy(true);
     try {
-      await fetch(`${API_BASE_URL}/kb/clear?agent_id=${agentId}`, { method: "DELETE" });
+      await fetch(`${API_BASE_URL}/kb/clear?agent_id=${agentId}&tenant_id=${getTenantId()}`, { method: "DELETE" });
       setKbStatus("✓ Knowledge base cleared");
       loadKb();
     } catch { setKbStatus("✗ Failed to clear"); }

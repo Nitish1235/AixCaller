@@ -192,8 +192,12 @@ async def get_campaign(campaign_id: uuid.UUID, tenant_id: str, db: Session = Dep
         "retry_cadence_hours": campaign.retry_cadence_hours,
         "speed_to_lead_enabled": campaign.speed_to_lead_enabled,
         "sms_enabled": campaign.sms_enabled,
+        "daily_call_limit": campaign.daily_call_limit,
+        "pause_reason": campaign.pause_reason,
+        "scheduled_start_at": campaign.scheduled_start_at.isoformat() if campaign.scheduled_start_at else None,
         "leads_count": lead_count,
         "created_at": campaign.created_at.isoformat() if campaign.created_at else None,
+        "updated_at": campaign.updated_at.isoformat() if campaign.updated_at else None,
     }
 
 

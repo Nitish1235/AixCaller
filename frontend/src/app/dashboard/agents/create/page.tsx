@@ -181,7 +181,7 @@ export default function CreateAgentPage() {
     // 2a. Plain text
     if (kbText.trim()) {
       try {
-        const d = await apiPost(`/kb/upload-text?agent_id=${agentId}&source=manual`, kbText);
+        const d = await apiPost(`/kb/upload-text?agent_id=${agentId}&tenant_id=${tid}&source=manual`, kbText);
         addStatus(`✅ Text ingested — ${d.chunks_stored} chunks stored`); uploaded = true;
       } catch { addStatus("⚠️ Text upload failed"); }
     }
@@ -190,7 +190,7 @@ export default function CreateAgentPage() {
     if (kbFile) {
       try {
         const form = new FormData(); form.append("file", kbFile);
-        const res = await fetch(`${API_BASE_URL}/kb/upload-file?agent_id=${agentId}`, { method: "POST", body: form });
+        const res = await fetch(`${API_BASE_URL}/kb/upload-file?agent_id=${agentId}&tenant_id=${tid}`, { method: "POST", body: form });
         if (res.ok) { const d = await res.json(); addStatus(`✅ File "${d.filename}" ingested — ${d.chunks_stored} chunks`); uploaded = true; }
         else addStatus("⚠️ File upload failed");
       } catch { addStatus("⚠️ File upload failed"); }
@@ -199,7 +199,7 @@ export default function CreateAgentPage() {
     // 2c. URL scrape (background)
     if (kbUrl.trim()) {
       try {
-        await apiPost(`/kb/sync-url?agent_id=${agentId}&url=${encodeURIComponent(kbUrl)}`, {});
+        await apiPost(`/kb/sync-url?agent_id=${agentId}&tenant_id=${tid}&url=${encodeURIComponent(kbUrl)}`, {});
         addStatus(`🌐 Website sync started for ${kbUrl} — content available in ~30s`); uploaded = true;
       } catch { addStatus("⚠️ Website sync failed"); }
     }

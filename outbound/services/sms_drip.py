@@ -22,16 +22,28 @@ TELNYX_MESSAGES_URL = "https://api.telnyx.com/v2/messages"
 OPT_OUT_KEYWORDS = {"stop", "unsubscribe", "cancel", "quit", "remove", "optout", "opt-out"}
 
 
-def _render_template(template: str, lead: CampaignLead, campaign: Campaign,
-                     booking_link: str = "", appointment_date: str = "",
-                     appointment_time: str = "") -> str:
-    """Substitutes template variables with lead/campaign data."""
+def _render_template(
+    template: str,
+    lead: CampaignLead,
+    campaign: Campaign,
+    agent_name: str = "",
+    business_name: str = "",
+    booking_link: str = "",
+    appointment_date: str = "",
+    appointment_time: str = "",
+) -> str:
+    """Substitutes template variables with lead/campaign/agent data.
+
+    agent_name and business_name must be passed explicitly — Campaign has no
+    ORM relationship to Agent, only an agent_id FK, so they cannot be derived
+    from the campaign object alone.
+    """
     return (
         template
-        .replace("{name}", lead.name or "there")
-        .replace("{agent_name}", getattr(campaign, "agent", None).name if getattr(campaign, "agent", None) else "")
-        .replace("{business_name}", getattr(campaign, "agent", None).business_name if getattr(campaign, "agent", None) else "")
-        .replace("{booking_link}", booking_link)
+        .replace("{name}",             lead.name or "there")
+        .replace("{agent_name}",       agent_name or "")
+        .replace("{business_name}",    business_name or "")
+        .replace("{booking_link}",     booking_link)
         .replace("{appointment_date}", appointment_date)
         .replace("{appointment_time}", appointment_time)
     )
@@ -75,6 +87,8 @@ async def send_no_answer_sms(
     campaign: Campaign,
     lead: CampaignLead,
     from_number: str,
+    agent_name: str = "",
+    business_name: str = "",
     booking_link: str = "",
 ) -> bool:
     """Send SMS after no-answer outcome."""
@@ -82,7 +96,8 @@ async def send_no_answer_sms(
         return False
     message = _render_template(
         campaign.sms_no_answer_template, lead, campaign,
-        booking_link=booking_link
+        agent_name=agent_name, business_name=business_name,
+        booking_link=booking_link,
     )
     return await send_sms(from_number, lead.phone, message)
 
@@ -91,6 +106,8 @@ async def send_voicemail_sms(
     campaign: Campaign,
     lead: CampaignLead,
     from_number: str,
+    agent_name: str = "",
+    business_name: str = "",
     booking_link: str = "",
 ) -> bool:
     """Send SMS after voicemail drop outcome."""
@@ -98,7 +115,8 @@ async def send_voicemail_sms(
         return False
     message = _render_template(
         campaign.sms_voicemail_template, lead, campaign,
-        booking_link=booking_link
+        agent_name=agent_name, business_name=business_name,
+        booking_link=booking_link,
     )
     return await send_sms(from_number, lead.phone, message)
 
@@ -109,6 +127,8 @@ async def send_booked_sms(
     from_number: str,
     appointment_date: str,
     appointment_time: str,
+    agent_name: str = "",
+    business_name: str = "",
     booking_link: str = "",
 ) -> bool:
     """Send booking confirmation SMS."""
@@ -116,6 +136,7 @@ async def send_booked_sms(
         return False
     message = _render_template(
         campaign.sms_booked_template, lead, campaign,
+        agent_name=agent_name, business_name=business_name,
         booking_link=booking_link,
         appointment_date=appointment_date,
         appointment_time=appointment_time,
@@ -128,12 +149,15 @@ async def send_reminder_sms(
     lead: CampaignLead,
     from_number: str,
     appointment_time: str,
+    agent_name: str = "",
+    business_name: str = "",
 ) -> bool:
     """Send 24-hour appointment reminder SMS."""
     if not campaign.sms_enabled or not campaign.sms_reminder_template:
         return False
     message = _render_template(
         campaign.sms_reminder_template, lead, campaign,
+        agent_name=agent_name, business_name=business_name,
         appointment_time=appointment_time,
     )
     return await send_sms(from_number, lead.phone, message)

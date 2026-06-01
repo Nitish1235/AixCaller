@@ -269,9 +269,13 @@ async def create_agent(req: CreateAgentRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/agents/{agent_id}", response_model=Agent)
-async def get_agent(agent_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Fetch a single agent by ID."""
-    agent = db.get(Agent, agent_id)
+async def get_agent(agent_id: uuid.UUID, tenant_id: str, db: Session = Depends(get_db)):
+    """Fetch a single agent by ID — tenant-scoped."""
+    try:
+        t_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid tenant_id")
+    agent = db.exec(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == t_uuid)).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     return agent
@@ -280,11 +284,16 @@ async def get_agent(agent_id: uuid.UUID, db: Session = Depends(get_db)):
 @router.patch("/agents/{agent_id}", response_model=Agent)
 async def update_agent_config(
     agent_id: uuid.UUID,
+    tenant_id: str,
     config: AgentUpdateRequest,
     db: Session = Depends(get_db),
 ):
-    """Update agent settings. Only whitelisted fields are accepted."""
-    agent = db.get(Agent, agent_id)
+    """Update agent settings — tenant-scoped, only whitelisted fields accepted."""
+    try:
+        t_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid tenant_id")
+    agent = db.exec(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == t_uuid)).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 

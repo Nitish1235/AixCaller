@@ -17,6 +17,17 @@ from sqlalchemy import func as sqlfunc
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 redis_settings = RedisSettings.from_dsn(REDIS_URL)
 
+
+async def _get_redis(ctx: dict):
+    """
+    Returns the ARQ redis pool from the worker context, or creates a fresh pool
+    if the context pool is missing (e.g. local tests, cold-start race).
+    """
+    r = ctx.get("redis") if ctx else None
+    if r is None:
+        r = await create_pool(redis_settings)
+    return r
+
 async def get_redis_pool():
     return await create_pool(redis_settings)
 
@@ -44,6 +55,8 @@ def _is_within_calling_window(lead: CampaignLead, campaign: Campaign) -> bool:
 
 def _schedule_next_retry(lead: CampaignLead, campaign: Campaign, db: Session):
     cadence = campaign.retry_cadence_hours or [2, 24, 72]
+    if not cadence:
+        cadence = [2, 24, 72]
     attempt_index = lead.attempts - 1
 
     if attempt_index < len(cadence):
@@ -115,7 +128,7 @@ async def start_campaign(ctx, campaign_id):
             return
 
     # Enqueue up to `slots` dial_next_lead tasks
-    redis = ctx.get('redis')
+    redis = await _get_redis(ctx)
     for _ in range(slots):
         await redis.enqueue_job('dial_next_lead', campaign_id)
         logger.info(f"Enqueued dial_next_lead for campaign {campaign_id}")
@@ -193,7 +206,11 @@ async def dial_next_lead(ctx, campaign_id):
             return
 
         now_utc = datetime.now(timezone.utc)
-        max_attempts = len(campaign.retry_cadence_hours or [2, 24, 72]) + 1
+        # Ensure cadence is never empty — minimum 1 attempt with no retries
+        cadence = campaign.retry_cadence_hours or [2, 24, 72]
+        if not cadence:
+            cadence = [2, 24, 72]
+        max_attempts = len(cadence) + 1
         
         # We need ONE lead, but we fetch a few to account for timezone filtering
         pending_leads = db.exec(
@@ -286,7 +303,7 @@ async def dial_next_lead(ctx, campaign_id):
                     target_lead.status = "pending"
                     _schedule_next_retry(target_lead, campaign, db)
                     # We failed to dial, so slot opened up, enqueue another try
-                    redis = ctx.get('redis')
+                    redis = await _get_redis(ctx)
                     await redis.enqueue_job('dial_next_lead', campaign_id)
                     return
 
@@ -319,7 +336,7 @@ async def dial_next_lead(ctx, campaign_id):
                 logger.error(f"Exception dialing lead {target_lead.id}: {ex}")
                 target_lead.status = "pending"
                 _schedule_next_retry(target_lead, campaign, db)
-                redis = ctx.get('redis')
+                redis = await _get_redis(ctx)
                 await redis.enqueue_job('dial_next_lead', campaign_id)
 
 
@@ -346,7 +363,7 @@ async def check_scheduled_campaigns(ctx):
         if not due_campaigns:
             return
 
-        redis = ctx.get("redis")
+        redis = await _get_redis(ctx)
         for campaign in due_campaigns:
             # Minutes gate before auto-activating
             tenant = db.get(Tenant, campaign.tenant_id)
@@ -368,12 +385,7 @@ async def check_scheduled_campaigns(ctx):
                 f"Campaign {campaign.id} auto-activated — "
                 f"scheduled_start_at={campaign.scheduled_start_at} reached."
             )
-            if redis:
-                await redis.enqueue_job("start_campaign", campaign.id)
-            else:
-                # Fallback: create a fresh pool if ctx doesn't have redis
-                pool = await create_pool(redis_settings)
-                await pool.enqueue_job("start_campaign", campaign.id)
+            await redis.enqueue_job("start_campaign", campaign.id)
 
 
 async def reconcile_stuck_calls(ctx):
@@ -405,6 +417,6 @@ async def reconcile_stuck_calls(ctx):
         db.commit()
 
         # Wake up those campaigns so they fill their newly available slots
-        redis = ctx.get('redis')
+        redis = await _get_redis(ctx)
         for cid in campaign_ids_to_restart:
             await redis.enqueue_job('start_campaign', cid)

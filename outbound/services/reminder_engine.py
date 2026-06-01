@@ -86,6 +86,8 @@ async def run_reminder_sweep() -> dict:
                 lead=lead,
                 from_number=agent.phone_number,
                 appointment_time=appt_time_str,
+                agent_name=agent.name or "",
+                business_name=agent.business_name or "",
             )
 
             if success:

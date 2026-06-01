@@ -25,7 +25,7 @@ export default function KnowledgePage() {
       const stats: Record<string, number> = {};
       await Promise.all(list.map(async (a: any) => {
         try {
-          const res = await fetch(`${API_BASE_URL}/kb/chunks?agent_id=${a.id}`);
+          const res = await fetch(`${API_BASE_URL}/kb/chunks?agent_id=${a.id}&tenant_id=${tid}`);
           const data = await res.json();
           stats[a.id] = data.total_chunks || 0;
         } catch { stats[a.id] = 0; }

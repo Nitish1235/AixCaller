@@ -28,7 +28,11 @@ async def refresh_hubspot_token(tenant: Tenant) -> bool:
             resp = await client.post(token_url, data=payload, timeout=10.0)
             if resp.status_code == 200:
                 data = resp.json()
-                tenant.hubspot_access_token = data.get("access_token")
+                new_access = data.get("access_token")
+                if not new_access:
+                    logger.error(f"HubSpot refresh returned 200 but no access_token: {data}")
+                    return False
+                tenant.hubspot_access_token = new_access
                 # HubSpot only re-issues refresh tokens on first auth.
                 # NEVER overwrite the existing refresh_token with None.
                 new_refresh = data.get("refresh_token")
@@ -36,14 +40,13 @@ async def refresh_hubspot_token(tenant: Tenant) -> bool:
                     tenant.hubspot_refresh_token = new_refresh
                 expires_in = data.get("expires_in", 1800)
                 tenant.hubspot_token_expires_at = int(datetime.now(timezone.utc).timestamp()) + expires_in
-                
-                # Save to db
+
                 with Session(engine) as db:
                     db.add(tenant)
                     db.commit()
                 return True
             else:
-                logger.error(f"Failed to refresh HubSpot token: {resp.text}")
+                logger.error(f"Failed to refresh HubSpot token ({resp.status_code}): {resp.text}")
                 return False
         except Exception as e:
             logger.error(f"Exception refreshing HubSpot token: {e}")

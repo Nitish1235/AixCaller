@@ -132,7 +132,8 @@ export async function createAgent(data: any) {
 }
 
 export async function updateAgent(id: string, data: any) {
-  return await apiPatch(`/agents/${id}`, data);
+  const tid = getTenantId();
+  return await apiPatch(`/agents/${id}?tenant_id=${tid}`, data);
 }
 
 // ─────────────────────────────────────────────────────────────────

@@ -53,7 +53,7 @@ async def handle_sales_answer(request: Request, lead_id: str, db: Session = Depe
 
     # 2. Writeback 'Answered' status to Google Sheet row in real-time
     tenant = db.get(Tenant, campaign.tenant_id)
-    sheet_config = agent.tools_config.get("google_sheets", {})
+    sheet_config = (agent.tools_config or {}).get("google_sheet", {})
     sheet_id = sheet_config.get("sheet_id")
     sheet_name = sheet_config.get("sheet_name", "Sheet1")
     row_num = lead.variables.get("sheet_row_number")
@@ -139,7 +139,7 @@ async def handle_amd_callback(request: Request, lead_id: str, db: Session = Depe
             if campaign:
                 tenant = db.get(Tenant, campaign.tenant_id)
                 agent = db.get(Agent, campaign.agent_id)
-                sheet_config = agent.tools_config.get("google_sheets", {}) if agent else {}
+                sheet_config = (agent.tools_config or {}).get("google_sheet", {}) if agent else {}
                 sheet_id = sheet_config.get("sheet_id")
                 sheet_name = sheet_config.get("sheet_name", "Sheet1")
                 row_num = lead.variables.get("sheet_row_number")
@@ -201,6 +201,8 @@ async def handle_voicemail_drop(lead_id: str, background_tasks: BackgroundTasks,
                 campaign=campaign,
                 lead=lead,
                 from_number=agent.phone_number,
+                agent_name=agent.name or "",
+                business_name=agent.business_name or "",
             )
 
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -351,7 +353,7 @@ async def create_booking(request: Request, tenant_id: str, lead_id: str, backgro
             tenant = db.get(Tenant, tenant_uuid)          # re-fetch with open session
             campaign = db.get(Campaign, lead.campaign_id) if lead else None
             agent = db.get(Agent, campaign.agent_id) if campaign else None
-            sheet_config = agent.tools_config.get("google_sheets", {}) if agent else {}
+            sheet_config = (agent.tools_config or {}).get("google_sheet", {}) if agent else {}
             sheet_id = sheet_config.get("sheet_id")
             sheet_name = sheet_config.get("sheet_name", "Sheet1")
             row_num = lead.variables.get("sheet_row_number") if lead else None
@@ -379,6 +381,8 @@ async def create_booking(request: Request, tenant_id: str, lead_id: str, backgro
                     appointment_date=date_str,
                     appointment_time=time_str,
                     booking_link=event_link,
+                    agent_name=agent.name or "",
+                    business_name=agent.business_name or "",
                 )
 
         return {

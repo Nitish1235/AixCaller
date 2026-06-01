@@ -16,12 +16,20 @@ router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 dodo_service = DodoPaymentsService()
 
 
-async def _resume_exhausted_campaigns(tenant_id: str, db):
+def _resume_exhausted_campaigns_sync(tenant_id: str):
     """
-    Called in background after a successful plan renewal.
-    Finds every campaign that was auto-paused due to minutes_exhausted
-    and re-activates it so dialing resumes from where it left off.
-    Remaining pending leads are untouched and will be picked up immediately.
+    Sync wrapper called via FastAPI BackgroundTasks (which requires a sync function).
+    Spins up its own event loop to run the async resume logic safely in a thread.
+    Uses a fresh DB session — never inherits the request session (which is already closed).
+    """
+    import asyncio as _asyncio
+    _asyncio.run(_resume_exhausted_campaigns_async(tenant_id))
+
+
+async def _resume_exhausted_campaigns_async(tenant_id: str):
+    """
+    Finds every campaign auto-paused due to minutes_exhausted for this tenant
+    and re-activates it so dialing resumes from the lead it stopped on.
     """
     try:
         from sqlmodel import Session as _S, select as _sel
@@ -40,6 +48,7 @@ async def _resume_exhausted_campaigns(tenant_id: str, db):
             ).all()
 
             if not paused:
+                logger.info(f"No paused-by-minutes campaigns found for tenant {tenant_id} on renewal.")
                 return
 
             redis = await _arq_pool(_RS.from_dsn(_os.environ.get("REDIS_URL", "redis://localhost:6379/0")))
@@ -53,8 +62,7 @@ async def _resume_exhausted_campaigns(tenant_id: str, db):
                 await redis.enqueue_job("start_campaign", campaign.id)
                 logger.info(
                     f"Auto-resumed campaign {campaign.id} ({campaign.name}) "
-                    f"after plan renewal for tenant {tenant_id}. "
-                    f"Remaining pending leads will be dialed now."
+                    f"after plan renewal for tenant {tenant_id}."
                 )
 
     except Exception as e:
@@ -220,9 +228,9 @@ async def dodo_webhook(request: Request, background_tasks: BackgroundTasks, db: 
         logger.info(f"✅ Tenant {tenant_id} subscribed to {plan_tier} ({plan['minutes']} min)")
         logger.info(f"💰 Payment received: {tenant.name} ({tenant.contact_email}) — {plan_tier.upper()} ${plan['price_usd']}")
 
-        # ── Auto-resume campaigns that were paused due to exhausted minutes ──
-        # Now that new minutes are credited, resume them in background.
-        background_tasks.add_task(_resume_exhausted_campaigns, tenant_id, db)
+        # ── Auto-resume campaigns paused due to exhausted minutes ────────────
+        # Uses sync wrapper — FastAPI BackgroundTasks requires a sync callable.
+        background_tasks.add_task(_resume_exhausted_campaigns_sync, tenant_id)
 
         return {"status": "subscription_activated", "plan": plan_tier}
 

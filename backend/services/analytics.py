@@ -1,5 +1,6 @@
 import os
 import json
+from loguru import logger
 from openai import AsyncOpenAI
 
 
@@ -135,7 +136,7 @@ Return ONLY a valid JSON object with these exact keys:
             return result
 
         except Exception as e:
-            print(f"Analytics error: {e}")
+            logger.error(f"Analytics failed for transcript ({len(transcript_str)} chars): {e}")
             return {
                 "call_type": "general",
                 "summary": "Error analyzing transcript.",
