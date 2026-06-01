@@ -47,15 +47,23 @@ const jsonLd = {
           "name": "What is an AI receptionist and how does it work?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "An AI receptionist is an automated phone answering service that uses voice AI to greet callers, answer questions, book appointments, and transfer calls — exactly like a human receptionist, but available 24/7. AIxCaller's AI receptionist is trained on your business documents and responds in under one second."
+            "text": "An AI receptionist is an automated phone answering service that uses voice AI to greet callers, answer questions, book appointments, and transfer calls — exactly like a human receptionist, but available 24/7 at a fraction of the cost. AIxCaller's AI receptionist is trained on your business documents and responds in under one second."
           }
         },
         {
           "@type": "Question",
-          "name": "How much does an AI phone answering service cost?",
+          "name": "What is a virtual receptionist and is it the same as an AI receptionist?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "AIxCaller's AI phone answering service starts at $50/month for the Starter plan (200 minutes, 1 agent). Pro is $119/month (500 minutes, 2 agents) and Premium is $250/month (1,100 minutes, 4 agents). No setup fees. Cancel anytime."
+            "text": "A virtual receptionist handles incoming calls remotely instead of in-person. An AI virtual receptionist like AIxCaller goes further — it operates 24/7 with no human involvement, answers instantly without hold times, books appointments live during the call, and costs a fraction of a human agent. AIxCaller combines the best of both: the availability of a 24/7 call answering service with the intelligence of conversational AI."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does an AI call answering service cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AIxCaller's AI call answering service starts at $50/month for the Starter plan (200 minutes, 1 agent). Pro is $119/month (500 minutes, 2 agents) and Premium is $250/month (1,100 minutes, 4 agents). No setup fees, no contracts. Compare this to a human receptionist at $3,000+/month — most businesses break even on day one."
           }
         },
         {
@@ -63,7 +71,7 @@ const jsonLd = {
           "name": "Can the AI answering service book appointments automatically?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. AIxCaller connects to Google Calendar and books appointments in real-time during the call — checking availability and confirming bookings without any human involvement."
+            "text": "Yes. AIxCaller connects to Google Calendar and books appointments in real-time during the call — checking availability and confirming bookings without any human involvement. The caller receives a confirmation SMS immediately after."
           }
         },
         {
@@ -71,7 +79,7 @@ const jsonLd = {
           "name": "What businesses benefit most from an AI receptionist?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Dental offices, HVAC and plumbing companies, real estate agencies, law firms, restaurants, e-commerce stores, and healthcare clinics see the highest ROI. Any business that receives phone calls and wants to stop missing leads benefits from an AI receptionist."
+            "text": "Dental offices, HVAC and plumbing companies, real estate agencies, law firms, restaurants, e-commerce stores, and healthcare clinics see the highest ROI. Any business that receives phone calls and cannot afford to miss them benefits from an AI call answering service."
           }
         },
         {
@@ -79,7 +87,7 @@ const jsonLd = {
           "name": "Does AIxCaller work with my existing phone number?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. You can forward your existing business number to AIxCaller, or provision a new local or toll-free number in 31+ countries directly from the dashboard in under 2 minutes."
+            "text": "Yes. You can forward your existing business number to AIxCaller — no number porting required. Alternatively, provision a brand-new local or toll-free number in 31+ countries directly from the dashboard in under 2 minutes."
           }
         },
         {
@@ -87,7 +95,7 @@ const jsonLd = {
           "name": "Can the AI receptionist transfer calls to a human?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. You can set staffed hours, and AIxCaller will transfer callers to a live team member during business hours. Outside those hours, the AI handles calls fully on its own."
+            "text": "Yes. You configure your team's working hours, and AIxCaller automatically offers live transfer to a human agent during business hours. Outside those hours, the AI virtual receptionist handles calls fully on its own."
           }
         },
         {
@@ -95,12 +103,68 @@ const jsonLd = {
           "name": "Does the AI phone answering service integrate with CRM software?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. AIxCaller integrates with HubSpot, Shopify, and Google Sheets. After every call, lead data is automatically synced to your CRM — no manual entry required."
+            "text": "Yes. AIxCaller integrates with HubSpot, Salesforce, Shopify, Airtable, and Google Sheets. After every call, lead data, transcripts, and sentiment scores are automatically synced to your CRM — no manual entry required."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How quickly can I set up an AI receptionist for my business?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most businesses are live in under 10 minutes. You write a short personality prompt, upload your FAQ document or paste your website URL, claim a phone number, and your AI call answering service is live. No coding or technical skills required."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can the AI caller handle outbound sales calls too?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. AIxCaller includes a full outbound AI dialer. Upload a CSV of leads, set your calling window and timezone, and the AI agent dials, qualifies, and books appointments automatically — including speed-to-lead (calling new web-form leads in under 60 seconds), smart retry cadence, and voicemail drops."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is an AI answering service TCPA and DNC compliant?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. AIxCaller includes a built-in Do Not Call (DNC) registry. Any number on your DNC list is never dialed regardless of campaign status. The system also respects local calling hours per lead timezone, reducing compliance risk. Always consult your legal counsel for jurisdiction-specific requirements."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What languages does the AI receptionist support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AIxCaller currently supports English with a range of ultra-realistic voices (male and female). Additional language support is on the roadmap. The AI can be instructed in the system prompt to respond in specific languages if the caller initiates in that language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is AIxCaller different from Bland AI or other AI callers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AIxCaller combines inbound AI receptionist and outbound AI dialer in a single platform — most competitors offer only one or the other. It also includes native integrations (HubSpot, Shopify, Google Calendar, Airtable), a built-in knowledge base, live human transfer with business-hours routing, and a no-code dashboard. Pricing starts at $50/month with no per-minute API markups."
           }
         }
       ]
     }
   ]
+};
+
+const videoLd = {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "Live Demo — AI Receptionist Answering a Real Business Call | AIxCaller",
+  "description": "Watch AIxCaller's AI receptionist answer a real inbound call in under 1 second. The virtual call answering service greets the caller, answers FAQs, and books an appointment via Google Calendar — all without any human involvement.",
+  "thumbnailUrl": "https://aixcaller.com/opengraph-image",
+  "uploadDate": "2025-01-15",
+  "contentUrl": "https://aixcaller.com/#demo",
+  "embedUrl": "https://aixcaller.com/#demo",
+  "publisher": {
+    "@type": "Organization",
+    "name": "AIxCaller",
+    "logo": { "@type": "ImageObject", "url": "https://aixcaller.com/logo.svg" }
+  }
 };
 
 export default function Home() {
@@ -110,6 +174,10 @@ export default function Home() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(videoLd) }}
       />
       
       {/* Dynamic light mesh animation blobs */}
@@ -141,16 +209,16 @@ export default function Home() {
             letterSpacing: "-2px",
             color: "var(--text)"
           }}>
-            Your 24/7 AI Receptionist <br />
+            AI Receptionist & Virtual <br />
             <span style={{
               background: "linear-gradient(135deg, var(--blue) 0%, #3b82f6 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent"
             }}>
-              & Sales Assistant
+              Call Answering Service
             </span>
           </h1>
-          
+
           <p style={{
             fontSize: "clamp(1.1rem, 2vw, 1.3rem)",
             fontWeight: 500,
@@ -159,7 +227,7 @@ export default function Home() {
             margin: "0 auto 3rem",
             maxWidth: 700
           }}>
-            Never miss an inbound lead or skip a follow-up. AIxCaller answers incoming calls instantly, handles routine phone outreach, schedules appointments, and syncs directly with your CRM.
+            Never miss an inbound call or a follow-up. AIxCaller acts as your 24/7 virtual receptionist — answering calls instantly, qualifying leads, booking appointments directly into your calendar, and syncing every interaction to your CRM.
           </p>
           
           <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", justifyContent: "center", marginBottom: "3rem" }}>
@@ -259,9 +327,12 @@ export default function Home() {
       <section id="features" style={{ padding: "6rem 5%", maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "4rem" }}>
           <span className="badge" style={{ marginBottom: "1rem" }}>Platform Features</span>
-          <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, letterSpacing: "-1.5px", color: "var(--text)", margin: 0 }}>
-            Everything You Need To Automate Support
+          <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, letterSpacing: "-1.5px", color: "var(--text)", margin: "0 0 0.5rem" }}>
+            Everything You Need in an AI Call Answering Service
           </h2>
+          <p style={{ fontSize: "1rem", color: "var(--text-muted)", margin: 0, fontWeight: 500 }}>
+            Your virtual receptionist handles inbound calls, outbound campaigns, CRM sync, and appointment booking — all from one platform.
+          </p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "2rem" }}>
@@ -672,12 +743,14 @@ export default function Home() {
         
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {[
-            { q: "What is an AI receptionist and do I need one?", a: "An AI receptionist answers your business phone calls automatically — greeting callers, answering questions, booking appointments, and escalating urgent issues to a human. If your business misses calls, pays for a full-time receptionist, or needs 24/7 coverage, an AI answering service pays for itself immediately." },
-            { q: "How much does the AI phone answering service cost?", a: "Plans start at $50/month (Starter — 200 minutes, 1 agent). Pro is $119/month (500 minutes, 2 agents). Premium is $250/month (1,100 minutes, 4 agents). All plans are billed monthly with no contracts or setup fees." },
-            { q: "Can it automatically book appointments?", a: "Yes. AIxCaller integrates with Google Calendar. Your AI agent checks real-time availability and confirms bookings during the call — no human needed." },
+            { q: "What is an AI receptionist and do I need one?", a: "An AI receptionist answers your business phone calls automatically — greeting callers, answering questions, booking appointments, and escalating urgent issues to a human. If your business misses calls, pays for a full-time receptionist, or needs 24/7 coverage, an AI call answering service pays for itself immediately." },
+            { q: "What is a virtual receptionist service?", a: "A virtual receptionist is a remote agent that handles your incoming calls. AIxCaller's AI virtual receptionist goes a step further — it's available 24/7 with zero hold time, costs 95% less than a human, and books appointments live during the call. It's a virtual call answering service powered by conversational AI." },
+            { q: "How much does the AI phone answering service cost?", a: "Plans start at $50/month (Starter — 200 minutes, 1 agent). Pro is $119/month (500 minutes, 2 agents). Premium is $250/month (1,100 minutes, 4 agents). All plans are billed monthly with no contracts or setup fees. Compare to $3,000+/month for a human receptionist." },
+            { q: "Can it automatically book appointments?", a: "Yes. AIxCaller integrates with Google Calendar. Your AI agent checks real-time availability and confirms bookings during the call — no human needed. A confirmation SMS is sent to the caller automatically." },
             { q: "Does it work with my existing phone number?", a: "Yes. Simply forward your existing business number to your AIxCaller number — no number porting required. Alternatively, provision a brand new local or toll-free number in 31+ countries from the dashboard in under 2 minutes." },
             { q: "Which industries is AIxCaller best for?", a: "Dental offices, HVAC companies, real estate agents, law firms, restaurants, plumbers, e-commerce brands, and healthcare clinics see the strongest results. Essentially any business that receives calls and cannot afford to miss them." },
-            { q: "Can the AI transfer a call to a real person?", a: "Yes. You can configure your team's working hours, and AIxCaller automatically offers live transfer during business hours. Outside those hours, the AI handles the call independently." }
+            { q: "Can the AI transfer a call to a real person?", a: "Yes. You can configure your team's working hours, and AIxCaller automatically offers live transfer during business hours. Outside those hours, the AI virtual receptionist handles the call independently." },
+            { q: "How is AIxCaller different from other AI caller services?", a: "AIxCaller is the only platform that combines a 24/7 AI receptionist for inbound calls with a full outbound AI sales dialer — all in one dashboard. Competitors make you buy separate tools. AIxCaller also includes native integrations with HubSpot, Shopify, Google Calendar, and Airtable at no extra cost." }
           ].map((faq, idx) => (
             <div key={idx} className="card" style={{ padding: "1.75rem 2rem", background: "#fff" }}>
               <h3 style={{ fontSize: "1.15rem", fontWeight: 800, margin: "0 0 0.6rem", color: "var(--text)" }}>{faq.q}</h3>
