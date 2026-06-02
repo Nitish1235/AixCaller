@@ -81,36 +81,69 @@ async def telnyx_kb_search(request: Request, tenant_id: str, agent_id: str, db: 
 async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db: Session = Depends(get_db)):
     """
     Async webhook hit by Telnyx when a Conversational AI call ends.
+    Telnyx fires TWO events to this URL:
+      - call.conversation.ended           → call has ended, may carry duration/numbers
+      - call.conversation_insights.generated → insights ready, may carry transcript inline
+    We process BOTH so we never miss a transcript.
     Configured URL:
     https://api.aixcaller.com/api/v1/telnyx-ai/call-ended?tenant_id=<id>&agent_id=<id>
     """
     try:
         payload = await request.json()
-        logger.info(f"Received Telnyx Webhook for Agent {agent_id}: {payload}")
+
+        # ── Always log the raw payload so we can debug Telnyx shape changes ──
+        import json as _json
+        logger.info(f"[call-ended] RAW payload for agent {agent_id}: {_json.dumps(payload)[:2000]}")
 
         t_uuid = uuid.UUID(tenant_id)
         a_uuid = uuid.UUID(agent_id)
 
-        # 1. Identify webhook event type
-        event_type = payload.get("event_type") or payload.get("data", {}).get("event_type")
-        if event_type != "call.conversation.ended":
-            logger.info(f"Ignoring non-conversation-ended event: {event_type}")
+        # 1. Identify webhook event type — Telnyx may nest it under "data"
+        event_type = (
+            payload.get("event_type")
+            or payload.get("data", {}).get("event_type")
+            or payload.get("type")
+            or ""
+        )
+        logger.info(f"[call-ended] event_type={event_type!r} agent={agent_id}")
+
+        # Accept both the "ended" signal and the "insights" event (which carries the real transcript)
+        HANDLED_EVENTS = {
+            "call.conversation.ended",
+            "call.conversation_insights.generated",
+        }
+        if event_type and event_type not in HANDLED_EVENTS:
+            logger.info(f"[call-ended] Ignoring unhandled event: {event_type}")
             return {"status": "ignored", "event_type": event_type}
 
-        # 2. Extract payload block
+        # 2. Normalise payload block — Telnyx wraps data under data.payload
         data_block = payload.get("data", {})
-        event_payload = data_block.get("payload", {}) if isinstance(data_block, dict) else payload.get("payload", {})
-        if not event_payload:
-            event_payload = payload
+        event_payload = (
+            data_block.get("payload", {})
+            if isinstance(data_block, dict) and data_block.get("payload")
+            else payload.get("payload", {}) or payload
+        )
 
-        conversation_id = event_payload.get("conversation_id")
-        call_control_id = event_payload.get("call_control_id", "unknown")
+        # 3. Extract conversation_id — try every known field name
+        conversation_id = (
+            event_payload.get("conversation_id")
+            or event_payload.get("conversation_sid")
+            or data_block.get("conversation_id")
+            or payload.get("conversation_id")
+        )
+        call_control_id = (
+            event_payload.get("call_control_id")
+            or event_payload.get("call_session_id")
+            or data_block.get("call_control_id")
+            or "unknown"
+        )
 
-        # Try every field name Telnyx may use; guard against None with `or 0`
+        # 4. Duration — try every field name Telnyx has used across versions
         _raw_dur = (
             event_payload.get("duration_sec")
             or event_payload.get("duration_seconds")
             or event_payload.get("duration")
+            or data_block.get("duration_sec")
             or 0
         )
         try:
@@ -118,52 +151,79 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
         except (TypeError, ValueError):
             duration_sec = 0
 
-        # Check for from/to number details
-        from_number = event_payload.get("from") or event_payload.get("from_number") or "Customer"
-        to_number = event_payload.get("to") or event_payload.get("to_number") or "AI Agent"
+        # 5. From/To numbers
+        from_number = (
+            event_payload.get("from")
+            or event_payload.get("from_number")
+            or event_payload.get("caller_id")
+            or "Customer"
+        )
+        to_number = (
+            event_payload.get("to")
+            or event_payload.get("to_number")
+            or "AI Agent"
+        )
 
-        logger.info(f"Call conversation ended. ID: {conversation_id}, duration: {duration_sec}s (raw: {_raw_dur!r})")
+        logger.info(
+            f"[call-ended] conversation_id={conversation_id!r} call_control_id={call_control_id!r} "
+            f"duration={duration_sec}s from={from_number} to={to_number}"
+        )
 
-        if not conversation_id:
-            logger.warning("No conversation_id provided in the ended webhook. Aborting sync.")
-            return {"status": "error", "message": "Missing conversation_id"}
-
-        # 3. Pull conversation messages transcript from Telnyx REST API
-        api_key = os.environ.get("TELNYX_API_KEY")
+        # 6. Try to get transcript from inline payload first (insights event carries it)
         transcript_messages = []
-        if api_key:
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Accept": "application/json"
-            }
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                try:
-                    response = await client.get(
-                        f"https://api.telnyx.com/v2/ai/conversations/{conversation_id}/messages",
-                        headers=headers,
-                    )
-                    if response.status_code == 200:
-                        resp_json = response.json()
-                        messages_data = resp_json.get("data", [])
-                        # Normalize into standard system transcript structure
-                        for msg in messages_data:
-                            role = msg.get("role", "")
-                            content = msg.get("content", "")
-                            if role and content:
-                                transcript_messages.append({
-                                    "role": role,
-                                    "content": content
-                                })
-                        logger.info(f"Successfully retrieved {len(transcript_messages)} messages from Telnyx AI conversation")
-                    else:
-                        logger.error(f"Failed to fetch conversation history from Telnyx: {response.status_code} - {response.text}")
-                except Exception as ex:
-                    logger.error(f"Failed to retrieve conversation history from Telnyx due to exception: {ex}")
-        else:
-            logger.error("Missing TELNYX_API_KEY - cannot retrieve conversation transcript")
 
-        # 4. Trigger Shared Call Processor
-        # Will handle DB insertion, analytics, email summary notifications, and Zoho CRM
+        inline_transcript = (
+            event_payload.get("transcript")
+            or event_payload.get("messages")
+            or event_payload.get("conversation_transcript")
+            or data_block.get("transcript")
+        )
+        if inline_transcript and isinstance(inline_transcript, list):
+            for msg in inline_transcript:
+                role = msg.get("role", "")
+                content = msg.get("content", "") or msg.get("text", "")
+                if role and content:
+                    transcript_messages.append({"role": role, "content": content})
+            logger.info(f"[call-ended] Got {len(transcript_messages)} messages from inline payload")
+
+        # 7. If no inline transcript, fetch from Telnyx REST API using conversation_id
+        if not transcript_messages and conversation_id:
+            api_key = os.environ.get("TELNYX_API_KEY")
+            if api_key:
+                telnyx_headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Accept": "application/json"
+                }
+                # Try both known endpoint patterns
+                candidate_urls = [
+                    f"https://api.telnyx.com/v2/ai/conversations/{conversation_id}/messages",
+                    f"https://api.telnyx.com/v2/conversations/{conversation_id}/messages",
+                ]
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    for url in candidate_urls:
+                        try:
+                            response = await client.get(url, headers=telnyx_headers)
+                            logger.info(f"[call-ended] Transcript fetch {url} → {response.status_code}")
+                            if response.status_code == 200:
+                                messages_data = response.json().get("data", [])
+                                for msg in messages_data:
+                                    role = msg.get("role", "")
+                                    content = msg.get("content", "") or msg.get("text", "")
+                                    if role and content:
+                                        transcript_messages.append({"role": role, "content": content})
+                                logger.info(f"[call-ended] Fetched {len(transcript_messages)} messages from {url}")
+                                if transcript_messages:
+                                    break
+                            else:
+                                logger.warning(f"[call-ended] {url} returned {response.status_code}: {response.text[:300]}")
+                        except Exception as ex:
+                            logger.error(f"[call-ended] Failed fetching {url}: {ex}")
+            else:
+                logger.error("[call-ended] Missing TELNYX_API_KEY — cannot fetch transcript")
+        elif not transcript_messages:
+            logger.warning(f"[call-ended] No conversation_id and no inline transcript — call {call_control_id} will have no transcript")
+
+        # 8. Trigger shared call processor
         res = await process_completed_call(
             tenant_id=t_uuid,
             agent_id=a_uuid,
@@ -178,7 +238,7 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
         return {"status": "success", "processed_record": res}
 
     except Exception as e:
-        logger.error(f"Telnyx Call Ended Webhook failed: {e}")
+        logger.error(f"[call-ended] Webhook failed: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
 
 @router.post("/calendar-availability")
