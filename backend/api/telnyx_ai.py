@@ -223,7 +223,7 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
         elif not transcript_messages:
             logger.warning(f"[call-ended] No conversation_id and no inline transcript — call {call_control_id} will have no transcript")
 
-        # 8. Trigger shared call processor
+        # 8. Trigger shared call processor (handles CallRecord, billing, analytics, email, CRM)
         res = await process_completed_call(
             tenant_id=t_uuid,
             agent_id=a_uuid,
@@ -235,11 +235,129 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
             db=db
         )
 
+        # 9. Outbound campaign post-processing
+        # The same Telnyx assistant fires this webhook for BOTH inbound and outbound calls.
+        # The outbound /conversation-ended endpoint is never reached by Telnyx directly
+        # because it needs a lead_id the assistant doesn't know. So we handle outbound
+        # campaign logic here: update CampaignLead, detect opt-outs, writeback sheet,
+        # and enqueue the next lead dial — otherwise campaigns stall after every call.
+        await _handle_outbound_postprocessing(
+            call_control_id=call_control_id,
+            transcript_messages=transcript_messages,
+            duration_seconds=duration_sec,
+            agent_id=a_uuid,
+        )
+
         return {"status": "success", "processed_record": res}
 
     except Exception as e:
         logger.error(f"[call-ended] Webhook failed: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
+
+
+async def _handle_outbound_postprocessing(
+    call_control_id: str,
+    transcript_messages: list,
+    duration_seconds: int,
+    agent_id,
+):
+    """
+    Runs outbound-specific post-call pipeline if this call belongs to a CampaignLead.
+    Called from the inbound call-ended handler because Telnyx fires ONE webhook URL
+    (the assistant's post_conversation_settings.webhook_url) for both inbound and
+    outbound calls — the dedicated /conversation-ended endpoint never gets hit.
+    """
+    import json as _json
+    from datetime import datetime, timezone
+    from sqlmodel import Session as _Session, select as _select
+    from shared.database import engine as _engine
+    from shared.models import CampaignLead, Campaign
+
+    try:
+        with _Session(_engine) as db:
+            # Find the CampaignLead whose last_call_id matches this call
+            lead = None
+            if call_control_id and call_control_id != "unknown":
+                try:
+                    import uuid as _uuid
+                    cid = _uuid.UUID(call_control_id)
+                    lead = db.exec(
+                        _select(CampaignLead).where(CampaignLead.last_call_id == cid)
+                    ).first()
+                except (ValueError, Exception):
+                    pass
+
+            if not lead:
+                # Not an outbound call — nothing to do
+                return
+
+            logger.info(f"[call-ended] Outbound post-processing for CampaignLead {lead.id} ({lead.name})")
+
+            campaign = db.get(Campaign, lead.campaign_id)
+            if not campaign:
+                logger.warning(f"[call-ended] Campaign not found for lead {lead.id}")
+                return
+
+            # 1. Save transcript + duration to CampaignLead
+            lead.call_transcript = _json.dumps(transcript_messages) if transcript_messages else ""
+            lead.call_duration_seconds = duration_seconds
+            lead.updated_at = datetime.now(timezone.utc)
+
+            # 2. Opt-out detection
+            OPT_OUT_PHRASES = [
+                "don't call", "do not call", "remove me", "stop calling",
+                "not interested", "take me off", "unsubscribe",
+            ]
+            flat_text = " ".join(m.get("content", "") for m in transcript_messages).lower()
+            if flat_text and any(phrase in flat_text for phrase in OPT_OUT_PHRASES):
+                lead.opted_out = True
+                lead.status = "opted_out"
+                logger.info(f"[call-ended] Opt-out detected for outbound lead {lead.name}")
+            elif lead.status not in ("voicemail", "opted_out", "booked", "completed"):
+                lead.status = "completed"
+
+            db.add(lead)
+            db.commit()
+            logger.info(f"[call-ended] CampaignLead {lead.id} updated → status={lead.status}")
+
+            # 3. Google Sheet writeback
+            try:
+                from shared.models import Agent as _Agent, Tenant as _Tenant
+                agent_obj = db.get(_Agent, campaign.agent_id)
+                tenant_obj = db.get(_Tenant, campaign.tenant_id)
+                sheet_cfg = (agent_obj.tools_config or {}).get("google_sheet", {}) if agent_obj else {}
+                sheet_id = sheet_cfg.get("sheet_id")
+                sheet_name = sheet_cfg.get("sheet_name", "Sheet1")
+                row_num = (lead.variables or {}).get("sheet_row_number")
+
+                if tenant_obj and sheet_id and row_num:
+                    from outbound.services.sheet_poller import GoogleSheetPoller
+                    poller = GoogleSheetPoller()
+                    await poller.writeback_lead_status(
+                        tenant=tenant_obj,
+                        sheet_id=sheet_id,
+                        sheet_name=sheet_name,
+                        row_number=int(row_num),
+                        call_result="Completed" if lead.status == "completed" else lead.status.title(),
+                        campaign_status=lead.status.title(),
+                    )
+                    logger.info(f"[call-ended] Sheet writeback done for lead {lead.id}")
+            except Exception as sheet_ex:
+                logger.warning(f"[call-ended] Sheet writeback failed (non-blocking): {sheet_ex}")
+
+            # 4. Enqueue next lead dial so campaign continues
+            try:
+                import os as _os
+                from arq import create_pool as _arq_pool
+                from arq.connections import RedisSettings as _RS
+                redis = await _arq_pool(_RS.from_dsn(_os.environ.get("REDIS_URL", "redis://localhost:6379/0")))
+                await redis.enqueue_job("dial_next_lead", campaign.id)
+                logger.info(f"[call-ended] dial_next_lead enqueued for campaign {campaign.id}")
+            except Exception as arq_ex:
+                logger.error(f"[call-ended] Failed to enqueue dial_next_lead: {arq_ex}")
+
+    except Exception as e:
+        logger.error(f"[call-ended] Outbound post-processing failed (non-blocking): {e}", exc_info=True)
 
 @router.post("/calendar-availability")
 async def telnyx_calendar_availability(request: Request, tenant_id: str, db: Session = Depends(get_db)):
