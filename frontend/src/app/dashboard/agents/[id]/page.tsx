@@ -122,8 +122,14 @@ export default function AgentDetailsPage() {
   const [legacyTestMsg, setLegacyTestMsg]           = useState("");
   const [showForwardingInstr, setShowForwardingInstr] = useState(false);
 
+  // Google Sheet (outbound campaigns + KB)
+  const [googleSheetId,   setGoogleSheetId]   = useState("");
+  const [googleSheetName, setGoogleSheetName] = useState("Sheet1");
+  const [sheetSaving,     setSheetSaving]     = useState(false);
+  const [sheetMsg,        setSheetMsg]        = useState("");
+
   // Tab
-  const [tab, setTab] = useState<"settings" | "kb">("settings");
+  const [tab, setTab] = useState<"settings" | "tools" | "kb">("settings");
 
   // KB state
   const [kbSources, setKbSources] = useState<any[]>([]);
@@ -170,6 +176,12 @@ export default function AgentDetailsPage() {
             setCustomApiMethod((ca.method || "GET") as "GET" | "POST");
             setCustomApiAuth(ca.auth_header || "");
             setCustomApiDesc(ca.description || "");
+          }
+          // Google Sheet (outbound campaign source + KB)
+          const gs = found.tools_config?.google_sheet;
+          if (gs) {
+            setGoogleSheetId(gs.sheet_id || "");
+            setGoogleSheetName(gs.sheet_name || "Sheet1");
           }
         }
       } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -492,6 +504,22 @@ export default function AgentDetailsPage() {
     setCustomApiSaving(false);
   };
 
+  // ── Google Sheet (outbound source + KB search) ────────────────────────────
+  const saveGoogleSheet = async () => {
+    setSheetSaving(true); setSheetMsg("");
+    try {
+      const existing = agent.tools_config || {};
+      const tools_config = googleSheetId.trim()
+        ? { ...existing, google_sheet: { sheet_id: googleSheetId.trim(), sheet_name: googleSheetName.trim() || "Sheet1" } }
+        : (({ google_sheet: _r, ...rest }) => rest)(existing);
+      await updateAgent(agentId, { tools_config });
+      setAgent((prev: any) => ({ ...prev, tools_config }));
+      setSheetMsg(googleSheetId.trim() ? "✓ Google Sheet saved." : "✓ Google Sheet removed.");
+    } catch (e: any) { setSheetMsg(`✗ ${e.message || "Failed to save."}`); }
+    setSheetSaving(false);
+    setTimeout(() => setSheetMsg(""), 3000);
+  };
+
   if (loading) return <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Loading...</div>;
   if (!agent) return <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Agent not found.</div>;
 
@@ -501,6 +529,46 @@ export default function AgentDetailsPage() {
     background: active ? "var(--blue)" : "var(--blue-light)",
     color: active ? "#fff" : "var(--blue)",
   });
+
+  const toolBtn: React.CSSProperties = {
+    width: "100%", background: "none", border: "1.5px solid var(--border)",
+    borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: "0.78rem",
+    cursor: "pointer", color: "var(--blue)",
+  };
+
+  const STATUS_DOT: Record<string, { bg: string; text: string; dot: string }> = {
+    active: { bg: "var(--green-light)", text: "var(--green)", dot: "var(--green)" },
+    off:    { bg: "#f1f5f9",            text: "#64748b",      dot: "#cbd5e1"     },
+    idle:   { bg: "#fefce8",            text: "#92400e",      dot: "#f59e0b"     },
+    info:   { bg: "var(--blue-light)",  text: "var(--blue)",  dot: "var(--blue)" },
+  };
+
+  const renderToolCard = ({ icon, title, category, status, statusLabel, description, action }: {
+    icon: string; title: string; category: string;
+    status: "active" | "off" | "idle" | "info";
+    statusLabel: string; description: string; action: React.ReactNode;
+  }) => {
+    const sc = STATUS_DOT[status];
+    return (
+      <div key={title} style={{ background: "#fff", border: "1.5px solid var(--border)", borderRadius: 14, padding: "1.1rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
+            <span style={{ fontSize: "1.3rem" }}>{icon}</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>{title}</div>
+              <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase" as const, letterSpacing: 0.4 }}>{category}</div>
+            </div>
+          </div>
+          <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: sc.bg, color: sc.text, border: `1px solid ${sc.dot}22`, whiteSpace: "nowrap" as const }}>
+            <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: sc.dot, marginRight: 4, verticalAlign: "middle" }} />
+            {statusLabel}
+          </span>
+        </div>
+        <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.55 }}>{description}</p>
+        {action}
+      </div>
+    );
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -533,8 +601,9 @@ export default function AgentDetailsPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button style={tabStyle(tab === "settings")} onClick={() => setTab("settings")}>⚙️ Settings</button>
+        <button style={tabStyle(tab === "tools")} onClick={() => setTab("tools")}>🔧 Tools</button>
         <button style={tabStyle(tab === "kb")} onClick={() => setTab("kb")}>
           📚 Knowledge Base {kbTotal > 0 && <span style={{ background: "var(--blue)", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: "0.7rem", marginLeft: 6 }}>{kbTotal}</span>}
         </button>
@@ -1382,6 +1451,184 @@ export default function AgentDetailsPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── TOOLS TAB ── */}
+      {tab === "tools" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
+          {/* ── INBOUND CALL TOOLS ─────────────────────────────────── */}
+          <div>
+            <div style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, marginBottom: "0.75rem" }}>
+              📞 During Inbound Calls
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+
+              {/* Knowledge Base */}
+              {renderToolCard({
+                icon: "📚", title: "Knowledge Base", category: "Inbound",
+                status: kbTotal > 0 ? "active" : "idle",
+                statusLabel: kbTotal > 0 ? `${kbTotal} chunks loaded` : "No content yet",
+                description: "AI searches your uploaded documents mid-call to answer caller questions accurately.",
+                action: <button onClick={() => setTab("kb")} style={toolBtn}>Manage Knowledge Base →</button>,
+              })}
+
+              {/* Google Calendar */}
+              {renderToolCard({
+                icon: "📅", title: "Google Calendar", category: "Inbound",
+                status: agent.tools_config?.google_calendar_enabled || shopifyStatus?.connected ? "idle" : "idle",
+                statusLabel: "Connect in Integrations",
+                description: "Check availability and book appointments live during a call. Requires Google Calendar connected.",
+                action: <a href="/dashboard/integrations" style={{ textDecoration: "none" }}><button style={toolBtn}>Go to Integrations →</button></a>,
+              })}
+
+              {/* Human Transfer */}
+              {renderToolCard({
+                icon: "🙋", title: "Human Transfer", category: "Inbound",
+                status: agent.human_transfer_enabled ? "active" : "off",
+                statusLabel: agent.human_transfer_enabled ? `Transfer to ${agent.forwarding_number || "..."}` : "Disabled",
+                description: "Transfer caller to a live human agent during business hours when enabled.",
+                action: <button onClick={() => setTab("settings")} style={toolBtn}>Configure in Settings →</button>,
+              })}
+
+              {/* Shopify */}
+              {renderToolCard({
+                icon: "🛍️", title: "Shopify Order Lookup", category: "Inbound",
+                status: shopifyStatus?.connected ? "active" : "off",
+                statusLabel: shopifyStatus?.connected ? `Connected: ${shopifyStatus.store_url}` : "Not connected",
+                description: "AI can look up order status, tracking, and refunds from your Shopify store mid-call.",
+                action: <button onClick={() => setTab("settings")} style={toolBtn}>Configure in Settings →</button>,
+              })}
+
+              {/* Custom API */}
+              {renderToolCard({
+                icon: "🔗", title: "Custom API", category: "Inbound",
+                status: customApiEnabled && customApiEndpoint ? "active" : "off",
+                statusLabel: customApiEnabled && customApiEndpoint ? customApiEndpoint.slice(0, 40) + (customApiEndpoint.length > 40 ? "…" : "") : "Not configured",
+                description: "Call any REST endpoint mid-conversation to fetch live data — inventory, bookings, or custom logic.",
+                action: <button onClick={() => setTab("settings")} style={toolBtn}>Configure in Settings →</button>,
+              })}
+
+            </div>
+          </div>
+
+          {/* ── OUTBOUND CAMPAIGN TOOLS ────────────────────────────── */}
+          <div>
+            <div style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1, marginBottom: "0.75rem" }}>
+              📤 For Outbound Campaigns
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+
+              {/* Google Sheet — KEY MISSING TOOL */}
+              <div style={{ background: "#fff", border: `2px solid ${googleSheetId ? "var(--green)" : "var(--border)"}`, borderRadius: 14, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 9, background: "#0F9D58", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlesheets.svg" alt="" width={20} style={{ filter: "invert(1)" }} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)" }}>Google Sheet</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Outbound leads source</div>
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: "0.68rem", fontWeight: 700, padding: "3px 9px", borderRadius: 99,
+                    background: googleSheetId ? "var(--green-light)" : "#f1f5f9",
+                    color: googleSheetId ? "var(--green)" : "var(--text-muted)",
+                    border: `1px solid ${googleSheetId ? "rgba(5,150,105,0.2)" : "var(--border)"}`,
+                  }}>
+                    {googleSheetId ? "● Connected" : "○ Not set"}
+                  </span>
+                </div>
+
+                <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.55 }}>
+                  The dialer reads leads from this sheet when a campaign starts, and writes results back (Answered, Booked, Voicemail) in real time.
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div>
+                    <label style={lbl}>Google Sheet ID</label>
+                    <input
+                      value={googleSheetId}
+                      onChange={e => setGoogleSheetId(e.target.value)}
+                      placeholder="Paste Sheet ID from URL — the long string between /d/ and /edit"
+                      style={inp}
+                    />
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 3 }}>
+                      URL: docs.google.com/spreadsheets/d/<strong>THIS_PART</strong>/edit
+                    </div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Sheet Tab Name</label>
+                    <input
+                      value={googleSheetName}
+                      onChange={e => setGoogleSheetName(e.target.value)}
+                      placeholder="Sheet1"
+                      style={inp}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ background: "var(--blue-light)", border: "1px solid rgba(29,78,216,0.15)", borderRadius: 8, padding: "9px 12px", fontSize: "0.75rem", color: "var(--blue)", lineHeight: 1.55 }}>
+                  <strong>Required columns:</strong> <code>phone</code> · <code>name</code> (optional) · <code>email</code> (optional) · any extra columns become lead variables the AI can reference during the call.
+                </div>
+
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <button onClick={saveGoogleSheet} disabled={sheetSaving} style={{
+                    flex: 1, background: "#0F9D58", color: "#fff", border: "none", borderRadius: 8,
+                    padding: "9px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", opacity: sheetSaving ? 0.7 : 1,
+                  }}>
+                    {sheetSaving ? "Saving…" : "Save Sheet Config"}
+                  </button>
+                  {googleSheetId && (
+                    <button onClick={() => { setGoogleSheetId(""); setGoogleSheetName("Sheet1"); saveGoogleSheet(); }}
+                      style={{ background: "none", border: "1.5px solid #fecaca", color: "var(--red)", borderRadius: 8, padding: "9px 12px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {sheetMsg && (
+                  <div style={{ fontSize: "0.8rem", fontWeight: 600,
+                    color: sheetMsg.startsWith("✓") ? "var(--green)" : "var(--red)" }}>
+                    {sheetMsg}
+                  </div>
+                )}
+              </div>
+
+              {/* SMS Drip */}
+              {renderToolCard({
+                icon: "💬", title: "SMS Drip", category: "Outbound",
+                status: "info",
+                statusLabel: "Set per campaign",
+                description: "Post-call SMS templates (no-answer, voicemail, booked, reminder). Configured per campaign in the Campaign builder.",
+                action: <a href="/dashboard/campaigns" style={{ textDecoration: "none" }}><button style={toolBtn}>Manage Campaigns →</button></a>,
+              })}
+
+              {/* Booking */}
+              {renderToolCard({
+                icon: "📅", title: "Calendar Booking", category: "Outbound",
+                status: "info",
+                statusLabel: "Uses same Google connection",
+                description: "AI books appointments mid-call into your Google Calendar. Uses the same Google account connected in Integrations.",
+                action: <a href="/dashboard/integrations" style={{ textDecoration: "none" }}><button style={toolBtn}>Check Google connection →</button></a>,
+              })}
+
+            </div>
+          </div>
+
+          {/* ── CALL FLOW ───────────────────────────────────────────── */}
+          <div style={{ background: "var(--blue-light)", border: "1px solid rgba(29,78,216,0.15)", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--blue)" }}>Configure which tools are active during each call</div>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 2 }}>Use the Call Flow builder to enable/disable specific tools per phase (during call vs after call).</div>
+            </div>
+            <button onClick={() => router.push(`/dashboard/call-flow?agent=${agentId}`)}
+              style={{ background: "var(--blue)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap" as const }}>
+              Open Call Flow Builder →
+            </button>
+          </div>
+
         </div>
       )}
 

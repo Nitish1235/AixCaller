@@ -225,7 +225,7 @@ async def process_completed_call(
         except Exception as e:
             logger.warning(f"Airtable sync failed (non-blocking): {e}")
 
-    # 6. HTML Summary Email via Resend
+    # 7. HTML Summary Email via Resend
     if tenant.email_summary_enabled and tenant.contact_email and post_call_config.get("email_summary", {}).get("enabled", True):
         try:
             await send_call_summary_email(
@@ -253,7 +253,7 @@ async def process_completed_call(
         except Exception as e:
             logger.error(f"Resend email error: {e}")
 
-    # 7. Custom Webhook
+    # 8. Custom Webhook
     if tenant.webhook_url and post_call_config.get("webhook_post", {}).get("enabled", True):
         try:
             async with httpx.AsyncClient() as client:
@@ -274,7 +274,7 @@ async def process_completed_call(
         except Exception as e:
             logger.error(f"Webhook dispatch failed: {e}")
 
-    # 8. HubSpot Sync (if connected)
+    # 9. HubSpot Sync (if connected)
     if tenant.hubspot_access_token and post_call_config.get("hubspot_sync", {}).get("enabled", True):
         try:
             # Prepare payload for HubSpot sync
@@ -288,7 +288,7 @@ async def process_completed_call(
         except Exception as e:
             logger.error(f"HubSpot sync error: {e}")
 
-    # 9. Salesforce Sync (if connected)
+    # 10. Salesforce Sync (if connected)
     if tenant.salesforce_access_token and post_call_config.get("salesforce_sync", {}).get("enabled", True):
         try:
             salesforce_data = {
@@ -301,7 +301,7 @@ async def process_completed_call(
         except Exception as e:
             logger.error(f"Salesforce sync error: {e}")
 
-    # 10. Intelligent SMS Follow-up
+    # 11. Intelligent SMS Follow-up
     sms_followup = analysis.get("sms_followup", {}) if analysis else {}
     if sms_followup.get("needed") and sms_followup.get("suggested_message"):
         logger.info(f"Intelligent SMS needed for call {new_call.id}. Reason: {sms_followup.get('reason')}")
