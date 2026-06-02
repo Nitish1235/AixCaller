@@ -335,6 +335,14 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
                 "check_slot_availability first. Always verify before committing."
             )
 
+    # The URL Telnyx will POST to when the conversation ends.
+    # This triggers billing, analytics, email, HubSpot, Airtable, etc.
+    base_url = f"https://{server_host}" if not server_host.startswith("http") else server_host
+    call_ended_url = (
+        f"{base_url}/api/v1/telnyx-ai/call-ended"
+        f"?tenant_id={agent.tenant_id}&agent_id={agent.id}"
+    )
+
     # Define full request payload
     payload = {
         "name": f"AixCaller_{agent.name}_{str(agent.id)[:8]}",
@@ -356,7 +364,8 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
             "language": "en"
         },
         "post_conversation_settings": {
-            "enabled": True
+            "enabled": True,
+            "webhook_url": call_ended_url,          # ← CRITICAL: tells Telnyx where to POST when call ends
         },
         "tools": tools
     }

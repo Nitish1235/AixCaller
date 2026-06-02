@@ -1,5 +1,8 @@
 import os
+import re
+import json
 import httpx
+import urllib.parse
 from datetime import datetime, timezone
 from loguru import logger
 from sqlmodel import Session
@@ -23,9 +26,9 @@ async def refresh_salesforce_token(tenant: Tenant) -> bool:
         "refresh_token": tenant.salesforce_refresh_token
     }
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            resp = await client.post(token_url, data=payload, timeout=10.0)
+            resp = await client.post(token_url, data=payload)
             if resp.status_code == 200:
                 data = resp.json()
                 tenant.salesforce_access_token = data.get("access_token")
@@ -73,16 +76,35 @@ async def log_call_to_salesforce(tenant: Tenant, data: dict):
     base_url = tenant.salesforce_instance_url.rstrip("/")
     api_version = "v60.0"
 
-    phone = data.get("phone", "")
-    summary = data.get("summary", "")
-    
+    phone        = data.get("phone", "")
+    summary      = data.get("summary", "")
+    sentiment    = data.get("sentiment", "Neutral")
+    duration_sec = int(data.get("duration", 0))
+    action_items = data.get("action_items", "[]")
+    agent_name   = data.get("agent_name", "AI Agent")
+    direction    = data.get("direction", "inbound").capitalize()
+    caller_name  = data.get("caller_name", "")
+    caller_email = data.get("caller_email", "")
+
+    # Build enriched description for the Salesforce Task
+    task_desc = f"Summary: {summary or 'No summary available.'}\n\n"
+    task_desc += f"Sentiment: {sentiment}\n"
+    task_desc += f"Direction: {direction}\n"
+    task_desc += f"Duration: {duration_sec}s\n"
+    task_desc += f"Agent: {agent_name}\n"
+    if action_items and action_items != "[]":
+        try:
+            items = json.loads(action_items) if isinstance(action_items, str) else action_items
+            if items:
+                task_desc += "\nAction Items:\n" + "\n".join(f"• {i}" for i in items)
+        except Exception:
+            task_desc += f"\nAction Items: {action_items}"
+
     who_id = None
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         # 2. Search for Contact/Lead by phone
         # Sanitize phone to prevent SOQL injection — keep only digits and leading +
-        import re
-        import urllib.parse
         safe_phone = re.sub(r"[^\d+]", "", phone) if phone else ""
         if not safe_phone:
             logger.warning("Salesforce sync skipped — invalid phone number")
@@ -91,7 +113,7 @@ async def log_call_to_salesforce(tenant: Tenant, data: dict):
         try:
             query = f"SELECT Id FROM Contact WHERE Phone = '{safe_phone}' OR MobilePhone = '{safe_phone}' LIMIT 1"
             resp = await client.get(
-                f"{base_url}/services/data/{api_version}/query?q={urllib.parse.quote(query)}",
+                f"{base_url}/services/data/{api_version}/query?q={urllib.parse.quote(query)}",  # noqa: E501
                 headers=headers,
                 timeout=10.0
             )
@@ -104,7 +126,7 @@ async def log_call_to_salesforce(tenant: Tenant, data: dict):
             if not who_id:
                 query = f"SELECT Id FROM Lead WHERE Phone = '{safe_phone}' OR MobilePhone = '{safe_phone}' LIMIT 1"
                 resp = await client.get(
-                    f"{base_url}/services/data/{api_version}/query?q={urllib.parse.quote(query)}",
+                    f"{base_url}/services/data/{api_version}/query?q={urllib.parse.quote(query)}",  # noqa: E501
                     headers=headers,
                     timeout=10.0
                 )
@@ -115,46 +137,47 @@ async def log_call_to_salesforce(tenant: Tenant, data: dict):
         except Exception as e:
             logger.error(f"Salesforce search failed: {e}")
 
-        # 3. Create Lead if not found
+        # 3. Create Lead if not found — use real name/email if captured
         if not who_id:
             try:
+                name_parts = caller_name.split(" ", 1) if caller_name else []
                 lead_payload = {
-                    "LastName": "AI Caller Lead",
-                    "Company": "Unknown",
-                    "Phone": phone
+                    "LastName":  name_parts[-1] if name_parts else "AI Caller Lead",
+                    "FirstName": name_parts[0]  if len(name_parts) > 1 else "",
+                    "Company":   "Unknown",
+                    "Phone":     phone,
                 }
+                if caller_email:
+                    lead_payload["Email"] = caller_email
                 resp = await client.post(
                     f"{base_url}/services/data/{api_version}/sobjects/Lead",
-                    headers=headers,
-                    json=lead_payload,
-                    timeout=10.0
+                    headers=headers, json=lead_payload, timeout=10.0,
                 )
                 if resp.status_code in (200, 201):
                     who_id = resp.json().get("id")
+                    logger.info(f"Salesforce Lead created: {who_id}")
             except Exception as e:
                 logger.error(f"Salesforce Lead creation failed: {e}")
 
-        # 4. Create Task (Activity)
+        # 4. Create Task (Activity) with full call details
         try:
             task_payload = {
-                "Subject": "AI Call via AIxCaller",
-                "Description": summary or "No summary available.",
-                "Status": "Completed",
-                "Priority": "Normal",
-                "TaskSubtype": "Call"
+                "Subject":     f"AIxCaller — {direction} Call ({agent_name})",
+                "Description": task_desc,
+                "Status":      "Completed",
+                "Priority":    "Normal",
+                "TaskSubtype": "Call",
             }
             if who_id:
                 task_payload["WhoId"] = who_id
-                
+
             resp = await client.post(
                 f"{base_url}/services/data/{api_version}/sobjects/Task",
-                headers=headers,
-                json=task_payload,
-                timeout=10.0
+                headers=headers, json=task_payload, timeout=10.0,
             )
             if resp.status_code in (200, 201):
-                logger.info(f"Successfully logged call to Salesforce for Tenant {tenant.id}")
+                logger.info(f"Salesforce Task created for tenant {tenant.id}")
             else:
-                logger.error(f"Failed to log call to Salesforce: {resp.text}")
+                logger.error(f"Failed to create Salesforce Task: {resp.text}")
         except Exception as e:
             logger.error(f"Salesforce task creation failed: {e}")

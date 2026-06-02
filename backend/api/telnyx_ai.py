@@ -52,28 +52,7 @@ async def telnyx_kb_search(request: Request, tenant_id: str, agent_id: str, db: 
         payload = await request.json()
         logger.info(f"Received Telnyx AI KB Search Webhook: {payload}")
 
-        # Extract search query parameters recursively
-        query = "general information" # default fallback
-        
-        def find_query(d: Any) -> str:
-            if isinstance(d, dict):
-                for k, v in d.items():
-                    if k.lower() == "query" and isinstance(v, str):
-                        return v
-                    res = find_query(v)
-                    if res:
-                        return res
-            elif isinstance(d, list):
-                for item in d:
-                    res = find_query(item)
-                    if res:
-                        return res
-            return ""
-
-        extracted_query = find_query(payload)
-        if extracted_query:
-            query = extracted_query
-
+        query = _extract_query(payload) or "general information"
         logger.info(f"Telnyx AI querying KB for: {query}")
 
         try:
@@ -157,12 +136,11 @@ async def telnyx_call_ended(request: Request, tenant_id: str, agent_id: str, db:
                 "Authorization": f"Bearer {api_key}",
                 "Accept": "application/json"
             }
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=15.0) as client:
                 try:
                     response = await client.get(
                         f"https://api.telnyx.com/v2/ai/conversations/{conversation_id}/messages",
                         headers=headers,
-                        timeout=15.0
                     )
                     if response.status_code == 200:
                         resp_json = response.json()
@@ -291,23 +269,7 @@ async def telnyx_custom_api(request: Request, tenant_id: str, agent_id: str, db:
     """
     try:
         payload = await request.json()
-
-        def find_query(d: Any) -> str:
-            if isinstance(d, dict):
-                for k, v in d.items():
-                    if k.lower() == "query" and isinstance(v, str):
-                        return v
-                    res = find_query(v)
-                    if res:
-                        return res
-            elif isinstance(d, list):
-                for item in d:
-                    res = find_query(item)
-                    if res:
-                        return res
-            return ""
-
-        query = find_query(payload) or payload.get("query", "")
+        query = _extract_query(payload) or ""
 
         agent = db.get(Agent, uuid.UUID(agent_id))
         if not agent:

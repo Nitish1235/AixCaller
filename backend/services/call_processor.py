@@ -277,27 +277,36 @@ async def process_completed_call(
     # 9. HubSpot Sync (if connected)
     if tenant.hubspot_access_token and post_call_config.get("hubspot_sync", {}).get("enabled", True):
         try:
-            # Prepare payload for HubSpot sync
-            hubspot_data = {
-                "call_id": str(new_call.id),
-                "phone": new_call.from_number,
-                "summary": new_call.summary,
-                "duration": duration_seconds,
-            }
-            await log_call_to_hubspot(tenant, hubspot_data)
+            await log_call_to_hubspot(tenant, {
+                "call_id":      str(new_call.id),
+                "phone":        new_call.from_number,
+                "summary":      new_call.summary or "",
+                "duration":     duration_seconds,
+                "sentiment":    new_call.sentiment or "Neutral",
+                "action_items": new_call.action_items or "[]",
+                "agent_name":   agent_name,
+                "direction":    getattr(new_call, "direction", "inbound"),
+                "caller_name":  (analysis.get("lead_info") or {}).get("name", "") if analysis else "",
+                "caller_email": (analysis.get("lead_info") or {}).get("email", "") if analysis else "",
+            })
         except Exception as e:
             logger.error(f"HubSpot sync error: {e}")
 
     # 10. Salesforce Sync (if connected)
     if tenant.salesforce_access_token and post_call_config.get("salesforce_sync", {}).get("enabled", True):
         try:
-            salesforce_data = {
-                "call_id": str(new_call.id),
-                "phone": new_call.from_number,
-                "summary": new_call.summary,
-                "duration": duration_seconds,
-            }
-            await log_call_to_salesforce(tenant, salesforce_data)
+            await log_call_to_salesforce(tenant, {
+                "call_id":      str(new_call.id),
+                "phone":        new_call.from_number,
+                "summary":      new_call.summary or "",
+                "duration":     duration_seconds,
+                "sentiment":    new_call.sentiment or "Neutral",
+                "action_items": new_call.action_items or "[]",
+                "agent_name":   agent_name,
+                "direction":    getattr(new_call, "direction", "inbound"),
+                "caller_name":  (analysis.get("lead_info") or {}).get("name", "") if analysis else "",
+                "caller_email": (analysis.get("lead_info") or {}).get("email", "") if analysis else "",
+            })
         except Exception as e:
             logger.error(f"Salesforce sync error: {e}")
 

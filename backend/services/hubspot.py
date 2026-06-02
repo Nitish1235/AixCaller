@@ -1,4 +1,5 @@
 import os
+import json
 import httpx
 from datetime import datetime, timezone
 from loguru import logger
@@ -23,9 +24,9 @@ async def refresh_hubspot_token(tenant: Tenant) -> bool:
         "refresh_token": tenant.hubspot_refresh_token
     }
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            resp = await client.post(token_url, data=payload, timeout=10.0)
+            resp = await client.post(token_url, data=payload)
             if resp.status_code == 200:
                 data = resp.json()
                 new_access = data.get("access_token")
@@ -73,33 +74,42 @@ async def log_call_to_hubspot(tenant: Tenant, data: dict):
         "Content-Type": "application/json"
     }
 
-    phone = data.get("phone", "")
-    summary = data.get("summary", "")
-    duration_ms = int(data.get("duration", 0)) * 1000
-    
+    phone        = data.get("phone", "")
+    summary      = data.get("summary", "")
+    sentiment    = data.get("sentiment", "Neutral")
+    duration_ms  = int(data.get("duration", 0)) * 1000
+    action_items = data.get("action_items", "[]")
+    agent_name   = data.get("agent_name", "AI Agent")
+    direction    = data.get("direction", "inbound").capitalize()
+    caller_name  = data.get("caller_name", "")
+    caller_email = data.get("caller_email", "")
+
     contact_id = None
 
-    async with httpx.AsyncClient() as client:
-        # 2. Search for Contact
+    # Build enriched call body to show in HubSpot timeline
+    call_body = f"Summary: {summary or 'No summary available.'}\n\n"
+    call_body += f"Sentiment: {sentiment}\n"
+    call_body += f"Direction: {direction}\n"
+    call_body += f"Agent: {agent_name}\n"
+    if action_items and action_items != "[]":
+        try:
+            items = json.loads(action_items) if isinstance(action_items, str) else action_items
+            if items:
+                call_body += f"\nAction Items:\n" + "\n".join(f"• {i}" for i in items)
+        except Exception:
+            call_body += f"\nAction Items: {action_items}"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        # 2. Search for Contact by phone
         search_payload = {
-            "filterGroups": [
-                {
-                    "filters": [
-                        {
-                            "propertyName": "phone",
-                            "operator": "EQ",
-                            "value": phone
-                        }
-                    ]
-                }
-            ]
+            "filterGroups": [{
+                "filters": [{"propertyName": "phone", "operator": "EQ", "value": phone}]
+            }]
         }
         try:
             resp = await client.post(
                 "https://api.hubapi.com/crm/v3/objects/contacts/search",
-                headers=headers,
-                json=search_payload,
-                timeout=10.0
+                headers=headers, json=search_payload,
             )
             if resp.status_code == 200:
                 results = resp.json().get("results", [])
@@ -108,62 +118,57 @@ async def log_call_to_hubspot(tenant: Tenant, data: dict):
         except Exception as e:
             logger.error(f"HubSpot contact search failed: {e}")
 
-        # 3. Create Contact if not found
+        # 3. Create Contact if not found — use real name/email if captured
         if not contact_id:
             try:
-                create_payload = {
-                    "properties": {
-                        "phone": phone,
-                        "firstname": "AI Caller Lead"
-                    }
-                }
+                contact_props: dict = {"phone": phone}
+                if caller_name:
+                    parts = caller_name.split(" ", 1)
+                    contact_props["firstname"] = parts[0]
+                    if len(parts) > 1:
+                        contact_props["lastname"] = parts[1]
+                else:
+                    contact_props["firstname"] = "AI Caller Lead"
+                if caller_email:
+                    contact_props["email"] = caller_email
+
                 resp = await client.post(
                     "https://api.hubapi.com/crm/v3/objects/contacts",
-                    headers=headers,
-                    json=create_payload,
-                    timeout=10.0
+                    headers=headers, json={"properties": contact_props},
                 )
                 if resp.status_code in (200, 201):
                     contact_id = resp.json().get("id")
+                    logger.info(f"HubSpot contact created: {contact_id}")
             except Exception as e:
                 logger.error(f"HubSpot contact creation failed: {e}")
 
-        # 4. Create Call Engagement
+        # 4. Create Call Engagement with full details
         try:
             call_payload = {
                 "properties": {
-                    "hs_call_title": "AI Call via AIxCaller",
-                    "hs_call_body": summary or "No summary available.",
+                    "hs_call_title":    f"AIxCaller — {direction} Call ({agent_name})",
+                    "hs_call_body":     call_body,
                     "hs_call_duration": str(duration_ms),
-                    "hs_timestamp": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
-                    "hs_call_status": "COMPLETED",
-                    "hs_call_source": "INTEGRATION"
+                    "hs_timestamp":     str(int(datetime.now(timezone.utc).timestamp() * 1000)),
+                    "hs_call_status":   "COMPLETED",
+                    "hs_call_source":   "INTEGRATION",
+                    "hs_call_direction": "INBOUND" if direction.lower() == "inbound" else "OUTBOUND",
                 },
                 "associations": []
             }
-            
             if contact_id:
-                call_payload["associations"] = [
-                    {
-                        "to": {"id": contact_id},
-                        "types": [
-                            {
-                                "associationCategory": "HUBSPOT_DEFINED",
-                                "associationTypeId": 194 # Call to Contact
-                            }
-                        ]
-                    }
-                ]
-            
+                call_payload["associations"] = [{
+                    "to": {"id": contact_id},
+                    "types": [{"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 194}]
+                }]
+
             resp = await client.post(
                 "https://api.hubapi.com/crm/v3/objects/calls",
-                headers=headers,
-                json=call_payload,
-                timeout=10.0
+                headers=headers, json=call_payload,
             )
             if resp.status_code in (200, 201):
-                logger.info(f"Successfully logged call to HubSpot for Tenant {tenant.id}")
+                logger.info(f"HubSpot call engagement created for tenant {tenant.id}")
             else:
-                logger.error(f"Failed to log call to HubSpot: {resp.text}")
+                logger.error(f"Failed to create HubSpot call engagement: {resp.text}")
         except Exception as e:
             logger.error(f"HubSpot call logging failed: {e}")
