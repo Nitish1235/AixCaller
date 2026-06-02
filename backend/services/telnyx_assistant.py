@@ -65,10 +65,13 @@ async def sync_agent_with_telnyx(agent: Agent, db: Session) -> str:
         })
 
     # 2. Transfer tool if enabled and forwarding number set
+    # "from" must be at the transfer level (not inside targets) per Telnyx docs —
+    # it is the agent's own Telnyx number used as caller-ID on the bridged leg.
     if agent.human_transfer_enabled and agent.forwarding_number and tool_config.get("human_transfer", {}).get("enabled", True):
         tools.append({
             "type": "transfer",
             "transfer": {
+                "from": agent.phone_number,
                 "targets": [
                     {
                         "name": "Live Support Representative",

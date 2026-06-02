@@ -8,7 +8,7 @@ from loguru import logger
 from shared.database import get_db
 from shared.models import Tenant
 from backend.services.payments import DodoPaymentsService
-from backend.services.telegram_admin import send_admin_alert_background
+from backend.services.telegram_admin import send_admin_alert
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -80,8 +80,7 @@ async def sync_user(req: SyncUserRequest, background_tasks: BackgroundTasks, db:
     if not tenant:
         # First-ever login — create a new tenant with a free trial
         logger.info(f"New Google user — creating tenant for {req.email}")
-        # Send admin alert for new signup
-        send_admin_alert_background(f"New user signed up: {req.email}")
+        background_tasks.add_task(send_admin_alert, f"🆕 New user signed up: {req.email}")
         tenant = Tenant(
             id=uuid.uuid4(),
             name=req.name or req.email.split("@")[0],
@@ -96,11 +95,8 @@ async def sync_user(req: SyncUserRequest, background_tasks: BackgroundTasks, db:
         db.refresh(tenant)
         logger.info(f"🆕 New signup: {req.email} (name: {req.name or 'Unknown'}) tenant={tenant.id}")
     else:
-        # Existing user login - optional alert
-        send_admin_alert_background(f"User logged in: {req.email}")
-        logger.info(f"✅ Tenant {tenant.id} subscribed to {tenant.plan_tier} ({tenant.minutes_included} min)")
-        # Notify admin of new subscription
-        send_admin_alert_background(f"Tenant {tenant.id} subscribed to {tenant.plan_tier} plan.")
+        # Existing user login
+        background_tasks.add_task(send_admin_alert, f"👤 User logged in: {req.email}")
         logger.info(f"Returning user: {req.email} | tenant={tenant.id}")
 
     return {

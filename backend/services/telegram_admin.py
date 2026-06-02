@@ -1,24 +1,24 @@
 import os
 import httpx
 from loguru import logger
-import asyncio
-
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-ADMIN_TELEGRAM_CHAT_ID = os.environ.get("ADMIN_TELEGRAM_CHAT_ID")
 
 async def send_admin_alert(message: str):
     """
     Sends a Telegram alert to the admin chat ID using the configured bot token.
-    Fails silently if the env variables are missing or the API call fails, 
+    Fails silently if the env variables are missing or the API call fails,
     to not block the main application flows.
+    Reads env vars at call time (not import time) so new values take effect immediately.
     """
-    if not TELEGRAM_BOT_TOKEN or not ADMIN_TELEGRAM_CHAT_ID:
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("ADMIN_TELEGRAM_CHAT_ID")
+
+    if not bot_token or not chat_id:
         logger.warning("TELEGRAM_BOT_TOKEN or ADMIN_TELEGRAM_CHAT_ID missing. Cannot send admin alert.")
         return
 
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
-        "chat_id": ADMIN_TELEGRAM_CHAT_ID,
+        "chat_id": chat_id,
         "text": message,
         "parse_mode": "HTML"
     }
@@ -33,12 +33,3 @@ async def send_admin_alert(message: str):
     except Exception as e:
         logger.error(f"Exception sending admin Telegram alert: {e}")
 
-def send_admin_alert_background(message: str):
-    """
-    Utility to fire-and-forget the alert in a background task (synchronous contexts).
-    """
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(send_admin_alert(message))
-    except RuntimeError:
-        asyncio.run(send_admin_alert(message))
