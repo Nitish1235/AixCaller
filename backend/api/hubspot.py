@@ -23,8 +23,11 @@ async def install_hubspot(tenant_id: str):
     if not HUBSPOT_CLIENT_ID:
         raise HTTPException(status_code=500, detail="HubSpot Client ID is not configured on the server.")
     
-    # Required scopes for CRM access
-    scopes = "crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write crm.objects.deals.read crm.objects.deals.write"
+    # Exact scopes we use:
+    #   contacts.read  — search contact by phone
+    #   contacts.write — create contact if not found
+    #   calls.write    — create call engagement after each call
+    scopes = "crm.objects.contacts.read crm.objects.contacts.write crm.objects.calls.write"
     
     # We pass the tenant_id in the 'state' parameter so we know who they are when they return
     url = (

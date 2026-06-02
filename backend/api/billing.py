@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from datetime import datetime, timedelta
 from loguru import logger
 from backend.services.payments import DodoPaymentsService
+from backend.services.telegram_admin import send_admin_alert_background
 
 from shared.database import get_db
 from shared.models import Tenant, Campaign
@@ -228,6 +229,13 @@ async def dodo_webhook(request: Request, background_tasks: BackgroundTasks, db: 
         logger.info(f"✅ Tenant {tenant_id} subscribed to {plan_tier} ({plan['minutes']} min)")
         logger.info(f"💰 Payment received: {tenant.name} ({tenant.contact_email}) — {plan_tier.upper()} ${plan['price_usd']}")
 
+        alert_verb = "renewed" if event_type == "subscription.renewed" else "subscribed"
+        send_admin_alert_background(
+            f"💰 Payment received: {tenant.name} ({tenant.contact_email})\n"
+            f"Plan: {plan_tier.upper()} — ${plan['price_usd']}/mo ({minutes} min)\n"
+            f"Status: {alert_verb}"
+        )
+
         # ── Auto-resume campaigns paused due to exhausted minutes ────────────
         # Uses sync wrapper — FastAPI BackgroundTasks requires a sync callable.
         background_tasks.add_task(_resume_exhausted_campaigns_sync, tenant_id)
@@ -244,7 +252,13 @@ async def dodo_webhook(request: Request, background_tasks: BackgroundTasks, db: 
                 db.add(tenant)
                 db.commit()
                 logger.info(f"Subscription {event_type}: {tenant.name} ({tenant.contact_email}) → {tenant.subscription_status}")
-                
+
+                alert_emoji = "❌" if event_type == "subscription.cancelled" else "⚠️"
+                send_admin_alert_background(
+                    f"{alert_emoji} Subscription {event_type.replace('.', ' ')}: "
+                    f"{tenant.name} ({tenant.contact_email}) → {tenant.subscription_status}"
+                )
+
                 return {"status": "subscription_updated"}
 
     return {"status": "event_ignored"}
